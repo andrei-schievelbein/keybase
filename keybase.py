@@ -1,363 +1,286 @@
+import customtkinter as ctk
 import json
 import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_FILE = os.path.join(BASE_DIR, 'data.json')
 
-print(f"Usando arquivo: {os.path.abspath(DATA_FILE)}")
+# Estado global
+estado = 'inicio'
+dados = {}
+resultados = []
+programa_selecionado = None
+sub_estado = None
+entrada_buffer = ''
 
+root = ctk.CTk()
+root.title("KeyBase")
 
+entrada = ctk.CTkEntry(root, width=600)
+entrada.pack(padx=10, pady=(10, 0), fill="x")
+
+saida = ctk.CTkTextbox(root, height=400)
+saida.pack(padx=10, pady=10, fill="both", expand=True)
+
+def escrever_saida(texto):
+    saida.insert("end", texto + "\n")
+    saida.see("end")
+
+def limpar_saida():
+    saida.delete("1.0", "end")
+
+# === Dados ===
 def carregar_dados():
     if not os.path.exists(DATA_FILE):
         return {"programas": []}
-
     with open(DATA_FILE, 'r', encoding='utf-8') as f:
         try:
             dados = json.load(f)
-            if 'programas' not in dados:
-                dados['programas'] = []
-            # Garante que todos os programas tenham 'atalhos' e 'notas'
             for programa in dados['programas']:
-                if 'atalhos' not in programa:
-                    programa['atalhos'] = []
-                if 'notas' not in programa:
-                    programa['notas'] = []
+                programa.setdefault('atalhos', [])
+                programa.setdefault('notas', [])
             return dados
         except json.JSONDecodeError:
             return {"programas": []}
 
-
-def salvar_dados(dados):
+def salvar_dados():
     with open(DATA_FILE, 'w', encoding='utf-8') as f:
         json.dump(dados, f, indent=4, ensure_ascii=False)
-    print(f"Dados salvos com sucesso no arquivo: {DATA_FILE}")
+    escrever_saida("Dados salvos com sucesso!")
 
-
-def buscar_programas(dados, termo):
+# === Funções principais ===
+def buscar_programas(termo):
     termo = termo.lower()
-    resultados = []
-    for programa in dados['programas']:
-        if termo in programa['nome'].lower():
-            resultados.append(programa)
-    return resultados
+    return [p for p in dados['programas'] if termo in p['nome'].lower()]
+
+def exibir_programas(lista):
+    for idx, prog in enumerate(lista):
+        escrever_saida(f"{idx + 1} - {prog['nome']}: {prog['descricao']}")
+
+def exibir_menu_programa():
+    limpar_saida()
+    escrever_saida("===================")
+    escrever_saida("1 - Ver atalhos")
+    escrever_saida("2 - Ver notas")
+    escrever_saida("===================")
+    escrever_saida("3 - Adicionar")
+    escrever_saida("4 - Editar")
+    escrever_saida("5 - Deletar")
+    escrever_saida("===================")
+    escrever_saida("6 - Editar nome do programa")
+    escrever_saida("7 - Editar descrição")
+    escrever_saida("8 - Deletar programa")
+    escrever_saida("===================")
+    escrever_saida("0 - Voltar")
+    escrever_saida("===================")
+
+def ver_atalhos():
+    global sub_estado
+    limpar_saida()
+    if not programa_selecionado['atalhos']:
+        escrever_saida("Nenhum atalho cadastrado. Aperte C para cadastrar ou Enter para voltar.")
+        sub_estado = 'atalho_vazio'
+    else:
+        escrever_saida("Aperte ENTER para voltar.")
+        for idx, atalho in enumerate(programa_selecionado['atalhos']):
+            escrever_saida(f"{idx + 1} - {atalho['combinacao']}: {atalho['descricao']}")
+        sub_estado = 'atalho_existente'
 
 
-def adicionar_programa(dados):
-    nome = input("Digite o nome do novo programa: ").strip()
-    descricao = input("Digite uma descrição para o programa: ").strip()
-    novo_programa = {
-        "nome": nome,
-        "descricao": descricao,
-        "atalhos": [],
-        "notas": []
-    }
-    dados['programas'].append(novo_programa)
-    salvar_dados(dados)
-    print(f"\nPrograma '{nome}' adicionado com sucesso!\n")
+def adicionar_atalho():
+    global estado
+    escrever_saida("Digite a combinação do atalho:")
+    estado = 'adicionar_atalho_comb'
+
+def ver_notas():
+    global sub_estado
+    limpar_saida()
+    if not programa_selecionado['notas']:
+        escrever_saida("Nenhuma nota cadastrada. Aperte C para cadastrar ou Enter para voltar.")
+        sub_estado = 'nota_vazio'
+    else:
+        escrever_saida("Aperte ENTER para voltar.")
+        for idx, nota in enumerate(programa_selecionado['notas']):
+            escrever_saida(f"{idx + 1} - {nota}")
+        sub_estado = 'nota_existente'
 
 
-def iniciar_busca_ou_cadastro(dados):
-    while True:
-        termo = input("Comece a digitar o nome do programa (ou 'sair' para encerrar): ").strip()
-        if termo.lower() == 'sair':
-            print("Encerrando KeyBase. Até mais!")
-            break
+def adicionar_nota():
+    global estado
+    escrever_saida("Digite a nota:")
+    estado = 'adicionar_nota'
 
-        resultados = buscar_programas(dados, termo)
-        if resultados:
-            print("\nProgramas encontrados:")
-            for idx, prog in enumerate(resultados):
-                print(f"{idx + 1} - {prog['nome']}: {prog['descricao']}")
+# === Controle de entrada ===
+def executar_comando(event=None):
+    global estado, dados, resultados, programa_selecionado, sub_estado, entrada_buffer
 
-            programa_selecionado = selecionar_programa(resultados)
-            if programa_selecionado:
-                print(f"\nVocê selecionou: {programa_selecionado['nome']}\n")
-                menu_programa(programa_selecionado, dados)
+    comando = entrada.get().strip()
+    entrada.delete(0, 'end')
+    escrever_saida(f"> {comando}")
+
+    if sub_estado == 'atalho_existente':
+        if comando == '':
+            exibir_menu_programa()
+            sub_estado = None
+        else:
+            escrever_saida("Pressione apenas ENTER para voltar.")
+        return
+
+    if sub_estado == 'nota_existente':
+        if comando == '':
+            exibir_menu_programa()
+            sub_estado = None
+        else:
+            escrever_saida("Pressione apenas ENTER para voltar.")
+        return
+
+
+    if comando.lower() == 'sair':
+        root.destroy()
+        return
+
+    if sub_estado:
+        if sub_estado in ['atalho_vazio', 'nota_vazio']:
+            if comando.upper() == 'C':
+                if sub_estado == 'atalho_vazio':
+                    adicionar_atalho()
+                else:
+                    adicionar_nota()
+                sub_estado = None
+                return
+            elif comando == '':
+                exibir_menu_programa()
+                sub_estado = None
+                return
             else:
-                print("Voltando para a busca...\n")
+                escrever_saida("Opção inválida. Aperte C para cadastrar ou Enter para voltar.")
+                return
+
+    if estado == 'inicio':
+        resultados = buscar_programas(comando)
+        if resultados:
+            limpar_saida()
+            exibir_programas(resultados)
+            escrever_saida("Digite o número do programa para selecionar.")
+            estado = 'selecionar_programa'
         else:
-            print("Nenhum programa encontrado.")
-            opcao = input("Deseja cadastrar um novo programa? (S/N): ").strip().upper()
-            if opcao == 'S':
-                adicionar_programa(dados)
+            escrever_saida("Nenhum programa encontrado.")
+            escrever_saida("Deseja cadastrar um novo programa? (S/N)")
+            estado = 'confirmar_cadastro'
+            entrada_buffer = comando
 
+    elif estado == 'confirmar_cadastro':
+        if comando.upper() == 'S':
+            escrever_saida("Digite o nome do novo programa:")
+            estado = 'adicionar_nome'
+        else:
+            estado = 'inicio'
 
-def selecionar_programa(resultados):
-    while True:
-        escolha = input("Digite o número do programa para selecionar ou pressione ENTER para voltar: ").strip()
-        if escolha == '':
-            return None
-        if escolha.isdigit():
-            idx = int(escolha) - 1
+    elif estado == 'adicionar_nome':
+        entrada_buffer = comando
+        escrever_saida("Digite uma descrição para o programa:")
+        estado = 'adicionar_descricao'
+
+    elif estado == 'adicionar_descricao':
+        novo_programa = {
+            "nome": entrada_buffer,
+            "descricao": comando,
+            "atalhos": [],
+            "notas": []
+        }
+        dados['programas'].append(novo_programa)
+        salvar_dados()
+        escrever_saida(f"Programa '{entrada_buffer}' adicionado com sucesso!")
+        estado = 'inicio'
+
+    elif estado == 'selecionar_programa':
+        if comando.isdigit():
+            idx = int(comando) - 1
             if 0 <= idx < len(resultados):
-                return resultados[idx]
-        print("Opção inválida. Tente novamente.")
-
-
-def menu_programa(programa, dados):
-    while True:
-        print(f"\n===========================")
-        print(f" PROGRAMA: {programa['nome']}")
-        print(f"===========================\n")
-        print("===================")
-        print("1 - Ver atalhos")
-        print("2 - Ver notas")
-        print("===================")
-        print("3 - Adicionar")
-        print("4 - Editar")
-        print("5 - Deletar")
-        print("===================")
-        print("6 - Editar nome do programa")
-        print("7 - Editar descrição")
-        print("8 - Deletar programa")
-        print("===================")
-        print("0 - Voltar")
-        print("===================\n")
-
-        escolha = input("Escolha uma opção: ").strip()
-
-        if escolha == '1':
-            ver_atalhos(programa)
-            input("Pressione ENTER para voltar ao menu...")
-        elif escolha == '2':
-            ver_notas(programa)
-            input("Pressione ENTER para voltar ao menu...")
-        elif escolha == '3':
-            adicionar_item(programa, dados)
-        elif escolha == '4':
-            editar_item(programa, dados)
-        elif escolha == '5':
-            deletar_item(programa, dados)
-        elif escolha == '6':
-            editar_nome_programa(programa, dados)
-        elif escolha == '7':
-            editar_descricao_programa(programa, dados)
-        elif escolha == '8':
-            confirmar = input("Tem certeza que deseja deletar este programa? (S/N): ").strip().upper()
-            if confirmar == 'S':
-                deletar_programa(programa, dados)
-                break
-        elif escolha == '0':
-            break
+                programa_selecionado = resultados[idx]
+                exibir_menu_programa()
+                estado = 'menu_programa'
+            else:
+                escrever_saida("Número inválido.")
+                estado = 'inicio'
         else:
-            print("Opção inválida. Tente novamente.")
+            escrever_saida("Entrada inválida.")
+            estado = 'inicio'
+
+    elif estado == 'menu_programa':
+        if comando == '1':
+            ver_atalhos()
+        elif comando == '2':
+            ver_notas()
+        elif comando == '3':
+            limpar_saida()
+            escrever_saida("Deseja adicionar um atalho ou uma nota? (A/N):")
+            estado = 'adicionar_item'
+
+        elif comando == '4':
+            limpar_saida()
+            escrever_saida("Deseja editar um atalho ou uma nota? (A/N):")
+            estado = 'editar_item'
+
+        elif comando == '5':
+            limpar_saida()
+            escrever_saida("Deseja deletar um atalho ou uma nota? (A/N):")
+            estado = 'deletar_item'
 
 
 
-def adicionar_item(programa, dados):
-    tipo = input("Deseja adicionar um atalho ou uma nota? (A/N): ").strip().upper()
-    if tipo == 'A':
-        adicionar_atalho(programa, dados)
-    elif tipo == 'N':
-        adicionar_nota(programa, dados)
-    else:
-        print("Opção inválida.")
-
-
-def editar_item(programa, dados):
-    tipo = input("Deseja editar um atalho ou uma nota? (A/N): ").strip().upper()
-    if tipo == 'A':
-        editar_atalho(programa, dados)
-    elif tipo == 'N':
-        editar_nota(programa, dados)
-    else:
-        print("Opção inválida.")
-
-
-def deletar_item(programa, dados):
-    tipo = input("Deseja deletar um atalho ou uma nota? (A/N): ").strip().upper()
-    if tipo == 'A':
-        deletar_atalho(programa, dados)
-    elif tipo == 'N':
-        deletar_nota(programa, dados)
-    else:
-        print("Opção inválida.")
-
-
-def ver_atalhos(programa):
-    print("\n*** Lista de Atalhos ***")
-    if not programa['atalhos']:
-        print("Nenhum atalho cadastrado.")
-    else:
-        for idx, atalho in enumerate(programa['atalhos']):
-            print(f"{idx + 1} - {atalho['combinacao']}: {atalho['descricao']}")
-    print("*************************\n")
-
-
-
-def ver_notas(programa):
-    print("\n*** Lista de Notas ***")
-    if not programa['notas']:
-        print("Nenhuma nota cadastrada.")
-    else:
-        for idx, nota in enumerate(programa['notas']):
-            print(f"{idx + 1} - {nota}")
-    print("*************************\n")
-
-
-
-def adicionar_atalho(programa, dados):
-    combinacao = input("Digite a combinação do atalho (ex: Ctrl + S): ").strip()
-    descricao = input("Digite a descrição do atalho: ").strip()
-
-    for atalho in programa['atalhos']:
-        if atalho['combinacao'].lower() == combinacao.lower():
-            print("Atalho já existe! Não será adicionado.")
-            return
-
-    novo_atalho = {
-        "combinacao": combinacao,
-        "descricao": descricao
-    }
-    programa['atalhos'].append(novo_atalho)
-    salvar_dados(dados)
-    print(f"Atalho '{combinacao}' adicionado com sucesso!\n")
-
-
-def adicionar_nota(programa, dados):
-    nota = input("Digite a nota: ").strip()
-    if nota:
-        programa['notas'].append(nota)
-        salvar_dados(dados)
-        print("Nota adicionada com sucesso!\n")
-    else:
-        print("Nota vazia. Nada foi adicionado.")
-
-
-def editar_atalho(programa, dados):
-    ver_atalhos(programa)
-    escolha = input("Digite o número do atalho que deseja editar ou pressione ENTER para voltar: ").strip()
-    
-    if escolha == '':
-        return
-
-    if not escolha.isdigit():
-        print("Entrada inválida.")
-        return
-
-    idx = int(escolha) - 1
-    if 0 <= idx < len(programa['atalhos']):
-        novo_comb = input("Nova combinação (deixe vazio para manter): ").strip()
-        nova_desc = input("Nova descrição (deixe vazio para manter): ").strip()
-        
-        if novo_comb:
-            programa['atalhos'][idx]['combinacao'] = novo_comb
-        if nova_desc:
-            programa['atalhos'][idx]['descricao'] = nova_desc
-        
-        salvar_dados(dados)
-        print("Atalho atualizado com sucesso!\n")
-    else:
-        print("Número inválido.")
-
-
-
-def editar_nota(programa, dados):
-    ver_notas(programa)
-    escolha = input("Digite o número da nota que deseja editar ou pressione ENTER para voltar: ").strip()
-    
-    if escolha == '':
-        return
-
-    if not escolha.isdigit():
-        print("Entrada inválida.")
-        return
-
-    idx = int(escolha) - 1
-    if 0 <= idx < len(programa['notas']):
-        nova_nota = input("Digite a nova nota: ").strip()
-        if nova_nota:
-            programa['notas'][idx] = nova_nota
-            salvar_dados(dados)
-            print("Nota atualizada com sucesso!\n")
+        elif comando == '0':
+            limpar_saida()
+            estado = 'inicio'
+            escrever_saida("Voltando para a busca...")
         else:
-            print("Nota não alterada.")
-    else:
-        print("Número inválido.")
+            escrever_saida("Opção inválida.")
 
+    elif estado == 'adicionar_item':
+        if comando.upper() == 'A':
+            adicionar_atalho()
+        elif comando.upper() == 'N':
+            adicionar_nota()
+        else:
+            escrever_saida("Opção inválida.")
+            exibir_menu_programa()
+            estado = 'menu_programa'
 
+    elif estado == 'adicionar_atalho_comb':
+        entrada_buffer = comando
+        escrever_saida("Digite a descrição do atalho:")
+        estado = 'adicionar_atalho_desc'
 
-def deletar_atalho(programa, dados):
-    ver_atalhos(programa)
-    escolha = input("Digite o número do atalho que deseja deletar ou pressione ENTER para voltar: ").strip()
-    
-    if escolha == '':
-        return
+    elif estado == 'adicionar_atalho_desc':
+        for atalho in programa_selecionado['atalhos']:
+            if atalho['combinacao'].lower() == entrada_buffer.lower():
+                escrever_saida("Atalho já existe! Não será adicionado.")
+                exibir_menu_programa()
+                estado = 'menu_programa'
+                return
+        novo = {"combinacao": entrada_buffer, "descricao": comando}
+        programa_selecionado['atalhos'].append(novo)
+        salvar_dados()
+        escrever_saida(f"Atalho '{entrada_buffer}' adicionado com sucesso!")
+        exibir_menu_programa()
+        estado = 'menu_programa'
 
-    if not escolha.isdigit():
-        print("Entrada inválida.")
-        return
+    elif estado == 'adicionar_nota':
+        programa_selecionado['notas'].append(comando)
+        salvar_dados()
+        escrever_saida("Nota adicionada com sucesso!")
+        exibir_menu_programa()
+        estado = 'menu_programa'
 
-    idx = int(escolha) - 1
-    if 0 <= idx < len(programa['atalhos']):
-        confirmar = input("Tem certeza que deseja deletar este atalho? (S/N): ").strip().upper()
-        if confirmar == 'S':
-            atalho = programa['atalhos'].pop(idx)
-            salvar_dados(dados)
-            print(f"Atalho '{atalho['combinacao']}' deletado com sucesso!\n")
-    else:
-        print("Número inválido.")
+entrada.bind("<Return>", executar_comando)
 
+limpar_saida()
+escrever_saida("===========================")
+escrever_saida("  BEM-VINDO AO KEYBASE!")
+escrever_saida("===========================")
+escrever_saida("Comece a digitar o nome do programa ou 'sair' para encerrar.")
 
+dados = carregar_dados()
 
-def deletar_nota(programa, dados):
-    ver_notas(programa)
-    escolha = input("Digite o número da nota que deseja deletar ou pressione ENTER para voltar: ").strip()
-    
-    if escolha == '':
-        return
-
-    if not escolha.isdigit():
-        print("Entrada inválida.")
-        return
-
-    idx = int(escolha) - 1
-    if 0 <= idx < len(programa['notas']):
-        confirmar = input("Tem certeza que deseja deletar esta nota? (S/N): ").strip().upper()
-        if confirmar == 'S':
-            nota = programa['notas'].pop(idx)
-            salvar_dados(dados)
-            print(f"Nota '{nota}' deletada com sucesso!\n")
-    else:
-        print("Número inválido.")
-
-
-
-def editar_nome_programa(programa, dados):
-    novo_nome = input("Digite o novo nome do programa: ").strip()
-    if novo_nome:
-        programa['nome'] = novo_nome
-        salvar_dados(dados)
-        print("Nome do programa atualizado com sucesso!\n")
-    else:
-        print("Nome não alterado.")
-
-def editar_descricao_programa(programa, dados):
-    nova_desc = input("Digite a nova descrição do programa: ").strip()
-    if nova_desc:
-        programa['descricao'] = nova_desc
-        salvar_dados(dados)
-        print("Descrição do programa atualizada com sucesso!\n")
-    else:
-        print("Descrição não alterada.")
-
-
-
-def deletar_programa(programa, dados):
-    dados['programas'].remove(programa)
-    salvar_dados(dados)
-    print("Programa deletado com sucesso!\n")
-
-
-def main():
-    print("===========================")
-    print("  BEM-VINDO AO KEYBASE!")
-    print("===========================")
-    dados = carregar_dados()
-    print("Dados carregados com sucesso!\n")
-
-    iniciar_busca_ou_cadastro(dados)
-
-
-if __name__ == "__main__":
-    main()
+root.after(100, lambda: entrada.focus_set())
+root.mainloop()
