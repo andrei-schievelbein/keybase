@@ -16,14 +16,39 @@
         {
             "nome": "amanda",
             "descricao": "",
-            "atalhos": [],
+            "atalhos": [
+                {
+                    "combinacao": "asd",
+                    "descricao": "dsa"
+                }
+            ],
             "notas": []
         },
         {
             "nome": "asd",
             "descricao": "",
-            "atalhos": [],
-            "notas": []
+            "atalhos": [
+                {
+                    "combinacao": "asd",
+                    "descricao": "dsa"
+                },
+                {
+                    "combinacao": "asdasd",
+                    "descricao": "asdasdas"
+                },
+                {
+                    "combinacao": "hdfhdfh",
+                    "descricao": "sfdgdfg"
+                },
+                {
+                    "combinacao": "1232",
+                    "descricao": "123"
+                }
+            ],
+            "notas": [
+                "asss",
+                "asdasdadas"
+            ]
         },
         {
             "nome": "ajjjs",
