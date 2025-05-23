@@ -1,10 +1,17 @@
 {
     "programas": [
         {
-            "nome": "nome",
-            "descricao": "nome",
-            "atalhos": [],
-            "notas": []
+            "nome": "teste",
+            "descricao": "descrição",
+            "atalhos": [
+                {
+                    "combinacao": "não",
+                    "descricao": "sim"
+                }
+            ],
+            "notas": [
+                "nota"
+            ]
         },
         {
             "nome": "amanda",
@@ -31,6 +38,12 @@
                 "nota",
                 "nota2"
             ]
+        },
+        {
+            "nome": "asa",
+            "descricao": "sasa",
+            "atalhos": [],
+            "notas": []
         }
     ]
 }

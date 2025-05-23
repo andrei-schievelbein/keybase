@@ -99,21 +99,29 @@ def menu_programa(programa, dados):
         print(f"\n===========================")
         print(f" PROGRAMA: {programa['nome']}")
         print(f"===========================\n")
+        print("===================")
         print("1 - Ver atalhos")
         print("2 - Ver notas")
+        print("===================")
         print("3 - Adicionar")
         print("4 - Editar")
         print("5 - Deletar")
+        print("===================")
         print("6 - Editar nome do programa")
-        print("7 - Deletar programa")
-        print("0 - Voltar\n")
+        print("7 - Editar descrição")
+        print("8 - Deletar programa")
+        print("===================")
+        print("0 - Voltar")
+        print("===================\n")
 
         escolha = input("Escolha uma opção: ").strip()
 
         if escolha == '1':
             ver_atalhos(programa)
+            input("Pressione ENTER para voltar ao menu...")
         elif escolha == '2':
             ver_notas(programa)
+            input("Pressione ENTER para voltar ao menu...")
         elif escolha == '3':
             adicionar_item(programa, dados)
         elif escolha == '4':
@@ -123,6 +131,8 @@ def menu_programa(programa, dados):
         elif escolha == '6':
             editar_nome_programa(programa, dados)
         elif escolha == '7':
+            editar_descricao_programa(programa, dados)
+        elif escolha == '8':
             confirmar = input("Tem certeza que deseja deletar este programa? (S/N): ").strip().upper()
             if confirmar == 'S':
                 deletar_programa(programa, dados)
@@ -131,6 +141,7 @@ def menu_programa(programa, dados):
             break
         else:
             print("Opção inválida. Tente novamente.")
+
 
 
 def adicionar_item(programa, dados):
@@ -171,7 +182,7 @@ def ver_atalhos(programa):
         for idx, atalho in enumerate(programa['atalhos']):
             print(f"{idx + 1} - {atalho['combinacao']}: {atalho['descricao']}")
     print("*************************\n")
-    input("Pressione ENTER para voltar ao menu...")
+
 
 
 def ver_notas(programa):
@@ -182,7 +193,7 @@ def ver_notas(programa):
         for idx, nota in enumerate(programa['notas']):
             print(f"{idx + 1} - {nota}")
     print("*************************\n")
-    input("Pressione ENTER para voltar ao menu...")
+
 
 
 def adicionar_atalho(programa, dados):
@@ -215,32 +226,43 @@ def adicionar_nota(programa, dados):
 
 def editar_atalho(programa, dados):
     ver_atalhos(programa)
-    escolha = input("Digite o número do atalho que deseja editar: ").strip()
+    escolha = input("Digite o número do atalho que deseja editar ou pressione ENTER para voltar: ").strip()
+    
+    if escolha == '':
+        return
+
     if not escolha.isdigit():
         print("Entrada inválida.")
         return
+
     idx = int(escolha) - 1
     if 0 <= idx < len(programa['atalhos']):
         novo_comb = input("Nova combinação (deixe vazio para manter): ").strip()
         nova_desc = input("Nova descrição (deixe vazio para manter): ").strip()
-
+        
         if novo_comb:
             programa['atalhos'][idx]['combinacao'] = novo_comb
         if nova_desc:
             programa['atalhos'][idx]['descricao'] = nova_desc
-
+        
         salvar_dados(dados)
         print("Atalho atualizado com sucesso!\n")
     else:
         print("Número inválido.")
 
 
+
 def editar_nota(programa, dados):
     ver_notas(programa)
-    escolha = input("Digite o número da nota que deseja editar: ").strip()
+    escolha = input("Digite o número da nota que deseja editar ou pressione ENTER para voltar: ").strip()
+    
+    if escolha == '':
+        return
+
     if not escolha.isdigit():
         print("Entrada inválida.")
         return
+
     idx = int(escolha) - 1
     if 0 <= idx < len(programa['notas']):
         nova_nota = input("Digite a nova nota: ").strip()
@@ -254,12 +276,18 @@ def editar_nota(programa, dados):
         print("Número inválido.")
 
 
+
 def deletar_atalho(programa, dados):
     ver_atalhos(programa)
-    escolha = input("Digite o número do atalho que deseja deletar: ").strip()
+    escolha = input("Digite o número do atalho que deseja deletar ou pressione ENTER para voltar: ").strip()
+    
+    if escolha == '':
+        return
+
     if not escolha.isdigit():
         print("Entrada inválida.")
         return
+
     idx = int(escolha) - 1
     if 0 <= idx < len(programa['atalhos']):
         confirmar = input("Tem certeza que deseja deletar este atalho? (S/N): ").strip().upper()
@@ -271,12 +299,18 @@ def deletar_atalho(programa, dados):
         print("Número inválido.")
 
 
+
 def deletar_nota(programa, dados):
     ver_notas(programa)
-    escolha = input("Digite o número da nota que deseja deletar: ").strip()
+    escolha = input("Digite o número da nota que deseja deletar ou pressione ENTER para voltar: ").strip()
+    
+    if escolha == '':
+        return
+
     if not escolha.isdigit():
         print("Entrada inválida.")
         return
+
     idx = int(escolha) - 1
     if 0 <= idx < len(programa['notas']):
         confirmar = input("Tem certeza que deseja deletar esta nota? (S/N): ").strip().upper()
@@ -288,6 +322,7 @@ def deletar_nota(programa, dados):
         print("Número inválido.")
 
 
+
 def editar_nome_programa(programa, dados):
     novo_nome = input("Digite o novo nome do programa: ").strip()
     if novo_nome:
@@ -296,6 +331,16 @@ def editar_nome_programa(programa, dados):
         print("Nome do programa atualizado com sucesso!\n")
     else:
         print("Nome não alterado.")
+
+def editar_descricao_programa(programa, dados):
+    nova_desc = input("Digite a nova descrição do programa: ").strip()
+    if nova_desc:
+        programa['descricao'] = nova_desc
+        salvar_dados(dados)
+        print("Descrição do programa atualizada com sucesso!\n")
+    else:
+        print("Descrição não alterada.")
+
 
 
 def deletar_programa(programa, dados):
