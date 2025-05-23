@@ -1,24 +1,36 @@
 {
     "programas": [
         {
-            "nome": "Autocad",
-            "descricao": "cad",
-            "atalhos": []
-        },
-        {
             "nome": "nome",
             "descricao": "nome",
-            "atalhos": []
+            "atalhos": [],
+            "notas": []
         },
         {
             "nome": "amanda",
             "descricao": "",
-            "atalhos": []
+            "atalhos": [],
+            "notas": []
         },
         {
             "nome": "asd",
             "descricao": "",
-            "atalhos": []
+            "atalhos": [],
+            "notas": []
+        },
+        {
+            "nome": "ajjjs",
+            "descricao": "asd",
+            "atalhos": [
+                {
+                    "combinacao": "qwe",
+                    "descricao": "atalho"
+                }
+            ],
+            "notas": [
+                "nota",
+                "nota2"
+            ]
         }
     ]
 }
