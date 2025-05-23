@@ -30,11 +30,11 @@
             "atalhos": [
                 {
                     "combinacao": "asd",
-                    "descricao": "12345"
+                    "descricao": "1"
                 },
                 {
-                    "combinacao": "asdasd",
-                    "descricao": "asdasdas"
+                    "combinacao": "gggg",
+                    "descricao": "gggg"
                 },
                 {
                     "combinacao": "hdfhdfh",
@@ -51,10 +51,22 @@
                 {
                     "combinacao": "ghj",
                     "descricao": "jhg"
+                },
+                {
+                    "combinacao": "111",
+                    "descricao": "2222"
+                },
+                {
+                    "combinacao": "11112222",
+                    "descricao": "22222"
+                },
+                {
+                    "combinacao": "555",
+                    "descricao": "555"
                 }
             ],
             "notas": [
-                "asss",
+                "sdfsdfsdf",
                 "asdasdadas"
             ]
         },
