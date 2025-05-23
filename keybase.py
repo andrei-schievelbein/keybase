@@ -12,6 +12,7 @@ resultados = []
 programa_selecionado = None
 sub_estado = None
 entrada_buffer = ''
+indice_edicao = None
 
 root = ctk.CTk()
 root.title("KeyBase")
@@ -29,7 +30,6 @@ def escrever_saida(texto):
 def limpar_saida():
     saida.delete("1.0", "end")
 
-# === Dados ===
 def carregar_dados():
     if not os.path.exists(DATA_FILE):
         return {"programas": []}
@@ -48,7 +48,6 @@ def salvar_dados():
         json.dump(dados, f, indent=4, ensure_ascii=False)
     escrever_saida("Dados salvos com sucesso!")
 
-# === Funções principais ===
 def buscar_programas(termo):
     termo = termo.lower()
     return [p for p in dados['programas'] if termo in p['nome'].lower()]
@@ -86,7 +85,6 @@ def ver_atalhos():
             escrever_saida(f"{idx + 1} - {atalho['combinacao']}: {atalho['descricao']}")
         sub_estado = 'atalho_existente'
 
-
 def adicionar_atalho():
     global estado
     escrever_saida("Digite a combinação do atalho:")
@@ -104,15 +102,13 @@ def ver_notas():
             escrever_saida(f"{idx + 1} - {nota}")
         sub_estado = 'nota_existente'
 
-
 def adicionar_nota():
     global estado
     escrever_saida("Digite a nota:")
     estado = 'adicionar_nota'
 
-# === Controle de entrada ===
 def executar_comando(event=None):
-    global estado, dados, resultados, programa_selecionado, sub_estado, entrada_buffer
+    global estado, dados, resultados, programa_selecionado, sub_estado, entrada_buffer, indice_edicao
 
     comando = entrada.get().strip()
     entrada.delete(0, 'end')
@@ -133,7 +129,6 @@ def executar_comando(event=None):
         else:
             escrever_saida("Pressione apenas ENTER para voltar.")
         return
-
 
     if comando.lower() == 'sair':
         root.destroy()
@@ -216,19 +211,14 @@ def executar_comando(event=None):
             limpar_saida()
             escrever_saida("Deseja adicionar um atalho ou uma nota? (A/N):")
             estado = 'adicionar_item'
-
         elif comando == '4':
             limpar_saida()
             escrever_saida("Deseja editar um atalho ou uma nota? (A/N):")
             estado = 'editar_item'
-
         elif comando == '5':
             limpar_saida()
             escrever_saida("Deseja deletar um atalho ou uma nota? (A/N):")
             estado = 'deletar_item'
-
-
-
         elif comando == '0':
             limpar_saida()
             estado = 'inicio'
@@ -245,6 +235,72 @@ def executar_comando(event=None):
             escrever_saida("Opção inválida.")
             exibir_menu_programa()
             estado = 'menu_programa'
+
+    elif estado == 'editar_item':
+        if comando.upper() == 'A':
+            limpar_saida()
+            escrever_saida("Digite o número do atalho que deseja editar ou tecle ENTER para voltar:")
+            for idx, atalho in enumerate(programa_selecionado['atalhos']):
+                escrever_saida(f"{idx + 1} - {atalho['combinacao']}: {atalho['descricao']}")
+            estado = 'editar_atalho'
+        elif comando.upper() == 'N':
+            limpar_saida()
+            escrever_saida("Digite o número da nota que deseja editar ou tecle ENTER para voltar:")
+            for idx, nota in enumerate(programa_selecionado['notas']):
+                escrever_saida(f"{idx + 1} - {nota}")
+            estado = 'editar_nota'
+        else:
+            escrever_saida("Opção inválida.")
+            exibir_menu_programa()
+            estado = 'menu_programa'
+
+    elif estado == 'editar_atalho':
+        if comando == '':
+            exibir_menu_programa()
+            estado = 'menu_programa'
+        elif comando.isdigit():
+            indice_edicao = int(comando) - 1
+            if 0 <= indice_edicao < len(programa_selecionado['atalhos']):
+                escrever_saida("Digite a nova descrição do atalho:")
+                entrada_buffer = indice_edicao
+                estado = 'confirmar_editar_atalho'
+            else:
+                escrever_saida("Número inválido.")
+                exibir_menu_programa()
+                estado = 'menu_programa'
+        else:
+            escrever_saida("Entrada inválida.")
+
+    elif estado == 'confirmar_editar_atalho':
+        programa_selecionado['atalhos'][entrada_buffer]['descricao'] = comando
+        salvar_dados()
+        escrever_saida("Atalho editado com sucesso!")
+        exibir_menu_programa()
+        estado = 'menu_programa'
+
+    elif estado == 'editar_nota':
+        if comando == '':
+            exibir_menu_programa()
+            estado = 'menu_programa'
+        elif comando.isdigit():
+            indice_edicao = int(comando) - 1
+            if 0 <= indice_edicao < len(programa_selecionado['notas']):
+                escrever_saida("Digite a nova nota:")
+                entrada_buffer = indice_edicao
+                estado = 'confirmar_editar_nota'
+            else:
+                escrever_saida("Número inválido.")
+                exibir_menu_programa()
+                estado = 'menu_programa'
+        else:
+            escrever_saida("Entrada inválida.")
+
+    elif estado == 'confirmar_editar_nota':
+        programa_selecionado['notas'][entrada_buffer] = comando
+        salvar_dados()
+        escrever_saida("Nota editada com sucesso!")
+        exibir_menu_programa()
+        estado = 'menu_programa'
 
     elif estado == 'adicionar_atalho_comb':
         entrada_buffer = comando

@@ -30,7 +30,7 @@
             "atalhos": [
                 {
                     "combinacao": "asd",
-                    "descricao": "dsa"
+                    "descricao": "12345"
                 },
                 {
                     "combinacao": "asdasd",
@@ -42,7 +42,15 @@
                 },
                 {
                     "combinacao": "1232",
-                    "descricao": "123"
+                    "descricao": "sdfsdfsdf"
+                },
+                {
+                    "combinacao": "123",
+                    "descricao": "321"
+                },
+                {
+                    "combinacao": "ghj",
+                    "descricao": "jhg"
                 }
             ],
             "notas": [
