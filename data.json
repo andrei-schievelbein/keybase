@@ -5,12 +5,31 @@
             "descricao": "descrição",
             "atalhos": [
                 {
-                    "combinacao": "não",
-                    "descricao": "sim"
+                    "combinacao": "sim",
+                    "descricao": "nao"
+                },
+                {
+                    "combinacao": "aaa",
+                    "descricao": "aaa"
                 }
             ],
             "notas": [
-                "nota"
+                {
+                    "descricao": "nota",
+                    "texto": "nota"
+                },
+                {
+                    "descricao": "nota1",
+                    "texto": "notatexto"
+                },
+                {
+                    "descricao": "nota3",
+                    "texto": "notatexto3"
+                },
+                {
+                    "descricao": "nota4",
+                    "texto": "nota4"
+                }
             ]
         },
         {
@@ -66,8 +85,14 @@
                 }
             ],
             "notas": [
-                "sdfsdfsdf",
-                "asdasdadas"
+                {
+                    "descricao": "sdfsdfsdf",
+                    "texto": "sdfsdfsdf"
+                },
+                {
+                    "descricao": "asdasdadas",
+                    "texto": "asdasdadas"
+                }
             ]
         },
         {
@@ -80,8 +105,14 @@
                 }
             ],
             "notas": [
-                "nota",
-                "nota2"
+                {
+                    "descricao": "nota",
+                    "texto": "nota"
+                },
+                {
+                    "descricao": "nota2",
+                    "texto": "nota2"
+                }
             ]
         },
         {
@@ -95,7 +126,10 @@
             "descricao": "cad",
             "atalhos": [],
             "notas": [
-                "notas"
+                {
+                    "descricao": "notas",
+                    "texto": "notas"
+                }
             ]
         },
         {
@@ -103,8 +137,14 @@
             "descricao": "chama",
             "atalhos": [],
             "notas": [
-                "def saudacao(nome):\n    if nome:\n        print(f\"Olá, {nome}!\")\n    else:\n        print(\"Olá, mundo!\")\n\nsaudacao(\"Andrei\")",
-                "def saudacao(nome):\n\tif nome:\n\t\tprint(f\"Olá, {nome}!\")\n\telse:\n\t\tprint(\"Olá, mundo!\")\n\nsaudacao(\"Andrei\")"
+                {
+                    "descricao": "def saudacao(nome):\n    if nome:\n        print(f\"O...",
+                    "texto": "def saudacao(nome):\n    if nome:\n        print(f\"Olá, {nome}!\")\n    else:\n        print(\"Olá, mundo!\")\n\nsaudacao(\"Andrei\")"
+                },
+                {
+                    "descricao": "def saudacao(nome):\n\tif nome:\n\t\tprint(f\"Olá, {nome...",
+                    "texto": "def saudacao(nome):\n\tif nome:\n\t\tprint(f\"Olá, {nome}!\")\n\telse:\n\t\tprint(\"Olá, mundo!\")\n\nsaudacao(\"Andrei\")"
+                }
             ]
         }
     ]

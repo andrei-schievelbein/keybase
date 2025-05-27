@@ -40,6 +40,17 @@ def carregar_dados():
             for programa in dados['programas']:
                 programa.setdefault('atalhos', [])
                 programa.setdefault('notas', [])
+                # Converter notas antigas para o novo formato
+                notas_convertidas = []
+                for nota in programa['notas']:
+                    if isinstance(nota, str):
+                        notas_convertidas.append({
+                            "descricao": nota[:50] + "..." if len(nota) > 50 else nota,
+                            "texto": nota
+                        })
+                    else:
+                        notas_convertidas.append(nota)
+                programa['notas'] = notas_convertidas
             return dados
         except json.JSONDecodeError:
             return {"programas": []}
@@ -93,9 +104,9 @@ def ver_notas():
         escrever_saida("Nenhuma nota cadastrada. Aperte C para cadastrar ou Enter para voltar.")
         sub_estado = 'nota_vazio'
     else:
-        escrever_saida("Aperte ENTER para voltar.")
+        escrever_saida("Digite o número da nota para ver o texto completo ou ENTER para voltar.")
         for idx, nota in enumerate(programa_selecionado['notas']):
-            escrever_saida(f"{idx + 1} - {nota}")
+            escrever_saida(f"{idx + 1} - {nota['descricao']}")
         sub_estado = 'nota_existente'
 
 def executar_comando(event=None):
@@ -109,8 +120,18 @@ def executar_comando(event=None):
         if comando == '':
             exibir_menu_programa()
             sub_estado = None
+        elif sub_estado == 'nota_existente' and comando.isdigit():
+            idx = int(comando) - 1
+            if 0 <= idx < len(programa_selecionado['notas']):
+                limpar_saida()
+                nota = programa_selecionado['notas'][idx]
+                escrever_saida("Pressione ENTER para voltar.")
+                escrever_saida("\nTexto:")
+                escrever_saida(nota['texto'])
+            else:
+                escrever_saida("Número inválido. Pressione ENTER para voltar.")
         else:
-            escrever_saida("Pressione apenas ENTER para voltar.")
+            escrever_saida("Pressione apenas ENTER para voltar ou digite um número válido.")
         return
 
     if comando.lower() == 'sair':
@@ -125,8 +146,8 @@ def executar_comando(event=None):
                 estado = 'cadastrar_atalho_comb'
             else:  # nota_vazio
                 limpar_saida()
-                escrever_saida("Digite a nova nota:")
-                estado = 'cadastrar_nota'
+                escrever_saida("Digite a descrição da nota:")
+                estado = 'cadastrar_nota_desc'
             sub_estado = None
             return
         elif comando == '':
@@ -240,7 +261,7 @@ def executar_comando(event=None):
         elif comando.upper() == 'N':
             limpar_saida()
             for idx, nota in enumerate(programa_selecionado['notas']):
-                escrever_saida(f"{idx + 1} - {nota}")
+                escrever_saida(f"{idx + 1} - {nota['descricao']}")
             escrever_saida("Digite o número da nota que deseja editar ou tecle ENTER para voltar:")
             estado = 'editar_nota_num'
         else:
@@ -285,8 +306,8 @@ def executar_comando(event=None):
         if comando.isdigit():
             entrada_buffer = int(comando) - 1
             if 0 <= entrada_buffer < len(programa_selecionado['notas']):
-                escrever_saida("Digite a nova nota:")
-                estado = 'editar_nota'
+                escrever_saida("Digite a nova descrição da nota:")
+                estado = 'editar_nota_desc'
             else:
                 escrever_saida("Número inválido.")
                 estado = 'menu_programa'
@@ -294,8 +315,13 @@ def executar_comando(event=None):
             escrever_saida("Entrada inválida.")
             estado = 'menu_programa'
 
-    elif estado == 'editar_nota':
-        programa_selecionado['notas'][entrada_buffer] = comando
+    elif estado == 'editar_nota_desc':
+        programa_selecionado['notas'][entrada_buffer]['descricao'] = comando
+        escrever_saida("Digite o novo texto da nota:")
+        estado = 'editar_nota_texto'
+
+    elif estado == 'editar_nota_texto':
+        programa_selecionado['notas'][entrada_buffer]['texto'] = comando
         salvar_dados()
         escrever_saida("Nota editada com sucesso!")
         exibir_menu_programa()
@@ -308,8 +334,8 @@ def executar_comando(event=None):
             estado = 'cadastrar_atalho_comb'
         elif comando.upper() == 'N':
             limpar_saida()
-            escrever_saida("Digite a nova nota:")
-            estado = 'cadastrar_nota'
+            escrever_saida("Digite a descrição da nota:")
+            estado = 'cadastrar_nota_desc'
         else:
             escrever_saida("Opção inválida.")
             exibir_menu_programa()
@@ -331,8 +357,18 @@ def executar_comando(event=None):
         exibir_menu_programa()
         estado = 'menu_programa'
 
-    elif estado == 'cadastrar_nota':
-        programa_selecionado['notas'].append(comando)
+    elif estado == 'cadastrar_nota_desc':
+        entrada_buffer = comando
+        limpar_saida()
+        escrever_saida("Digite o texto da nota:")
+        estado = 'cadastrar_nota_texto'
+
+    elif estado == 'cadastrar_nota_texto':
+        nova_nota = {
+            "descricao": entrada_buffer,
+            "texto": comando
+        }
+        programa_selecionado['notas'].append(nova_nota)
         salvar_dados()
         escrever_saida("Nota cadastrada com sucesso!")
         exibir_menu_programa()
@@ -358,7 +394,7 @@ def executar_comando(event=None):
                 estado = 'menu_programa'
             else:
                 for idx, nota in enumerate(programa_selecionado['notas']):
-                    escrever_saida(f"{idx + 1} - {nota}")
+                    escrever_saida(f"{idx + 1} - {nota['descricao']}")
                 escrever_saida("\nDigite o número da nota que deseja deletar ou tecle ENTER para voltar:")
                 estado = 'deletar_nota_num'
         else:
@@ -404,7 +440,7 @@ def executar_comando(event=None):
             entrada_buffer = int(comando) - 1
             if 0 <= entrada_buffer < len(programa_selecionado['notas']):
                 nota = programa_selecionado['notas'][entrada_buffer]
-                escrever_saida(f"Tem certeza que deseja deletar a nota '{nota}'? (S/N)")
+                escrever_saida(f"Tem certeza que deseja deletar a nota '{nota['descricao']}'? (S/N)")
                 estado = 'confirmar_deletar_nota'
             else:
                 escrever_saida("Número inválido.")
