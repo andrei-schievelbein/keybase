@@ -40,6 +40,7 @@ def carregar_dados():
             for programa in dados['programas']:
                 programa.setdefault('atalhos', [])
                 programa.setdefault('notas', [])
+                programa.setdefault('snippets', [])
                 # Converter notas antigas para o novo formato
                 notas_convertidas = []
                 for nota in programa['notas']:
@@ -73,14 +74,15 @@ def exibir_menu_programa():
     escrever_saida("===================")
     escrever_saida("1 - Ver atalhos")
     escrever_saida("2 - Ver notas")
+    escrever_saida("3 - Ver snippets")
     escrever_saida("===================")
-    escrever_saida("3 - Adicionar")
-    escrever_saida("4 - Editar")
-    escrever_saida("5 - Deletar")
+    escrever_saida("4 - Adicionar")
+    escrever_saida("5 - Editar")
+    escrever_saida("6 - Deletar")
     escrever_saida("===================")
-    escrever_saida("6 - Editar nome do programa")
-    escrever_saida("7 - Editar descrição")
-    escrever_saida("8 - Deletar programa")
+    escrever_saida("7 - Editar nome do programa")
+    escrever_saida("8 - Editar descrição")
+    escrever_saida("9 - Deletar programa")
     escrever_saida("===================")
     escrever_saida("0 - Voltar")
     escrever_saida("===================")
@@ -109,6 +111,18 @@ def ver_notas():
             escrever_saida(f"{idx + 1} - {nota['descricao']}")
         sub_estado = 'nota_existente'
 
+def ver_snippets():
+    global estado, sub_estado
+    limpar_saida()
+    if not programa_selecionado['snippets']:
+        escrever_saida("Nenhum snippet cadastrado. Aperte C para cadastrar ou Enter para voltar.")
+        sub_estado = 'snippet_vazio'
+    else:
+        escrever_saida("Digite o número do snippet para ver o código completo ou ENTER para voltar.")
+        for idx, snippet in enumerate(programa_selecionado['snippets']):
+            escrever_saida(f"{idx + 1} - {snippet['descricao']}")
+        sub_estado = 'snippet_existente'
+
 def executar_comando(event=None):
     global estado, dados, resultados, programa_selecionado, sub_estado, entrada_buffer
 
@@ -116,7 +130,7 @@ def executar_comando(event=None):
     entrada.delete(0, 'end')
     escrever_saida(f"> {comando}")
 
-    if sub_estado in ['atalho_existente', 'nota_existente']:
+    if sub_estado in ['atalho_existente', 'nota_existente', 'snippet_existente']:
         if comando == '':
             exibir_menu_programa()
             sub_estado = None
@@ -130,6 +144,16 @@ def executar_comando(event=None):
                 escrever_saida(nota['texto'])
             else:
                 escrever_saida("Número inválido. Pressione ENTER para voltar.")
+        elif sub_estado == 'snippet_existente' and comando.isdigit():
+            idx = int(comando) - 1
+            if 0 <= idx < len(programa_selecionado['snippets']):
+                limpar_saida()
+                snippet = programa_selecionado['snippets'][idx]
+                escrever_saida("Pressione ENTER para voltar.")
+                escrever_saida("\nCódigo:")
+                escrever_saida(snippet['codigo'])
+            else:
+                escrever_saida("Número inválido. Pressione ENTER para voltar.")
         else:
             escrever_saida("Pressione apenas ENTER para voltar ou digite um número válido.")
         return
@@ -138,16 +162,20 @@ def executar_comando(event=None):
         root.destroy()
         return
 
-    if sub_estado in ['atalho_vazio', 'nota_vazio']:
+    if sub_estado in ['atalho_vazio', 'nota_vazio', 'snippet_vazio']:
         if comando.upper() == 'C':
             if sub_estado == 'atalho_vazio':
                 limpar_saida()
                 escrever_saida("Digite a combinação do atalho:")
                 estado = 'cadastrar_atalho_comb'
-            else:  # nota_vazio
+            elif sub_estado == 'nota_vazio':
                 limpar_saida()
                 escrever_saida("Digite a descrição da nota:")
                 estado = 'cadastrar_nota_desc'
+            else:  # snippet_vazio
+                limpar_saida()
+                escrever_saida("Digite a descrição do snippet:")
+                estado = 'cadastrar_snippet_desc'
             sub_estado = None
             return
         elif comando == '':
@@ -190,7 +218,8 @@ def executar_comando(event=None):
             "nome": entrada_buffer,
             "descricao": comando,
             "atalhos": [],
-            "notas": []
+            "notas": [],
+            "snippets": []
         }
         dados['programas'].append(novo_programa)
         salvar_dados()
@@ -217,31 +246,42 @@ def executar_comando(event=None):
         elif comando == '2':
             ver_notas()
         elif comando == '3':
-            limpar_saida()
-            escrever_saida("Deseja cadastrar um atalho ou uma nota? (A/N):")
-            estado = 'cadastrar_item'
+            ver_snippets()
         elif comando == '4':
             limpar_saida()
-            escrever_saida("Deseja editar um atalho ou uma nota? (A/N):")
-            estado = 'editar_item'
+            escrever_saida("O que deseja adicionar?")
+            escrever_saida("A - Atalho")
+            escrever_saida("N - Nota")
+            escrever_saida("S - Snippet")
+            estado = 'cadastrar_item'
         elif comando == '5':
             limpar_saida()
-            escrever_saida("Deseja deletar um atalho ou uma nota? (A/N):")
-            estado = 'deletar_item'
+            escrever_saida("O que deseja editar?")
+            escrever_saida("A - Atalho")
+            escrever_saida("N - Nota")
+            escrever_saida("S - Snippet")
+            estado = 'editar_item'
         elif comando == '6':
+            limpar_saida()
+            escrever_saida("O que deseja deletar?")
+            escrever_saida("A - Atalho")
+            escrever_saida("N - Nota")
+            escrever_saida("S - Snippet")
+            estado = 'deletar_item'
+        elif comando == '7':
             limpar_saida()
             escrever_saida(f"Nome atual do programa: {programa_selecionado['nome']}")
             escrever_saida("\nDigite o novo nome do programa ou tecle ENTER para voltar:")
             estado = 'editar_nome_programa'
-        elif comando == '7':
+        elif comando == '8':
             limpar_saida()
             escrever_saida(f"Descrição atual do programa: {programa_selecionado['descricao']}")
             escrever_saida("\nDigite a nova descrição do programa ou tecle ENTER para voltar:")
             estado = 'editar_descricao_programa'
-        elif comando == '8':
+        elif comando == '9':
             limpar_saida()
             escrever_saida(f"Deseja apagar o programa '{programa_selecionado['nome']}'?")
-            escrever_saida("Todos os atalhos e notas serão apagados!")
+            escrever_saida("Todos os atalhos, notas e snippets serão apagados!")
             escrever_saida("\nDigite 'S' para confirmar ou tecle ENTER para voltar:")
             estado = 'deletar_programa'
         elif comando == '0':
@@ -264,6 +304,12 @@ def executar_comando(event=None):
                 escrever_saida(f"{idx + 1} - {nota['descricao']}")
             escrever_saida("Digite o número da nota que deseja editar ou tecle ENTER para voltar:")
             estado = 'editar_nota_num'
+        elif comando.upper() == 'S':
+            limpar_saida()
+            for idx, snippet in enumerate(programa_selecionado['snippets']):
+                escrever_saida(f"{idx + 1} - {snippet['descricao']}")
+            escrever_saida("Digite o número do snippet que deseja editar ou tecle ENTER para voltar:")
+            estado = 'editar_snippet_num'
         else:
             escrever_saida("Opção inválida.")
             exibir_menu_programa()
@@ -327,6 +373,35 @@ def executar_comando(event=None):
         exibir_menu_programa()
         estado = 'menu_programa'
 
+    elif estado == 'editar_snippet_num':
+        if comando == '':
+            exibir_menu_programa()
+            estado = 'menu_programa'
+            return
+        if comando.isdigit():
+            entrada_buffer = int(comando) - 1
+            if 0 <= entrada_buffer < len(programa_selecionado['snippets']):
+                escrever_saida("Digite a nova descrição do snippet:")
+                estado = 'editar_snippet_desc'
+            else:
+                escrever_saida("Número inválido.")
+                estado = 'menu_programa'
+        else:
+            escrever_saida("Entrada inválida.")
+            estado = 'menu_programa'
+
+    elif estado == 'editar_snippet_desc':
+        programa_selecionado['snippets'][entrada_buffer]['descricao'] = comando
+        escrever_saida("Digite o novo código do snippet:")
+        estado = 'editar_snippet_codigo'
+
+    elif estado == 'editar_snippet_codigo':
+        programa_selecionado['snippets'][entrada_buffer]['codigo'] = comando
+        salvar_dados()
+        escrever_saida("Snippet editado com sucesso!")
+        exibir_menu_programa()
+        estado = 'menu_programa'
+
     elif estado == 'cadastrar_item':
         if comando.upper() == 'A':
             limpar_saida()
@@ -336,6 +411,10 @@ def executar_comando(event=None):
             limpar_saida()
             escrever_saida("Digite a descrição da nota:")
             estado = 'cadastrar_nota_desc'
+        elif comando.upper() == 'S':
+            limpar_saida()
+            escrever_saida("Digite a descrição do snippet:")
+            estado = 'cadastrar_snippet_desc'
         else:
             escrever_saida("Opção inválida.")
             exibir_menu_programa()
@@ -374,6 +453,23 @@ def executar_comando(event=None):
         exibir_menu_programa()
         estado = 'menu_programa'
 
+    elif estado == 'cadastrar_snippet_desc':
+        entrada_buffer = comando
+        limpar_saida()
+        escrever_saida("Digite o código do snippet:")
+        estado = 'cadastrar_snippet_codigo'
+
+    elif estado == 'cadastrar_snippet_codigo':
+        novo_snippet = {
+            "descricao": entrada_buffer,
+            "codigo": comando
+        }
+        programa_selecionado['snippets'].append(novo_snippet)
+        salvar_dados()
+        escrever_saida("Snippet cadastrado com sucesso!")
+        exibir_menu_programa()
+        estado = 'menu_programa'
+
     elif estado == 'deletar_item':
         if comando.upper() == 'A':
             limpar_saida()
@@ -397,6 +493,17 @@ def executar_comando(event=None):
                     escrever_saida(f"{idx + 1} - {nota['descricao']}")
                 escrever_saida("\nDigite o número da nota que deseja deletar ou tecle ENTER para voltar:")
                 estado = 'deletar_nota_num'
+        elif comando.upper() == 'S':
+            limpar_saida()
+            if not programa_selecionado['snippets']:
+                escrever_saida("Não há snippets para deletar.")
+                exibir_menu_programa()
+                estado = 'menu_programa'
+            else:
+                for idx, snippet in enumerate(programa_selecionado['snippets']):
+                    escrever_saida(f"{idx + 1} - {snippet['descricao']}")
+                escrever_saida("\nDigite o número do snippet que deseja deletar ou tecle ENTER para voltar:")
+                estado = 'deletar_snippet_num'
         else:
             escrever_saida("Opção inválida.")
             exibir_menu_programa()
@@ -492,6 +599,35 @@ def executar_comando(event=None):
             escrever_saida("Programa deletado com sucesso!")
             escrever_saida("\nComece a digitar o nome do programa ou 'sair' para encerrar.")
             estado = 'inicio'
+        else:
+            exibir_menu_programa()
+            estado = 'menu_programa'
+
+    elif estado == 'deletar_snippet_num':
+        if comando == '':
+            exibir_menu_programa()
+            estado = 'menu_programa'
+            return
+        if comando.isdigit():
+            entrada_buffer = int(comando) - 1
+            if 0 <= entrada_buffer < len(programa_selecionado['snippets']):
+                snippet = programa_selecionado['snippets'][entrada_buffer]
+                escrever_saida(f"Tem certeza que deseja deletar o snippet '{snippet['descricao']}'? (S/N)")
+                estado = 'confirmar_deletar_snippet'
+            else:
+                escrever_saida("Número inválido.")
+                estado = 'menu_programa'
+        else:
+            escrever_saida("Entrada inválida.")
+            estado = 'menu_programa'
+
+    elif estado == 'confirmar_deletar_snippet':
+        if comando.upper() == 'S':
+            del programa_selecionado['snippets'][entrada_buffer]
+            salvar_dados()
+            escrever_saida("Snippet deletado com sucesso!")
+            exibir_menu_programa()
+            estado = 'menu_programa'
         else:
             exibir_menu_programa()
             estado = 'menu_programa'
