@@ -29,12 +29,12 @@
             "descricao": "",
             "atalhos": [
                 {
-                    "combinacao": "asd",
-                    "descricao": "1"
+                    "combinacao": "2",
+                    "descricao": ""
                 },
                 {
-                    "combinacao": "gggg",
-                    "descricao": "gggg"
+                    "combinacao": "fff",
+                    "descricao": "sss"
                 },
                 {
                     "combinacao": "hdfhdfh",
@@ -89,6 +89,23 @@
             "descricao": "sasa",
             "atalhos": [],
             "notas": []
+        },
+        {
+            "nome": "Autocad",
+            "descricao": "cad",
+            "atalhos": [],
+            "notas": [
+                "notas"
+            ]
+        },
+        {
+            "nome": "maçarico",
+            "descricao": "chama",
+            "atalhos": [],
+            "notas": [
+                "def saudacao(nome):\n    if nome:\n        print(f\"Olá, {nome}!\")\n    else:\n        print(\"Olá, mundo!\")\n\nsaudacao(\"Andrei\")",
+                "def saudacao(nome):\n\tif nome:\n\t\tprint(f\"Olá, {nome}!\")\n\telse:\n\t\tprint(\"Olá, mundo!\")\n\nsaudacao(\"Andrei\")"
+            ]
         }
     ]
 }
