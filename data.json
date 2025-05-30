@@ -1,151 +1,169 @@
 {
     "programas": [
         {
-            "nome": "teste",
-            "descricao": "descrição",
+            "nome": "Vscode",
+            "descricao": "IDE",
             "atalhos": [
                 {
-                    "combinacao": "sim",
-                    "descricao": "nao"
+                    "combinacao": "=====",
+                    "descricao": "NAVEGAÇÃO + EDIÇÃO BÁSICA====="
                 },
                 {
-                    "combinacao": "aaa",
-                    "descricao": "aaa"
+                    "combinacao": "Ctrl + P",
+                    "descricao": "Abrir arquivo por nome."
+                },
+                {
+                    "combinacao": "Ctrl + Shift + N",
+                    "descricao": "Nova janela."
+                },
+                {
+                    "combinacao": "Ctrl + Shift + P",
+                    "descricao": "Paleta de comandos."
+                },
+                {
+                    "combinacao": "Ctrl + Tab",
+                    "descricao": "Alternar entre abas."
+                },
+                {
+                    "combinacao": "Ctrl + Shift + Tab",
+                    "descricao": "Alternar abas (ordem inversa)."
+                },
+                {
+                    "combinacao": "Ctrl + \\",
+                    "descricao": "Mostrar/esconder painel lateral."
+                },
+                {
+                    "combinacao": "Ctrl + B",
+                    "descricao": "Mostrar/esconder barra de atividades."
+                },
+                {
+                    "combinacao": "Ctrl + F",
+                    "descricao": "Localizar."
+                },
+                {
+                    "combinacao": "Ctrl + H",
+                    "descricao": "Substituir."
+                },
+                {
+                    "combinacao": "Ctrl + D",
+                    "descricao": "Selecionar próxima ocorrência."
+                },
+                {
+                    "combinacao": "Ctrl + U",
+                    "descricao": "Desfazer última seleção."
+                },
+                {
+                    "combinacao": "Ctrl + L",
+                    "descricao": "Selecionar linha inteira."
+                },
+                {
+                    "combinacao": "Ctrl + J",
+                    "descricao": "Mostrar/ocultar terminal."
+                },
+                {
+                    "combinacao": "=====",
+                    "descricao": "NAVEGAÇÃO NO CÓDIGO====="
+                },
+                {
+                    "combinacao": "Ctrl + G",
+                    "descricao": "Ir para linha específica."
+                },
+                {
+                    "combinacao": "Ctrl + P + número",
+                    "descricao": "Ir direto pra linha."
+                },
+                {
+                    "combinacao": "Ctrl + -",
+                    "descricao": "Voltar cursor pra posição anterior."
+                },
+                {
+                    "combinacao": "Ctrl + Shift + -",
+                    "descricao": "Avançar posição do cursor."
+                },
+                {
+                    "combinacao": "Alt + ← / →",
+                    "descricao": "Voltar ou avançar no histórico de navegação."
+                },
+                {
+                    "combinacao": "Ctrl + Shift + ← / →",
+                    "descricao": "Selecionar palavra por palavra."
+                },
+                {
+                    "combinacao": "=====",
+                    "descricao": "MANIPULAÇÃO DE TEXTO====="
+                },
+                {
+                    "combinacao": "Ctrl + C",
+                    "descricao": "Copiar linha (sem selecionar)."
+                },
+                {
+                    "combinacao": "Ctrl + X",
+                    "descricao": "Recortar linha."
+                },
+                {
+                    "combinacao": "Ctrl + V",
+                    "descricao": "Colar."
+                },
+                {
+                    "combinacao": "Ctrl + Shift + K",
+                    "descricao": "Deletar linha inteira."
+                },
+                {
+                    "combinacao": "Ctrl + Enter",
+                    "descricao": "Inserir linha abaixo."
+                },
+                {
+                    "combinacao": "Ctrl + Shift + Enter",
+                    "descricao": "Inserir linha acima."
+                },
+                {
+                    "combinacao": "Shift + Alt + ↑ / ↓",
+                    "descricao": "Copiar linha pra cima/baixo."
+                },
+                {
+                    "combinacao": "Alt + ↑ / ↓",
+                    "descricao": "Mover linha pra cima/baixo."
+                },
+                {
+                    "combinacao": "Ctrl + Shift + \\",
+                    "descricao": "Pular pra chave correspondente."
                 }
             ],
             "notas": [
                 {
-                    "descricao": "nota",
-                    "texto": "nota"
+                    "descricao": "Extensões",
+                    "texto": "Jupyter\nDev Containers\nDocker\nPylance\nPython\nPython Debugger\npython snippets\nSweet Dracula\nWSL"
                 },
                 {
-                    "descricao": "nota1",
-                    "texto": "notatexto"
-                },
+                    "descricao": "Desisntalar",
+                    "texto": "Remover pastas\n%userprofile%\\appdata\\roaming\\code\n%userprofile%\\.vscode"
+                }
+            ],
+            "snippets": [
                 {
-                    "descricao": "nota3",
-                    "texto": "notatexto3"
-                },
-                {
-                    "descricao": "nota4",
-                    "texto": "nota4"
+                    "descricao": "aaa",
+                    "codigo": "bbb"
                 }
             ]
         },
         {
-            "nome": "amanda",
+            "nome": "Cursor",
+            "descricao": "IDE",
+            "atalhos": [],
+            "notas": [],
+            "snippets": []
+        },
+        {
+            "nome": "Nvidia",
             "descricao": "",
             "atalhos": [
                 {
-                    "combinacao": "asd",
-                    "descricao": "dsa"
+                    "combinacao": "ALT + Z",
+                    "descricao": "Abrir painel de gravação"
                 }
             ],
-            "notas": []
-        },
-        {
-            "nome": "asd",
-            "descricao": "",
-            "atalhos": [
-                {
-                    "combinacao": "2",
-                    "descricao": ""
-                },
-                {
-                    "combinacao": "fff",
-                    "descricao": "sss"
-                },
-                {
-                    "combinacao": "hdfhdfh",
-                    "descricao": "sfdgdfg"
-                },
-                {
-                    "combinacao": "1232",
-                    "descricao": "sdfsdfsdf"
-                },
-                {
-                    "combinacao": "123",
-                    "descricao": "321"
-                },
-                {
-                    "combinacao": "ghj",
-                    "descricao": "jhg"
-                },
-                {
-                    "combinacao": "111",
-                    "descricao": "2222"
-                },
-                {
-                    "combinacao": "11112222",
-                    "descricao": "22222"
-                },
-                {
-                    "combinacao": "555",
-                    "descricao": "555"
-                }
-            ],
-            "notas": [
-                {
-                    "descricao": "sdfsdfsdf",
-                    "texto": "sdfsdfsdf"
-                },
-                {
-                    "descricao": "asdasdadas",
-                    "texto": "asdasdadas"
-                }
-            ]
-        },
-        {
-            "nome": "ajjjs",
-            "descricao": "asd",
-            "atalhos": [
-                {
-                    "combinacao": "qwe",
-                    "descricao": "atalho"
-                }
-            ],
-            "notas": [
-                {
-                    "descricao": "nota",
-                    "texto": "nota"
-                },
-                {
-                    "descricao": "nota2",
-                    "texto": "nota2"
-                }
-            ]
-        },
-        {
-            "nome": "asa",
-            "descricao": "sasa",
-            "atalhos": [],
-            "notas": []
-        },
-        {
-            "nome": "Autocad",
-            "descricao": "cad",
-            "atalhos": [],
-            "notas": [
-                {
-                    "descricao": "notas",
-                    "texto": "notas"
-                }
-            ]
-        },
-        {
-            "nome": "maçarico",
-            "descricao": "chama",
-            "atalhos": [],
-            "notas": [
-                {
-                    "descricao": "def saudacao(nome):\n    if nome:\n        print(f\"O...",
-                    "texto": "def saudacao(nome):\n    if nome:\n        print(f\"Olá, {nome}!\")\n    else:\n        print(\"Olá, mundo!\")\n\nsaudacao(\"Andrei\")"
-                },
-                {
-                    "descricao": "def saudacao(nome):\n\tif nome:\n\t\tprint(f\"Olá, {nome...",
-                    "texto": "def saudacao(nome):\n\tif nome:\n\t\tprint(f\"Olá, {nome}!\")\n\telse:\n\t\tprint(\"Olá, mundo!\")\n\nsaudacao(\"Andrei\")"
-                }
-            ]
+            "notas": [],
+            "snippets": []
         }
     ]
 }
