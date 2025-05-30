@@ -4,6 +4,23 @@ import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_FILE = os.path.join(BASE_DIR, 'data.json')
+WINDOW_CONFIG_FILE = os.path.join(BASE_DIR, 'window_config.json')
+
+def salvar_config_janela(janela):
+    config = {
+        'geometry': janela.geometry()
+    }
+    with open(WINDOW_CONFIG_FILE, 'w', encoding='utf-8') as f:
+        json.dump(config, f)
+
+def carregar_config_janela(janela):
+    if os.path.exists(WINDOW_CONFIG_FILE):
+        try:
+            with open(WINDOW_CONFIG_FILE, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+                janela.geometry(config['geometry'])
+        except:
+            pass
 
 estado = 'inicio'
 dados = {}
@@ -14,6 +31,9 @@ entrada_buffer = ''
 
 root = ctk.CTk()
 root.title("KeyBase")
+
+# Carregar a posição e tamanho salvos da janela
+carregar_config_janela(root)
 
 entrada = ctk.CTkEntry(root, width=600)
 entrada.pack(padx=10, pady=(10, 0), fill="x")
@@ -159,6 +179,7 @@ def executar_comando(event=None):
         return
 
     if comando.lower() == 'sair':
+        salvar_config_janela(root)
         root.destroy()
         return
 
@@ -678,6 +699,9 @@ def executar_comando(event=None):
             estado = 'menu_programa'
 
 entrada.bind("<Return>", executar_comando)
+
+# Salvar a posição e tamanho da janela ao fechar
+root.protocol("WM_DELETE_WINDOW", lambda: (salvar_config_janela(root), root.destroy()))
 
 limpar_saida()
 escrever_saida("========================================")
