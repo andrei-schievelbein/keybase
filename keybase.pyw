@@ -1,8 +1,17 @@
 import customtkinter as ctk
 import json
 import os
+import sys
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+def get_base_dir():
+    if getattr(sys, 'frozen', False):
+        # Se estiver rodando como executável
+        return os.path.dirname(sys.executable)
+    else:
+        # Se estiver rodando como script
+        return os.path.dirname(os.path.abspath(__file__))
+
+BASE_DIR = get_base_dir()
 DATA_FILE = os.path.join(BASE_DIR, 'data.json')
 WINDOW_CONFIG_FILE = os.path.join(BASE_DIR, 'window_config.json')
 
@@ -31,6 +40,7 @@ entrada_buffer = ''
 
 root = ctk.CTk()
 root.title("KeyBase")
+root.iconbitmap("keybase.ico")
 
 # Carregar a posição e tamanho salvos da janela
 carregar_config_janela(root)
