@@ -45,10 +45,16 @@ root.iconbitmap("keybase.ico")
 # Carregar a posição e tamanho salvos da janela
 carregar_config_janela(root)
 
+# Definir fonte monoespaçada para a saída
+try:
+    fonte_saida = ctk.CTkFont(family="Roboto Mono", size=14)
+except:
+    fonte_saida = ctk.CTkFont(family="Consolas", size=14)
+
 entrada = ctk.CTkEntry(root, width=600)
 entrada.pack(padx=10, pady=(10, 0), fill="x")
 
-saida = ctk.CTkTextbox(root, height=400)
+saida = ctk.CTkTextbox(root, height=400, font=fonte_saida)
 saida.pack(padx=10, pady=10, fill="both", expand=True)
 
 def escrever_saida(texto):
