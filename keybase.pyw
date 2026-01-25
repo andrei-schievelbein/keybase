@@ -103,14 +103,25 @@ def buscar_programas(termo):
 
 def exibir_programas(lista):
     for idx, prog in enumerate(lista):
-        escrever_saida(f"{idx + 1} - {prog['nome']}: {prog['descricao']}")
+        # Contar total de itens (atalhos + notas + snippets)
+        total_itens = len(prog.get('atalhos', [])) + len(prog.get('notas', [])) + len(prog.get('snippets', []))
+        
+        # Formatar a saída com o total
+        contador = f"[{total_itens} itens]" if total_itens > 0 else ""
+        escrever_saida(f"{idx + 1} - {prog['nome']}: {prog['descricao']} {contador}".strip())
 
 def exibir_menu_programa():
     limpar_saida()
+    
+    # Contar itens do programa selecionado
+    num_atalhos = len(programa_selecionado.get('atalhos', []))
+    num_notas = len(programa_selecionado.get('notas', []))
+    num_snippets = len(programa_selecionado.get('snippets', []))
+    
     escrever_saida("========================")
-    escrever_saida("1 - Ver atalhos")
-    escrever_saida("2 - Ver notas")
-    escrever_saida("3 - Ver snippets")
+    escrever_saida(f"1 - Ver atalhos [{num_atalhos}]")
+    escrever_saida(f"2 - Ver notas [{num_notas}]")
+    escrever_saida(f"3 - Ver snippets [{num_snippets}]")
     escrever_saida("========================")
     escrever_saida("4 - Adicionar")
     escrever_saida("5 - Editar")
