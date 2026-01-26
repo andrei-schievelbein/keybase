@@ -6,7 +6,7 @@
             "atalhos": [
                 {
                     "combinacao": "=====",
-                    "descricao": "NAVEGAÇÃO + EDIÇÃO BÁSICA====="
+                    "descricao": "Descrição atual:\n\nDescrição atual:\n\nNAVEGAÇÃO + EDIÇÃO BÁSICA=========\n\n> CTRL_S\n"
                 },
                 {
                     "combinacao": "Ctrl + P",
@@ -672,29 +672,58 @@
                 {
                     "combinacao": "crtl + 1",
                     "descricao": "dteste decri;áo"
+                },
+                {
+                    "combinacao": "crtl x",
+                    "descricao": "\n\n# Teste de Renderização de Markdown\n\nEste arquivo serve para testar a renderização de Markdown no KeyBase.\n\n## Instruções de Teste\n\n1. Execute o programa: `python keybase.pyw`\n2. Selecione um programa ou crie um novo\n3. Adicione uma nota com o conteúdo abaixo\n4. Visualize a nota e verifique a formatação\n\n## Conteúdo de Teste para Nota\n\n\n# Título Principal secundário\n\n## Subtítulo Secundário\n\n### Subtítulo Terciário\n\nEste é um parágrafo com **texto em negrito** e *texto em itálico*.\n\nVocê também pode combinar: **_negrito e itálico_**.\n\n## Listas\n\n### Lista não ordenada:\n- Item 1\n- Item 2\n- Item 3\n\n### Lista ordenada:\n1. Primeiro item\n2. Segundo item\n3. Terceiro item\n\n## Código\n\nCódigo inline: `print(\"Hello World\")`\n\nBloco de código:\n```python\ndef exemplo():\n    return \"Teste de código\"\n```\n\n## Formatação Mista\n\nAqui temos **negrito**, *itálico*, e `código` no mesmo parágrafo.\n\n- Lista com **negrito**\n- Lista com *itálico*\n- Lista com `código`\n\n\n## Resultado Esperado\n\n- Cabeçalhos devem aparecer em tamanhos e cores diferentes\n- Negrito e itálico devem ser aplicados\n- Listas devem ter bullets (•) e indentação\n- Código inline deve ter fundo escuro\n- Blocos de código devem ter fundo escuro\n\n## Notas Antigas (Sem Markdown)\n\nNotas criadas antes da implementação devem continuar funcionando normalmente,\nexibindo o texto puro sem erros."
                 }
             ],
             "notas": [
                 {
                     "descricao": "sadfgsdfgsd",
                     "texto": "sfgsdfgsdfg"
+                },
+                {
+                    "descricao": "q",
+                    "texto": "# teste"
+                },
+                {
+                    "descricao": "mark",
+                    "texto": "# teste\n## teste\n### teste\n* um\n* dois\n* tres\n* quatro\n"
+                },
+                {
+                    "descricao": "markteste",
+                    "texto": "# Como Testar o Markdown no KeyBase\n\n## Problema Identificado\n\nO programa que está rodando foi iniciado **antes** das modificações de código.\nAs mudanças só terão efeito quando você reiniciar o programa.\n\n## Passos para Testar\n\n### 1. Fechar o Programa Atual\n- Feche a janela do KeyBase que está aberta\n- Ou digite \"sair\" no programa\n\n### 2. Reabrir o Programa\nExecute novamente:\n```bash\npython keybase.pyw\n```\n\n### 3. Testar Markdown em uma Nota\n\n**Opção A: Criar Nova Nota**\n1. Selecione um programa (ou crie um novo)\n2. Escolha \"4 - Adicionar\"\n3. Escolha \"2 - Nota\"\n4. Digite uma descrição: `Teste Markdown`\n5. Digite o texto com Markdown:\n\n```markdown\n# Título Principal\n\n## Subtítulo\n\nTexto com **negrito** e *itálico*.\n\n- Item 1\n- Item 2\n- Item 3\n\nCódigo: `print(\"teste\")`\n```\n\n6. Visualize a nota (opção \"2 - Ver notas\")\n7. Digite o número da nota\n\n**Opção B: Editar Nota Existente**\n1. Selecione um programa\n2. Escolha \"5 - Editar\"\n3. Escolha \"2 - Nota\"\n4. Selecione a nota \"mark\"\n5. Edite o texto com Markdown\n\n### 4. Resultado Esperado\n\nVocê deve ver:\n- ✅ Cabeçalhos em tamanhos e cores diferentes\n- ✅ Texto em **negrito** e *itálico*\n- ✅ Listas com bullets (•)\n- ✅ Código com fundo escuro\n\n### 5. Se Ainda Não Funcionar\n\nVerifique se:\n1. O arquivo `keybase.pyw` foi salvo (deve ter 983 linhas)\n2. A biblioteca markdown está instalada: `pip list | grep markdown`\n3. Não há erros no console ao iniciar o programa\n\n## Exemplo de Nota Formatada\n\nCopie e cole este texto em uma nota:\n\n```markdown\n# Guia Rápido\n\n## Formatação de Texto\n\nEste é um parágrafo com **negrito**, *itálico* e `código inline`.\n\n## Listas\n\n### Tarefas:\n- Criar nota\n- Adicionar Markdown\n- Visualizar formatação\n\n### Código:\n```python\ndef hello():\n    print(\"Hello, Markdown!\")\n```\n\n## Conclusão\n\nO Markdown está funcionando! ✓\n```"
+                },
+                {
+                    "descricao": "markdown teste 2",
+                    "texto": "Texto atual:\n\nTexto atual:\n\nTexto atual:\n\nEste arquivo serve para testar a renderização de Markdown no KeyBase.\n\nBloco de código:\n```python\nclass HTMLToTkinterParser(HTMLParser):\n    \"\"\"\n    Converte HTML simples (gerado pelo markdown) em texto formatado para CTkTextbox\n    usando tags do Tkinter\n    \"\"\"\n    def __init__(self, textbox):\n        super().__init__()\n        self.textbox = textbox\n        self.tag_stack = []\n        self.list_level = 0\n        self.in_code_block = False\n        self.code_block_content = []  # Armazena conteúdo do bloco de código\n        self.code_block_language = None  # Linguagem do bloco de código\n        \n    def handle_starttag(self, tag, attrs):\n        \"\"\"Processa tags de abertura HTML\"\"\"\n        if tag in ['h1', 'h2', 'h3']:\n            self.tag_stack.append(tag)\n        elif tag == 'strong' or tag == 'b':\n            self.tag_stack.append('bold')\n        elif tag == 'em' or tag == 'i':\n            self.tag_stack.append('italic')\n        elif tag == 'code':\n            # Verificar se é código inline ou bloco\n            # Blocos de código vêm dentro de <pre><code>\n            if not self.in_code_block:\n                self.tag_stack.append('code')\n            else:\n```\n\n## Instruções de Teste\n\n1. Execute o programa: `python keybase.pyw`\n2. Selecione um programa ou crie um novo\n3. Adicione uma nota com o conteúdo abaixo\n4. Visualize a nota e verifique a formatação\n\n## Conteúdo de Teste para Nota\n\n```markdown\n# Título Principal\n\n## Subtítulo Secundário\n\n### Subtítulo Terciário\n\nEste é um parágrafo com **texto em negrito** e *texto em itálico*.\n\nVocê também pode combinar: **_negrito e itálico_**.\n\n## Listas\n\n### Lista não ordenada:\n- Item 1\n- Item 2\n- Item 3\n\n### Lista ordenada:\n1. Primeiro item\n2. Segundo item\n3. Terceiro item verdade\n\n## Código\n\nCódigo inline: `print(\"Hello World\")`\n\nBloco de código:\n```python\nclass HTMLToTkinterParser(HTMLParser):\n    \"\"\"\n    Converte HTML simples (gerado pelo markdown) em texto formatado para CTkTextbox\n    usando tags do Tkinter\n    \"\"\"\n    def __init__(self, textbox):\n        super().__init__()\n        self.textbox = textbox\n        self.tag_stack = []\n        self.list_level = 0\n        self.in_code_block = False\n        self.code_block_content = []  # Armazena conteúdo do bloco de código\n        self.code_block_language = None  # Linguagem do bloco de código\n        \n    def handle_starttag(self, tag, attrs):\n        \"\"\"Processa tags de abertura HTML\"\"\"\n        if tag in ['h1', 'h2', 'h3']:\n            self.tag_stack.append(tag)\n        elif tag == 'strong' or tag == 'b':\n            self.tag_stack.append('bold')\n        elif tag == 'em' or tag == 'i':\n            self.tag_stack.append('italic')\n        elif tag == 'code':\n            # Verificar se é código inline ou bloco\n            # Blocos de código vêm dentro de <pre><code>\n            if not self.in_code_block:\n                self.tag_stack.append('code')\n            else:\n```\n\n## Formatação Mista\n\nAqui temos **negrito**, *itálico*, e `código` no mesmo parágrafo.\n\n- Lista com **negrito**\n- Lista com *itálico*\n- Lista com `código`\n```\n\n## Resultado Esperado\n\n- Cabeçalhos devem aparecer em tamanhos e cores diferentes\n- Negrito e itálico devem ser aplicados\n- Listas devem ter bullets (•) e indentação\n- Código inline deve ter fundo escuro\n- Blocos de código devem ter fundo escuro\n\n## Notas Antigas (Sem Markdown)\n\nNotas criadas antes da implementação devem continuar funcionando normalmente,\nexibindo o texto puro sem erros.\n> CTRL_S\n\n> CTRL_S\n\n> CTRL_S\n\n> CTRL_S\n\n> CTRL_S\n\n> CTRL_S\n"
+                },
+                {
+                    "descricao": "",
+                    "texto": ""
                 }
             ],
             "snippets": [
                 {
-                    "descricao": "def carregar_config_janela(janela):\nif os.path.exists(WINDOW_CONFIG_FILE):\ntry:\nwith open(WINDOW_CONFIG_FILE, 'r', encoding='utf-8') as f:\nconfig = json.load(f)\njanela.geometry(config['geometry'])\nexcept:",
-                    "codigo": "def carregar_config_janela(janela):\nif os.path.exists(WINDOW_CONFIG_FILE):\ntry:\nwith open(WINDOW_CONFIG_FILE, 'r', encoding='utf-8') as f:\nconfig = json.load(f)\njanela.geometry(config['geometry'])\nexcept:",
+                    "descricao": "python",
+                    "codigo": "# Tratamento para visualização de atalho com opção de editar\n    if sub_estado == 'atalho_visualizacao':\n        if comando == '':\n            # Voltar para lista de atalhos\n            ver_atalhos()\n        elif comando.upper() == 'E':\n            # Entrar em modo de edição\n            global atalho_em_edicao\n            idx = entrada_buffer\n            atalho = programa_selecionado['atalhos'][idx]\n            \n            limpar_saida()\n            limpar_ajuda()\n            \n            # Mensagens de ajuda na área separada\n            escrever_ajuda(f\"Editando Atalho: {atalho['combinacao']} \\nPressione Ctrl+S para salvar ou Esc para cancelar.\")\n            \n            # Conteúdo editável na área principal\n            saida.insert(\"end\", atalho['descricao'])\n            \n            # Mudar para modo de edição\n            sub_estado = 'atalho_edicao'\n            atalho_em_edicao = {'idx': idx, 'descricao_original': atalho['descricao']}\n            \n            # Mover foco para o textbox de edição\n            saida.focus_set()\n        else:\n            escrever_saida(\"Comando inválido. Pressione ENTER para voltar ou E para editar.\")\n        return",
+                    "linguagem": "python"
+                },
+                {
+                    "descricao": "genêrico",
+                    "codigo": "# Tratamento para visualização de atalho com opção de editar\n    if sub_estado == 'atalho_visualizacao':\n        if comando == '':\n            # Voltar para lista de atalhos\n            ver_atalhos()\n        elif comando.upper() == 'E':\n            # Entrar em modo de edição\n            global atalho_em_edicao\n            idx = entrada_buffer\n            atalho = programa_selecionado['atalhos'][idx]\n            \n            limpar_saida()\n            limpar_ajuda()\n            \n            # Mensagens de ajuda na área separada\n            escrever_ajuda(f\"Editando Atalho: {atalho['combinacao']} \\nPressione Ctrl+S para salvar ou Esc para cancelar.\")\n            \n            # Conteúdo editável na área principal\n            saida.insert(\"end\", atalho['descricao'])\n            \n            # Mudar para modo de edição\n            sub_estado = 'atalho_edicao'\n            atalho_em_edicao = {'idx': idx, 'descricao_original': atalho['descricao']}\n            \n            # Mover foco para o textbox de edição\n            saida.focus_set()\n        else:\n            escrever_saida(\"Comando inválido. Pressione ENTER para voltar ou E para editar.\")\n        return",
                     "linguagem": "python"
                 },
                 {
                     "descricao": "teste",
-                    "codigo": "1 + 1",
-                    "linguagem": "python"
+                    "codigo": "SELECT \n    id_cliente,\n    nome,\n    idade\nFROM clientes\nWHERE idade >= 18\nORDER BY idade DESC;",
+                    "linguagem": "sql"
                 },
                 {
-                    "descricao": "teste",
-                    "codigo": "# teste\n## teste\n### teste\n* um\n* dois\n* tres",
-                    "linguagem": "text"
+                    "descricao": "somente markdown",
+                    "codigo": "# Teste de Renderização de Markdown\n\nEste arquivo serve para testar a renderização de Markdown no KeyBase.\n\n## Instruções de Teste\n\n1. Execute o programa: `python keybase.pyw`\n2. Selecione um programa ou crie um novo\n3. Adicione uma nota com o conteúdo abaixo\n4. Visualize a nota e verifique a formatação\n\n## Conteúdo de Teste para Nota\n\n# Título Principal\n\n## Subtítulo Secundário\n\n### Subtítulo Terciário\n\nEste é um parágrafo com **texto em negrito** e *texto em itálico*.\n\nVocê também pode combinar: **_negrito e itálico_**.\n\n## Listas\n\n### Lista não ordenada:\n- Item 1\n- Item 2\n- Item 5\n\n### Lista ordenada:\n1. Primeiro item\n2. Segundo item\n3. Terceiro item\n\n## Código\n\nCódigo inline: `print(\"Hello World\")`\n\nBloco de código:\n```python\ndef exemplo():\n    return \"Teste de código\"\n```\n\n## Formatação Mista\n\nAqui temos **negrito**, *itálico*, e `código` no mesmo parágrafo.\n\n- Lista com **negrito**\n- Lista com *itálico*\n- Lista com `código`\n\n## Resultado Esperado\n\n- Cabeçalhos devem aparecer em tamanhos e cores diferentes\n- Negrito e itálico devem ser aplicados\n- Listas devem ter bullets (•) e indentação\n- Código inline deve ter fundo escuro\n- Blocos de código devem ter fundo escuro\n\n## Notas Antigas (Sem Markdown)\n\nNotas criadas antes da implementação devem continuar funcionando normalmente,\nexibindo o texto puro sem erros.",
+                    "linguagem": "markdown"
                 }
             ]
         }
