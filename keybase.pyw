@@ -2,6 +2,10 @@ import customtkinter as ctk
 import json
 import os
 import sys
+from pygments import highlight
+from pygments.lexers import get_lexer_by_name, guess_lexer, TextLexer
+from pygments.formatters import TerminalFormatter
+from pygments.util import ClassNotFound
 
 def get_base_dir():
     if getattr(sys, 'frozen', False):
@@ -64,6 +68,63 @@ def escrever_saida(texto):
 def limpar_saida():
     saida.delete("1.0", "end")
 
+def aplicar_syntax_highlighting(codigo, linguagem="python"):
+    """
+    Aplica syntax highlighting ao código usando Pygments
+    """
+    try:
+        # Tentar obter o lexer pela linguagem especificada
+        if linguagem and linguagem.lower() != "text":
+            try:
+                lexer = get_lexer_by_name(linguagem.lower(), stripall=True)
+            except ClassNotFound:
+                # Se não encontrar, tenta adivinhar
+                lexer = guess_lexer(codigo)
+        else:
+            lexer = TextLexer()
+        
+        # Mapeamento de cores para tema escuro (compatível com CustomTkinter)
+        cores = {
+            'Keyword': '#569CD6',           # Azul (def, class, if, for, etc)
+            'Name.Function': '#DCDCAA',     # Amarelo claro (nomes de funções)
+            'Name.Class': '#4EC9B0',        # Verde água (nomes de classes)
+            'String': '#CE9178',            # Laranja claro (strings)
+            'Number': '#B5CEA8',            # Verde claro (números)
+            'Comment': '#6A9955',           # Verde escuro (comentários)
+            'Operator': '#D4D4D4',          # Branco (operadores)
+            'Name.Builtin': '#4EC9B0',      # Verde água (print, len, etc)
+            'Name': '#9CDCFE',              # Azul claro (variáveis)
+        }
+        
+        # Limpar e preparar textbox
+        saida.delete("1.0", "end")
+        
+        # Configurar tags de cores
+        for token_type, cor in cores.items():
+            saida.tag_config(token_type, foreground=cor)
+        
+        # Processar tokens e inserir com cores
+        from pygments import lex
+        for token_type, value in lex(codigo, lexer):
+            token_name = str(token_type).split('.')[-1]
+            full_token = str(token_type)
+            
+            # Tentar usar o token completo primeiro, depois o simplificado
+            if full_token in cores:
+                saida.insert("end", value, full_token)
+            elif token_name in cores:
+                saida.insert("end", value, token_name)
+            else:
+                saida.insert("end", value)
+        
+        saida.see("1.0")
+        
+    except Exception as e:
+        # Em caso de erro, mostrar código sem formatação
+        saida.delete("1.0", "end")
+        saida.insert("end", codigo)
+        saida.see("1.0")
+
 def carregar_dados():
     dados = {"programas": []}
     if not os.path.exists(DATA_FILE):
@@ -88,6 +149,11 @@ def carregar_dados():
                     else:
                         notas_convertidas.append(nota)
                 programa['notas'] = notas_convertidas
+                
+                # Adicionar campo 'linguagem' aos snippets que não possuem
+                for snippet in programa['snippets']:
+                    if 'linguagem' not in snippet:
+                        snippet['linguagem'] = 'python'  # Padrão para snippets antigos
             return dados
         except json.JSONDecodeError:
             return {"programas": []}
@@ -95,6 +161,7 @@ def carregar_dados():
 def salvar_dados():
     with open(DATA_FILE, 'w', encoding='utf-8') as f:
         json.dump(dados, f, indent=4, ensure_ascii=False)
+
     escrever_saida("Dados salvos com sucesso!")
 
 def buscar_programas(termo):
@@ -194,11 +261,17 @@ def executar_comando(event=None):
         elif sub_estado == 'snippet_existente' and comando.isdigit():
             idx = int(comando) - 1
             if 0 <= idx < len(programa_selecionado['snippets']):
-                limpar_saida()
                 snippet = programa_selecionado['snippets'][idx]
-                escrever_saida("Pressione ENTER para voltar.")
-                escrever_saida("\nCódigo:")
-                escrever_saida(snippet['codigo'])
+                
+                # Obter linguagem do snippet (se existir)
+                linguagem = snippet.get('linguagem', 'python')
+                
+                # Aplicar syntax highlighting
+                aplicar_syntax_highlighting(snippet['codigo'], linguagem)
+                
+                # Adicionar cabeçalho
+                saida.insert("1.0", f"Pressione ENTER para voltar.\n\nCódigo ({linguagem}):\n")
+                saida.see("1.0")
             else:
                 escrever_saida("Número inválido. Pressione ENTER para voltar.")
         else:
@@ -548,13 +621,58 @@ def executar_comando(event=None):
     elif estado == 'cadastrar_snippet_desc':
         entrada_buffer = comando
         limpar_saida()
-        escrever_saida("Digite o código do snippet:")
+        
+        # Lista de linguagens em ordem alfabética
+        linguagens = ['bash', 'c', 'cpp', 'css', 'html', 'java', 'javascript', 'python', 'sql', 'text']
+        
+        escrever_saida("Escolha a linguagem do snippet:")
+        escrever_saida("========================")
+        for idx, lang in enumerate(linguagens, 1):
+            escrever_saida(f"{idx} - {lang}")
+        escrever_saida("========================")
+        escrever_saida("Ou pressione ENTER para Python (padrão)")
+        
+        estado = 'cadastrar_snippet_linguagem'
+
+    elif estado == 'cadastrar_snippet_linguagem':
+        # Lista de linguagens (mesma ordem)
+        linguagens = ['bash', 'c', 'cpp', 'css', 'html', 'java', 'javascript', 'python', 'sql', 'text']
+        
+        # Verificar se é um número ou nome de linguagem
+        if comando.strip() == '':
+            linguagem = 'python'  # Padrão
+        elif comando.isdigit():
+            idx = int(comando) - 1
+            if 0 <= idx < len(linguagens):
+                linguagem = linguagens[idx]
+            else:
+                escrever_saida("Número inválido. Usando Python como padrão.")
+                linguagem = 'python'
+        else:
+            # Aceitar nome da linguagem diretamente
+            linguagem = comando.strip().lower()
+            if linguagem not in linguagens:
+                escrever_saida(f"Linguagem '{linguagem}' não reconhecida. Usando Python como padrão.")
+                linguagem = 'python'
+        
+        # Criar um buffer temporário para armazenar descrição e linguagem
+        # Formato: "descricao|linguagem"
+        entrada_buffer = f"{entrada_buffer}|{linguagem}"
+        
+        limpar_saida()
+        escrever_saida(f"Digite o código do snippet ({linguagem}):")
         estado = 'cadastrar_snippet_codigo'
 
     elif estado == 'cadastrar_snippet_codigo':
+        # Recuperar descrição e linguagem do buffer
+        partes = entrada_buffer.split('|')
+        descricao = partes[0]
+        linguagem = partes[1] if len(partes) > 1 else 'python'
+        
         novo_snippet = {
-            "descricao": entrada_buffer,
-            "codigo": comando
+            "descricao": descricao,
+            "codigo": comando,
+            "linguagem": linguagem
         }
         programa_selecionado['snippets'].append(novo_snippet)
         salvar_dados()
