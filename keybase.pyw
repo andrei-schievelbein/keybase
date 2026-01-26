@@ -2,10 +2,13 @@ import customtkinter as ctk
 import json
 import os
 import sys
+import re
 from pygments import highlight
 from pygments.lexers import get_lexer_by_name, guess_lexer, TextLexer
 from pygments.formatters import TerminalFormatter
 from pygments.util import ClassNotFound
+import markdown
+from html.parser import HTMLParser
 
 def get_base_dir():
     if getattr(sys, 'frozen', False):
@@ -41,6 +44,9 @@ resultados = []
 programa_selecionado = None
 sub_estado = None
 entrada_buffer = ''
+nota_em_edicao = None  # Rastreia nota sendo editada (índice e texto original)
+atalho_em_edicao = None  # Rastreia atalho sendo editado
+snippet_em_edicao = None  # Rastreia snippet sendo editado
 
 root = ctk.CTk()
 root.title("KeyBase")
@@ -55,11 +61,16 @@ try:
 except:
     fonte_saida = ctk.CTkFont(family="Consolas", size=14)
 
-entrada = ctk.CTkEntry(root, width=600)
-entrada.pack(padx=10, pady=(10, 0), fill="x")
+entrada = ctk.CTkEntry(root, width=800, font=("Consolas", 12))
+entrada.pack(pady=10)
 
-saida = ctk.CTkTextbox(root, height=400, font=fonte_saida)
-saida.pack(padx=10, pady=10, fill="both", expand=True)
+# Área de ajuda/status (3 linhas) - OCULTA POR PADRÃO
+ajuda = ctk.CTkTextbox(root, width=800, height=60, font=("Consolas", 12), fg_color="#1a1a1a")
+# Não fazer pack() aqui - será mostrada apenas ao editar
+
+# Área principal de conteúdo
+saida = ctk.CTkTextbox(root, width=800, height=500, font=("Consolas", 14))
+saida.pack(pady=5, fill="both", expand=True)
 
 def escrever_saida(texto):
     saida.insert("end", texto + "\n")
@@ -67,6 +78,18 @@ def escrever_saida(texto):
 
 def limpar_saida():
     saida.delete("1.0", "end")
+
+def escrever_ajuda(texto):
+    """Escreve mensagem na área de ajuda e a torna visível"""
+    ajuda.delete("1.0", "end")
+    ajuda.insert("1.0", texto)
+    # Mostrar área de ajuda (inserir entre entrada e saída)
+    ajuda.pack(after=entrada, pady=5, fill="x")
+
+def limpar_ajuda():
+    """Limpa e oculta a área de ajuda"""
+    ajuda.delete("1.0", "end")
+    ajuda.pack_forget()  # Ocultar área de ajuda
 
 def aplicar_syntax_highlighting(codigo, linguagem="python"):
     """
@@ -124,6 +147,193 @@ def aplicar_syntax_highlighting(codigo, linguagem="python"):
         saida.delete("1.0", "end")
         saida.insert("end", codigo)
         saida.see("1.0")
+
+class HTMLToTkinterParser(HTMLParser):
+    """
+    Converte HTML simples (gerado pelo markdown) em texto formatado para CTkTextbox
+    usando tags do Tkinter
+    """
+    def __init__(self, textbox):
+        super().__init__()
+        self.textbox = textbox
+        self.tag_stack = []
+        self.list_level = 0
+        self.in_code_block = False
+        self.code_block_content = []  # Armazena conteúdo do bloco de código
+        self.code_block_language = None  # Linguagem do bloco de código
+        
+    def handle_starttag(self, tag, attrs):
+        """Processa tags de abertura HTML"""
+        if tag in ['h1', 'h2', 'h3']:
+            self.tag_stack.append(tag)
+        elif tag == 'strong' or tag == 'b':
+            self.tag_stack.append('bold')
+        elif tag == 'em' or tag == 'i':
+            self.tag_stack.append('italic')
+        elif tag == 'code':
+            # Verificar se é código inline ou bloco
+            # Blocos de código vêm dentro de <pre><code>
+            if not self.in_code_block:
+                self.tag_stack.append('code')
+            else:
+                # Extrair linguagem se especificada (class="language-python")
+                for attr_name, attr_value in attrs:
+                    if attr_name == 'class' and attr_value.startswith('language-'):
+                        self.code_block_language = attr_value.replace('language-', '')
+        elif tag == 'pre':
+            self.in_code_block = True
+            self.code_block_content = []
+            self.code_block_language = None
+        elif tag in ['ul', 'ol']:
+            self.list_level += 1
+        elif tag == 'li':
+            indent = "  " * (self.list_level - 1)
+            self.textbox.insert("end", f"{indent}• ", 'list')
+            
+    def handle_endtag(self, tag):
+        """Processa tags de fechamento HTML"""
+        if tag in ['h1', 'h2', 'h3']:
+            if self.tag_stack and self.tag_stack[-1] in ['h1', 'h2', 'h3']:
+                self.tag_stack.pop()
+            self.textbox.insert("end", "\n")
+        elif tag in ['strong', 'b']:
+            if self.tag_stack and self.tag_stack[-1] == 'bold':
+                self.tag_stack.pop()
+        elif tag in ['em', 'i']:
+            if self.tag_stack and self.tag_stack[-1] == 'italic':
+                self.tag_stack.pop()
+        elif tag == 'code':
+            if self.tag_stack and self.tag_stack[-1] == 'code':
+                self.tag_stack.pop()
+        elif tag == 'pre':
+            # Fim do bloco de código - aplicar syntax highlighting
+            self.in_code_block = False
+            codigo = ''.join(self.code_block_content)
+            
+            if codigo.strip():
+                self._aplicar_syntax_highlighting_bloco(codigo, self.code_block_language)
+            
+            self.textbox.insert("end", "\n")
+            self.code_block_content = []
+            self.code_block_language = None
+        elif tag in ['ul', 'ol']:
+            self.list_level -= 1
+        elif tag == 'li':
+            self.textbox.insert("end", "\n")
+        elif tag == 'p':
+            self.textbox.insert("end", "\n")
+    
+    def _aplicar_syntax_highlighting_bloco(self, codigo, linguagem):
+        """Aplica syntax highlighting a um bloco de código"""
+        try:
+            from pygments import lex
+            from pygments.lexers import get_lexer_by_name, TextLexer
+            from pygments.util import ClassNotFound
+            
+            # Tentar obter lexer pela linguagem
+            if linguagem:
+                try:
+                    lexer = get_lexer_by_name(linguagem.lower(), stripall=True)
+                except ClassNotFound:
+                    lexer = TextLexer()
+            else:
+                lexer = TextLexer()
+            
+            # Cores para syntax highlighting (mesmas dos snippets)
+            cores = {
+                'Keyword': '#569CD6',
+                'Name.Function': '#DCDCAA',
+                'Name.Class': '#4EC9B0',
+                'String': '#CE9178',
+                'Number': '#B5CEA8',
+                'Comment': '#6A9955',
+                'Operator': '#D4D4D4',
+                'Name.Builtin': '#4EC9B0',
+                'Name': '#9CDCFE',
+            }
+            
+            # Configurar tags de cores
+            for token_type, cor in cores.items():
+                self.textbox.tag_config(token_type, foreground=cor, background="#2D2D2D")
+            
+            # Processar tokens e inserir com cores
+            for token_type, value in lex(codigo, lexer):
+                token_name = str(token_type).split('.')[-1]
+                full_token = str(token_type)
+                
+                # Tentar usar o token completo primeiro, depois o simplificado
+                if full_token in cores:
+                    self.textbox.insert("end", value, full_token)
+                elif token_name in cores:
+                    self.textbox.insert("end", value, token_name)
+                else:
+                    # Texto sem cor específica, mas com fundo escuro
+                    self.textbox.insert("end", value, 'code_block')
+        except Exception as e:
+            # Em caso de erro, inserir código sem formatação
+            self.textbox.insert("end", codigo, 'code_block')
+            
+    def handle_data(self, data):
+        """Processa o conteúdo de texto"""
+        if self.in_code_block:
+            # Armazenar conteúdo do bloco de código
+            self.code_block_content.append(data)
+        elif data.strip():  # Ignorar espaços em branco vazios
+            # Aplicar todas as tags ativas
+            if self.tag_stack:
+                self.textbox.insert("end", data, tuple(self.tag_stack))
+            else:
+                self.textbox.insert("end", data)
+
+def configurar_tags_markdown():
+    """
+    Configura tags de formatação Markdown no CTkTextbox
+    Nota: Não podemos usar 'font' nas tags devido ao scaling do CustomTkinter
+    """
+    # Cabeçalhos - apenas cores (tamanho não pode ser alterado)
+    saida.tag_config("h1", foreground="#569CD6", spacing1=10, spacing3=5)
+    saida.tag_config("h2", foreground="#4EC9B0", spacing1=8, spacing3=4)
+    saida.tag_config("h3", foreground="#DCDCAA", spacing1=6, spacing3=3)
+    
+    # Formatação de texto - CustomTkinter não suporta bold/italic em tags
+    # Vamos usar apenas cores diferentes para destacar
+    saida.tag_config("bold", foreground="#FFFFFF")  # Branco mais forte
+    saida.tag_config("italic", foreground="#B4B4B4")  # Cinza claro
+    saida.tag_config("code", background="#2D2D2D", foreground="#CE9178")
+    saida.tag_config("code_block", background="#2D2D2D", foreground="#CE9178")
+    
+    # Listas
+    saida.tag_config("list", lmargin1=20, lmargin2=40)
+
+def aplicar_markdown_formatacao(texto):
+    """
+    Aplica formatação Markdown ao texto usando tags do CTkTextbox
+    Similar ao aplicar_syntax_highlighting mas para Markdown
+    """
+    try:
+        # Limpar saída
+        saida.delete("1.0", "end")
+        
+        # Configurar tags de formatação
+        configurar_tags_markdown()
+        
+        # Converter Markdown para HTML (com suporte a fenced code blocks)
+        html = markdown.markdown(texto, extensions=['fenced_code'])
+        
+        # Parsear HTML e aplicar formatação
+        parser = HTMLToTkinterParser(saida)
+        parser.feed(html)
+        
+        saida.see("1.0")
+        
+    except Exception as e:
+        # Em caso de erro, mostrar texto sem formatação + erro
+        saida.delete("1.0", "end")
+        saida.insert("end", f"[ERRO AO RENDERIZAR MARKDOWN: {str(e)}]\n\n")
+        saida.insert("end", texto)
+        saida.see("1.0")
+        print(f"Erro ao renderizar Markdown: {e}")  # Debug no console
+
 
 def carregar_dados():
     dados = {"programas": []}
@@ -208,9 +418,12 @@ def ver_atalhos():
         escrever_saida("Nenhum atalho cadastrado. Aperte C para cadastrar ou Enter para voltar.")
         sub_estado = 'atalho_vazio'
     else:
-        escrever_saida("Aperte ENTER para voltar.")
-        for atalho in programa_selecionado['atalhos']:
-            escrever_saida(f"{atalho['combinacao']}: {atalho['descricao']}")
+        escrever_saida("Digite o número do atalho para ver detalhes ou ENTER para voltar.")
+        for idx, atalho in enumerate(programa_selecionado['atalhos']):
+            # Pegar apenas a primeira linha da descrição
+            primeira_linha = atalho['descricao'].split('\n')[0]
+            preview = primeira_linha[:50] + "..." if len(primeira_linha) > 50 else primeira_linha
+            escrever_saida(f"{idx + 1} - {atalho['combinacao']}: {preview}")
         sub_estado = 'atalho_existente'
 
 def ver_notas():
@@ -242,7 +455,10 @@ def executar_comando(event=None):
 
     comando = entrada.get().strip()
     entrada.delete(0, 'end')
-    escrever_saida(f"> {comando}")
+    
+    # Não escrever comando se estiver em modo de edição (para não poluir o conteúdo)
+    if sub_estado not in ['nota_edicao', 'atalho_edicao', 'snippet_edicao']:
+        escrever_saida(f"> {comando}")
 
     if sub_estado in ['atalho_existente', 'nota_existente', 'snippet_existente']:
         if comando == '':
@@ -251,31 +467,328 @@ def executar_comando(event=None):
         elif sub_estado == 'nota_existente' and comando.isdigit():
             idx = int(comando) - 1
             if 0 <= idx < len(programa_selecionado['notas']):
-                limpar_saida()
                 nota = programa_selecionado['notas'][idx]
-                escrever_saida("Pressione ENTER para voltar.")
-                escrever_saida("\nTexto:")
-                escrever_saida(nota['texto'])
+                entrada_buffer = idx  # Guardar índice da nota
+                
+                # Aplicar formatação Markdown
+                aplicar_markdown_formatacao(nota['texto'])
+                
+                # Adicionar cabeçalho com instruções de edição
+                saida.insert("1.0", f"Pressione ENTER para voltar ou E para editar.\n\nNota: {nota['descricao']}\n\n")
+                saida.see("1.0")
+                
+                # Mudar para sub-estado de visualização
+                sub_estado = 'nota_visualizacao'
+            else:
+                escrever_saida("Número inválido. Pressione ENTER para voltar.")
+        elif sub_estado == 'atalho_existente' and comando.isdigit():
+            idx = int(comando) - 1
+            if 0 <= idx < len(programa_selecionado['atalhos']):
+                atalho = programa_selecionado['atalhos'][idx]
+                entrada_buffer = idx  # Guardar índice do atalho
+                
+                # Criar texto Markdown com o atalho
+                descricao = atalho['descricao']
+                if '**' not in descricao and '#' not in descricao:
+                    texto_markdown = f"# {atalho['combinacao']}\n\n{descricao}\n"
+                else:
+                    texto_markdown = descricao
+                
+                # Aplicar formatação Markdown
+                aplicar_markdown_formatacao(texto_markdown)
+                
+                # Adicionar cabeçalho com instruções de edição
+                saida.insert("1.0", f"Pressione ENTER para voltar ou E para editar.\n\nAtalho: {atalho['combinacao']}\n\n")
+                saida.see("1.0")
+                
+                # Mudar para sub-estado de visualização
+                sub_estado = 'atalho_visualizacao'
             else:
                 escrever_saida("Número inválido. Pressione ENTER para voltar.")
         elif sub_estado == 'snippet_existente' and comando.isdigit():
             idx = int(comando) - 1
             if 0 <= idx < len(programa_selecionado['snippets']):
                 snippet = programa_selecionado['snippets'][idx]
+                entrada_buffer = idx  # Guardar índice do snippet
                 
                 # Obter linguagem do snippet (se existir)
                 linguagem = snippet.get('linguagem', 'python')
                 
-                # Aplicar syntax highlighting
-                aplicar_syntax_highlighting(snippet['codigo'], linguagem)
+                # Se a linguagem for markdown, renderizar o código como markdown puro
+                if linguagem == 'markdown':
+                    # Renderizar código diretamente como markdown
+                    aplicar_markdown_formatacao(snippet['codigo'])
+                else:
+                    # Criar texto Markdown com snippet
+                    # Se a descrição já tiver Markdown, usar como está
+                    # Senão, criar estrutura básica
+                    descricao = snippet['descricao']
+                    
+                    if '```' in snippet['codigo']:
+                        # Código já tem blocos Markdown - usar como está
+                        texto_markdown = f"# {descricao}\n\n{snippet['codigo']}\n"
+                    else:
+                        # Código simples - envolver em bloco de código
+                        texto_markdown = f"# {descricao}\n\n```{linguagem}\n{snippet['codigo']}\n```\n"
+                    
+                    # Aplicar formatação Markdown (que já inclui syntax highlighting)
+                    aplicar_markdown_formatacao(texto_markdown)
                 
-                # Adicionar cabeçalho
-                saida.insert("1.0", f"Pressione ENTER para voltar.\n\nCódigo ({linguagem}):\n")
+                # Adicionar cabeçalho com instruções de edição
+                saida.insert("1.0", f"Pressione ENTER para voltar ou E para editar.\n\n")
                 saida.see("1.0")
+                
+                # Mudar para sub-estado de visualização
+                sub_estado = 'snippet_visualizacao'
             else:
                 escrever_saida("Número inválido. Pressione ENTER para voltar.")
         else:
             escrever_saida("Pressione apenas ENTER para voltar ou digite um número válido.")
+        return
+
+    # Tratamento para visualização de nota com opção de editar
+    if sub_estado == 'nota_visualizacao':
+        if comando == '':
+            # Voltar para lista de notas
+            ver_notas()
+        elif comando.upper() == 'E':
+            # Entrar em modo de edição
+            global nota_em_edicao
+            idx = entrada_buffer
+            nota = programa_selecionado['notas'][idx]
+            
+            limpar_saida()
+            limpar_ajuda()
+            
+            # Mensagens de ajuda na área separada
+            escrever_ajuda(f"Editando Nota: {nota['descricao']} \nPressione Ctrl+S para salvar ou Esc para cancelar.")
+            
+            # Conteúdo editável na área principal
+            saida.insert("end", nota['texto'])
+            
+            # Mudar para modo de edição
+            sub_estado = 'nota_edicao'
+            nota_em_edicao = {'idx': idx, 'texto_original': nota['texto']}
+            
+            # Mover foco para o textbox de edição
+            saida.focus_set()
+        else:
+            escrever_saida("Comando inválido. Pressione ENTER para voltar ou E para editar.")
+        return
+
+    # Tratamento para edição de nota
+    if sub_estado == 'nota_edicao':
+        if comando.lower() == 'salvar' or comando == 'CTRL_S':
+            # Pegar texto editado do textbox
+            texto_editado = saida.get("1.0", "end-1c")
+            
+            # Remover "CTRL_S" se estiver no final
+            if texto_editado.strip().endswith('CTRL_S'):
+                texto_editado = texto_editado.rsplit('CTRL_S', 1)[0].rstrip()
+            
+            # Salvar no banco de dados
+            idx = nota_em_edicao['idx']
+            programa_selecionado['notas'][idx]['texto'] = texto_editado
+            salvar_dados()
+            
+            # Voltar para visualização
+            nota = programa_selecionado['notas'][idx]
+            aplicar_markdown_formatacao(nota['texto'])
+            saida.insert("1.0", f"Pressione ENTER para voltar ou E para editar.\n\nNota: {nota['descricao']}\n\n[Nota salva com sucesso!]\n\n")
+            saida.see("1.0")
+            
+            sub_estado = 'nota_visualizacao'
+            nota_em_edicao = None
+            entrada.focus_set()  # Voltar foco para campo de entrada
+            limpar_ajuda()  # Ocultar área de ajuda
+        elif comando.lower() == 'cancelar' or comando == 'ESC':
+            # Cancelar edição
+            idx = nota_em_edicao['idx']
+            nota = programa_selecionado['notas'][idx]
+            
+            # Voltar para visualização
+            aplicar_markdown_formatacao(nota['texto'])
+            saida.insert("1.0", f"Pressione ENTER para voltar ou E para editar.\n\nNota: {nota['descricao']}\n\n[Edição cancelada]\n\n")
+            saida.see("1.0")
+            
+            sub_estado = 'nota_visualizacao'
+            nota_em_edicao = None
+            limpar_ajuda()  # Ocultar área de ajuda
+            entrada.focus_set()  # Voltar foco para campo de entrada
+        else:
+            escrever_saida("\nPressione Ctrl+S para salvar ou Esc para cancelar.")
+        return
+
+    # Tratamento para visualização de atalho com opção de editar
+    if sub_estado == 'atalho_visualizacao':
+        if comando == '':
+            # Voltar para lista de atalhos
+            ver_atalhos()
+        elif comando.upper() == 'E':
+            # Entrar em modo de edição
+            global atalho_em_edicao
+            idx = entrada_buffer
+            atalho = programa_selecionado['atalhos'][idx]
+            
+            limpar_saida()
+            limpar_ajuda()
+            
+            # Mensagens de ajuda na área separada
+            escrever_ajuda(f"Editando Atalho: {atalho['combinacao']} \nPressione Ctrl+S para salvar ou Esc para cancelar.")
+            
+            # Conteúdo editável na área principal
+            saida.insert("end", atalho['descricao'])
+            
+            # Mudar para modo de edição
+            sub_estado = 'atalho_edicao'
+            atalho_em_edicao = {'idx': idx, 'descricao_original': atalho['descricao']}
+            
+            # Mover foco para o textbox de edição
+            saida.focus_set()
+        else:
+            escrever_saida("Comando inválido. Pressione ENTER para voltar ou E para editar.")
+        return
+
+    # Tratamento para edição de atalho
+    if sub_estado == 'atalho_edicao':
+        if comando.lower() == 'salvar' or comando == 'CTRL_S':
+            # Pegar texto editado do textbox
+            texto_editado = saida.get("1.0", "end-1c")
+            
+            # Remover "CTRL_S" se estiver no final
+            if texto_editado.strip().endswith('CTRL_S'):
+                texto_editado = texto_editado.rsplit('CTRL_S', 1)[0].rstrip()
+            
+            # Salvar no banco de dados
+            idx = atalho_em_edicao['idx']
+            programa_selecionado['atalhos'][idx]['descricao'] = texto_editado
+            salvar_dados()
+            
+            # Voltar para visualização
+            atalho = programa_selecionado['atalhos'][idx]
+            descricao = atalho['descricao']
+            if '**' not in descricao and '#' not in descricao:
+                texto_markdown = f"# {atalho['combinacao']}\n\n{descricao}\n"
+            else:
+                texto_markdown = descricao
+            aplicar_markdown_formatacao(texto_markdown)
+            saida.insert("1.0", f"Pressione ENTER para voltar ou E para editar.\n\nAtalho: {atalho['combinacao']}\n\n[Atalho salvo com sucesso!]\n\n")
+            saida.see("1.0")
+            
+            sub_estado = 'atalho_visualizacao'
+            atalho_em_edicao = None
+            entrada.focus_set()  # Voltar foco para campo de entrada
+            limpar_ajuda()  # Ocultar área de ajuda
+        elif comando.lower() == 'cancelar' or comando == 'ESC':
+            # Cancelar edição
+            idx = atalho_em_edicao['idx']
+            atalho = programa_selecionado['atalhos'][idx]
+            
+            # Voltar para visualização
+            descricao = atalho['descricao']
+            if '**' not in descricao and '#' not in descricao:
+                texto_markdown = f"# {atalho['combinacao']}\n\n{descricao}\n"
+            else:
+                texto_markdown = descricao
+            aplicar_markdown_formatacao(texto_markdown)
+            saida.insert("1.0", f"Pressione ENTER para voltar ou E para editar.\n\nAtalho: {atalho['combinacao']}\n\n[Edição cancelada]\n\n")
+            saida.see("1.0")
+            
+            sub_estado = 'atalho_visualizacao'
+            atalho_em_edicao = None
+            limpar_ajuda()  # Ocultar área de ajuda
+            entrada.focus_set()  # Voltar foco para campo de entrada
+        else:
+            escrever_saida("\nPressione Ctrl+S para salvar ou Esc para cancelar.")
+        return
+
+    # Tratamento para visualização de snippet com opção de editar
+    if sub_estado == 'snippet_visualizacao':
+        if comando == '':
+            # Voltar para lista de snippets
+            ver_snippets()
+        elif comando.upper() == 'E':
+            # Entrar em modo de edição
+            global snippet_em_edicao
+            idx = entrada_buffer
+            snippet = programa_selecionado['snippets'][idx]
+            
+            limpar_saida()
+            limpar_ajuda()
+            
+            # Mensagens de ajuda na área separada
+            escrever_ajuda(f"Editando Snippet: {snippet['descricao']} \nPressione Ctrl+S para salvar ou Esc para cancelar.")
+            
+            # Conteúdo editável na área principal
+            saida.insert("end", snippet['codigo'])
+            
+            # Mudar para modo de edição
+            sub_estado = 'snippet_edicao'
+            snippet_em_edicao = {'idx': idx, 'codigo_original': snippet['codigo']}
+            
+            # Mover foco para o textbox de edição
+            saida.focus_set()
+        else:
+            escrever_saida("Comando inválido. Pressione ENTER para voltar ou E para editar.")
+        return
+
+    # Tratamento para edição de snippet
+    if sub_estado == 'snippet_edicao':
+        if comando.lower() == 'salvar' or comando == 'CTRL_S':
+            # Pegar texto editado do textbox
+            texto_editado = saida.get("1.0", "end-1c")
+            
+            # Remover "CTRL_S" se estiver no final
+            if texto_editado.strip().endswith('CTRL_S'):
+                texto_editado = texto_editado.rsplit('CTRL_S', 1)[0].rstrip()
+            
+            # Salvar no banco de dados
+            idx = snippet_em_edicao['idx']
+            programa_selecionado['snippets'][idx]['codigo'] = texto_editado
+            salvar_dados()
+            
+            # Voltar para visualização
+            snippet = programa_selecionado['snippets'][idx]
+            linguagem = snippet.get('linguagem', 'python')
+            descricao = snippet['descricao']
+            
+            if '```' in snippet['codigo']:
+                texto_markdown = f"# {descricao}\n\n{snippet['codigo']}\n"
+            else:
+                texto_markdown = f"# {descricao}\n\n```{linguagem}\n{snippet['codigo']}\n```\n"
+            
+            aplicar_markdown_formatacao(texto_markdown)
+            saida.insert("1.0", f"Pressione ENTER para voltar ou E para editar.\n\n[Snippet salvo com sucesso!]\n\n")
+            saida.see("1.0")
+            
+            sub_estado = 'snippet_visualizacao'
+            snippet_em_edicao = None
+            entrada.focus_set()  # Voltar foco para campo de entrada
+            limpar_ajuda()  # Ocultar área de ajuda
+        elif comando.lower() == 'cancelar' or comando == 'ESC':
+            # Cancelar edição
+            idx = snippet_em_edicao['idx']
+            snippet = programa_selecionado['snippets'][idx]
+            
+            # Voltar para visualização
+            linguagem = snippet.get('linguagem', 'python')
+            descricao = snippet['descricao']
+            
+            if '```' in snippet['codigo']:
+                texto_markdown = f"# {descricao}\n\n{snippet['codigo']}\n"
+            else:
+                texto_markdown = f"# {descricao}\n\n```{linguagem}\n{snippet['codigo']}\n```\n"
+            
+            aplicar_markdown_formatacao(texto_markdown)
+            saida.insert("1.0", f"Pressione ENTER para voltar ou E para editar.\n\n[Edição cancelada]\n\n")
+            saida.see("1.0")
+            
+            sub_estado = 'snippet_visualizacao'
+            snippet_em_edicao = None
+            limpar_ajuda()  # Ocultar área de ajuda
+            entrada.focus_set()  # Voltar foco para campo de entrada
+        else:
+            escrever_saida("\nPressione Ctrl+S para salvar ou Esc para cancelar.")
         return
 
     if comando.lower() == 'sair':
@@ -623,7 +1136,7 @@ def executar_comando(event=None):
         limpar_saida()
         
         # Lista de linguagens em ordem alfabética
-        linguagens = ['bash', 'c', 'cpp', 'css', 'html', 'java', 'javascript', 'python', 'sql', 'text']
+        linguagens = ['bash', 'c', 'cpp', 'css', 'html', 'java', 'javascript', 'python', 'sql', 'text', 'markdown']
         
         escrever_saida("Escolha a linguagem do snippet:")
         escrever_saida("========================")
@@ -636,7 +1149,7 @@ def executar_comando(event=None):
 
     elif estado == 'cadastrar_snippet_linguagem':
         # Lista de linguagens (mesma ordem)
-        linguagens = ['bash', 'c', 'cpp', 'css', 'html', 'java', 'javascript', 'python', 'sql', 'text']
+        linguagens = ['bash', 'c', 'cpp', 'css', 'html', 'java', 'javascript', 'python', 'sql', 'text', 'markdown']
         
         # Verificar se é um número ou nome de linguagem
         if comando.strip() == '':
@@ -843,7 +1356,32 @@ def executar_comando(event=None):
             exibir_menu_programa()
             estado = 'menu_programa'
 
+def salvar_nota_edicao(event=None):
+    """Salvar nota/atalho/snippet em edição com Ctrl+S"""
+    global sub_estado, nota_em_edicao, atalho_em_edicao, snippet_em_edicao
+    
+    if sub_estado in ['nota_edicao', 'atalho_edicao', 'snippet_edicao']:
+        # Simular comando de salvar
+        entrada.delete(0, 'end')
+        entrada.insert(0, 'CTRL_S')
+        executar_comando()
+    return "break"  # Prevenir comportamento padrão
+
+def cancelar_edicao_nota(event=None):
+    """Cancelar edição com Esc"""
+    global sub_estado, nota_em_edicao, atalho_em_edicao, snippet_em_edicao
+    
+    if sub_estado in ['nota_edicao', 'atalho_edicao', 'snippet_edicao']:
+        # Simular comando de cancelar
+        entrada.delete(0, 'end')
+        entrada.insert(0, 'ESC')
+        executar_comando()
+    return "break"  # Prevenir comportamento padrão
+
+# Bindings de teclado
 entrada.bind("<Return>", executar_comando)
+root.bind("<Control-s>", salvar_nota_edicao)
+root.bind("<Escape>", cancelar_edicao_nota)
 
 # Salvar a posição e tamanho da janela ao fechar
 root.protocol("WM_DELETE_WINDOW", lambda: (salvar_config_janela(root), root.destroy()))

@@ -30,6 +30,11 @@ Para cada programa que você usa, você pode manter uma biblioteca organizada de
 - 💾 Salvamento automático de dados
 - 🎨 Tema escuro elegante
 - 🪟 Memoriza posição e tamanho da janela
+- 📝 **Renderização Markdown** para notas e atalhos
+- ✏️ **Edição rápida** com Ctrl+S para salvar e Esc para cancelar
+- 🎨 **Syntax highlighting** para snippets de código (suporta 11 linguagens)
+- 📊 **Contadores inteligentes** mostrando quantidade de itens
+- 🔖 **Snippets Markdown** com suporte a blocos de código
 
 ## 🚀 Como Usar
 
@@ -84,6 +89,8 @@ python keybase.pyw
 
 - [Python](https://www.python.org/) - Linguagem de programação
 - [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter) - Framework moderno para interfaces gráficas
+- [Pygments](https://pygments.org/) - Syntax highlighting para snippets de código
+- [Markdown](https://python-markdown.github.io/) - Renderização de Markdown
 - [PyInstaller](https://www.pyinstaller.org/) - Para criar o executável
 
 ## 📝 Estrutura de Dados
@@ -111,7 +118,8 @@ O KeyBase usa um arquivo JSON para armazenar os dados com a seguinte estrutura:
             "snippets": [
                 {
                     "descricao": "Descrição do Snippet",
-                    "codigo": "print('Hello World')"
+                    "codigo": "print('Hello World')",
+                    "linguagem": "python"
                 }
             ]
         }
