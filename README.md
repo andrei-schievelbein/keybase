@@ -65,6 +65,14 @@ Para cada programa que você usa, você pode manter uma biblioteca organizada de
 
 ### Usuários Windows
 
+#### Download Direto
+1. Baixe a última versão do executável na pasta [releases](./releases)
+   - `KeyBase_latest.exe` - Sempre aponta para a versão mais recente
+   - Ou escolha uma versão específica: `KeyBase_v1.0.0_YYYY-MM-DD.exe`
+2. Execute o arquivo baixado
+3. Pronto! Não precisa de instalação
+
+#### GitHub Releases
 1. Baixe a última versão do executável na seção [Releases](https://github.com/andrei-schievelbein/keybase/releases)
 2. Execute o arquivo `KeyBase.exe`
 3. Pronto! Não precisa de instalação

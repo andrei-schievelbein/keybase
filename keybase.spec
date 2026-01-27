@@ -5,7 +5,7 @@ a = Analysis(
     ['keybase.pyw'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[('keybase.ico', '.')],  # Incluir o ícone no executável
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
