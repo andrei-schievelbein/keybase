@@ -50,7 +50,21 @@ snippet_em_edicao = None  # Rastreia snippet sendo editado
 
 root = ctk.CTk()
 root.title("KeyBase")
-root.iconbitmap("keybase.ico")
+
+# Carregar ícone (funciona tanto em dev quanto em executável)
+try:
+    if getattr(sys, 'frozen', False):
+        # Quando executado como .exe, PyInstaller extrai recursos para sys._MEIPASS
+        icon_path = os.path.join(sys._MEIPASS, 'keybase.ico')
+    else:
+        # Quando executado como script
+        icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'keybase.ico')
+    
+    if os.path.exists(icon_path):
+        root.iconbitmap(icon_path)
+except Exception as e:
+    # Se falhar ao carregar o ícone, continuar sem ele
+    print(f"Aviso: Não foi possível carregar o ícone: {e}")
 
 # Carregar a posição e tamanho salvos da janela
 carregar_config_janela(root)

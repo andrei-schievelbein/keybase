@@ -1,0 +1,47 @@
+# PyInstaller build artifacts
+build/
+dist/
+*.spec.bak
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# User data files (não versionar dados pessoais)
+data.json
+window_config.json
+
+# Workflows (arquivos de configuração local do agente)
+.agent/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Markdown files (exceto README.md)
+*.md
+!README.md
+

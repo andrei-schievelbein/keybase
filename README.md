@@ -65,12 +65,6 @@ Para cada programa que você usa, você pode manter uma biblioteca organizada de
 
 ### Usuários Windows
 
-#### Download Direto
-1. Baixe a última versão do executável na pasta [releases](./releases)
-   - `KeyBase_latest.exe` - Sempre aponta para a versão mais recente
-   - Ou escolha uma versão específica: `KeyBase_v1.0.0_YYYY-MM-DD.exe`
-2. Execute o arquivo baixado
-3. Pronto! Não precisa de instalação
 
 #### GitHub Releases
 1. Baixe a última versão do executável na seção [Releases](https://github.com/andrei-schievelbein/keybase/releases)
@@ -92,6 +86,54 @@ pip install -r requirements.txt
 # Execute o programa
 python keybase.pyw
 ```
+
+## 📦 Arquivos e Portabilidade
+
+### Executável Standalone
+
+O KeyBase é distribuído como um **executável standalone** (`.exe`), o que significa:
+
+- ✅ **Não precisa de instalação** - Basta executar o arquivo
+- ✅ **Não precisa de Python instalado** - Tudo está embutido no executável
+- ✅ **Totalmente portátil** - Pode ser executado de um pen drive
+
+
+### Arquivos Gerados
+
+Quando você executa o KeyBase, ele cria automaticamente alguns arquivos no **mesmo diretório** onde o executável está localizado:
+
+| Arquivo | Necessário? | Descrição |
+|---------|-------------|-----------|
+| **KeyBase_latest.exe** | ✅ **Obrigatório** | O executável principal do programa |
+| **data.json** | ⚠️ **Recomendado** | Armazena todas as suas notas, atalhos e snippets. Sem ele, você perde seus dados |
+| **window_config.json** | ❌ **Opcional** | Salva o tamanho e posição da janela. Será recriado automaticamente se não existir |
+
+### Uso Portátil (Pen Drive)
+
+Para usar o KeyBase em um pen drive:
+
+**Mínimo absoluto:**
+```
+📁 MeuPenDrive
+  └── KeyBase_latest.exe
+```
+
+**Recomendado (mantém seus dados):**
+```
+📁 MeuPenDrive
+  ├── KeyBase_latest.exe
+  └── data.json
+```
+
+**Completo (mantém dados + preferências):**
+```
+📁 MeuPenDrive
+  ├── KeyBase_latest.exe
+  ├── data.json
+  └── window_config.json
+```
+
+> **💡 Dica:** Se você executar o KeyBase pela primeira vez sem o `data.json`, ele criará um arquivo vazio. Seus dados serão salvos automaticamente conforme você adiciona programas, notas, atalhos e snippets.
 
 ## 🔧 Tecnologias
 
