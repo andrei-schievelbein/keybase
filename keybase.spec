@@ -1,11 +1,12 @@
 # -*- mode: python ; coding: utf-8 -*-
+import os
 
 
 a = Analysis(
     ['keybase.pyw'],
     pathex=[],
     binaries=[],
-    datas=[('keybase.ico', '.')],  # Incluir o ícone no executável
+    datas=[(os.path.join(SPECPATH, 'keybase.ico'), '.')],  # Incluir o ícone no executável
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -35,5 +36,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['keybase.ico'],
+    icon=[os.path.join(SPECPATH, 'keybase.ico')],
 )
