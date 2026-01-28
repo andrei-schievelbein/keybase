@@ -22,21 +22,69 @@ BASE_DIR = get_base_dir()
 DATA_FILE = os.path.join(BASE_DIR, 'data.json')
 WINDOW_CONFIG_FILE = os.path.join(BASE_DIR, 'window_config.json')
 
-def salvar_config_janela(janela):
-    config = {
-        'geometry': janela.geometry()
+# Configurações padrão
+# Configurações padrão
+DEFAULT_CONFIG = {
+    'geometry': '800x600',
+    'theme': 'dark',
+    '_instrucoes': {
+        'tema': "Opções disponíveis: 'dark' (escuro) ou 'light' (claro)",
+        'fontes': "Recomendado usar fontes monoespaçadas: 'Consolas', 'Courier New', 'Roboto Mono', 'Fira Code'",
+        'tamanhos': "Tamanhos são definidos em pixels"
+    },
+    'fonts': {
+        'input_size': 12,
+        'output_size': 14,
+        'help_size': 12,
+        'family': 'Consolas',
+        'fallback': 'Courier New'
+    },
+    'interface': {
+        'help_area_height': 60
     }
-    with open(WINDOW_CONFIG_FILE, 'w', encoding='utf-8') as f:
-        json.dump(config, f)
+}
 
-def carregar_config_janela(janela):
+def salvar_config_janela(janela, config_atual):
+    """Salva configurações da janela e preferências do usuário"""
+    try:
+        config_salvar = config_atual.copy()
+        config_salvar['geometry'] = janela.geometry()
+        
+        # Garantir ordem para que instruções apareçam no topo
+        ordem_exibicao = {
+            '_instrucoes': config_salvar.pop('_instrucoes', DEFAULT_CONFIG['_instrucoes'])
+        }
+        # Adicionar o resto
+        ordem_exibicao.update(config_salvar)
+        
+        with open(WINDOW_CONFIG_FILE, 'w', encoding='utf-8') as f:
+            json.dump(ordem_exibicao, f, indent=4, ensure_ascii=False)
+    except Exception as e:
+        print(f"Erro ao salvar config: {e}")
+
+def carregar_config_janela():
+    """Carrega configurações salvas ou retorna configurações padrão"""
     if os.path.exists(WINDOW_CONFIG_FILE):
         try:
             with open(WINDOW_CONFIG_FILE, 'r', encoding='utf-8') as f:
                 config = json.load(f)
-                janela.geometry(config['geometry'])
+                # Mesclar com padrões para garantir que todas as chaves existam
+                for key, value in DEFAULT_CONFIG.items():
+                    if key not in config:
+                        config[key] = value
+                    elif isinstance(value, dict):
+                        for subkey, subvalue in value.items():
+                            if subkey not in config[key]:
+                                config[key][subkey] = subvalue
+                return config
         except:
-            pass
+            return DEFAULT_CONFIG.copy()
+    return DEFAULT_CONFIG.copy()
+
+def aplicar_tema(tema):
+    """Aplica o tema (dark/light) na aplicação"""
+    ctk.set_appearance_mode(tema)
+
 
 estado = 'inicio'
 dados = {}
@@ -47,6 +95,12 @@ entrada_buffer = ''
 nota_em_edicao = None  # Rastreia nota sendo editada (índice e texto original)
 atalho_em_edicao = None  # Rastreia atalho sendo editado
 snippet_em_edicao = None  # Rastreia snippet sendo editado
+
+# Carregar configurações
+config = carregar_config_janela()
+
+# Aplicar tema
+aplicar_tema(config['theme'])
 
 root = ctk.CTk()
 root.title("KeyBase")
@@ -66,24 +120,73 @@ except Exception as e:
     # Se falhar ao carregar o ícone, continuar sem ele
     print(f"Aviso: Não foi possível carregar o ícone: {e}")
 
-# Carregar a posição e tamanho salvos da janela
-carregar_config_janela(root)
+# Aplicar geometria da janela
+root.geometry(config['geometry'])
 
-# Definir fonte monoespaçada para a saída
+# Criar fontes baseadas na configuração
 try:
-    fonte_saida = ctk.CTkFont(family="Roboto Mono", size=14)
+    fonte_input = ctk.CTkFont(family=config['fonts']['family'], size=config['fonts']['input_size'])
 except:
-    fonte_saida = ctk.CTkFont(family="Consolas", size=14)
+    fonte_input = ctk.CTkFont(family=config['fonts']['fallback'], size=config['fonts']['input_size'])
 
-entrada = ctk.CTkEntry(root, width=800, font=("Consolas", 12))
+try:
+    fonte_output = ctk.CTkFont(family=config['fonts']['family'], size=config['fonts']['output_size'])
+except:
+    fonte_output = ctk.CTkFont(family=config['fonts']['fallback'], size=config['fonts']['output_size'])
+
+try:
+    fonte_help = ctk.CTkFont(family=config['fonts']['family'], size=config['fonts']['help_size'])
+except:
+    fonte_help = ctk.CTkFont(family=config['fonts']['fallback'], size=config['fonts']['help_size'])
+
+# Determinar cor da help area baseada no tema
+help_fg_color = "#1a1a1a" if config['theme'] == 'dark' else "#f0f0f0"
+help_text_color = "white" if config['theme'] == 'dark' else "black"
+
+# Função para obter cores baseadas no tema
+def get_markdown_colors(theme):
+    """Retorna cores para elementos Markdown baseadas no tema"""
+    if theme == 'dark':
+        return {
+            'h1': '#569CD6',        # Azul claro
+            'h2': '#4EC9B0',        # Verde água
+            'h3': '#DCDCAA',        # Amarelo claro
+            'h4': '#C586C0',        # Rosa claro
+            'bold': '#FFFFFF',      # Branco forte
+            'italic': '#B4B4B4',    # Cinza claro
+            'code_bg': '#2D2D2D',   # Fundo escuro
+            'code_fg': '#CE9178',   # Laranja
+        }
+    else:  # light
+        return {
+            'h1': '#0066CC',        # Azul escuro
+            'h2': '#008080',        # Verde escuro (teal)
+            'h3': '#CC6600',        # Laranja escuro
+            'h4': '#8B008B',        # Roxo escuro (dark magenta)
+            'bold': '#000000',      # Preto forte
+            'italic': '#404040',    # Cinza escuro
+            'code_bg': '#E8E8E8',   # Fundo claro
+            'code_fg': '#8B008B',   # Roxo escuro (dark magenta)
+        }
+
+# Fontes para headings (apenas cores na função configurar_tags_markdown)
+
+entrada = ctk.CTkEntry(root, width=800, font=fonte_input)
 entrada.pack(pady=10)
 
-# Área de ajuda/status (3 linhas) - OCULTA POR PADRÃO
-ajuda = ctk.CTkTextbox(root, width=800, height=60, font=("Consolas", 12), fg_color="#1a1a1a")
+# Área de ajuda/status - OCULTA POR PADRÃO
+ajuda = ctk.CTkTextbox(
+    root, 
+    width=800, 
+    height=config['interface']['help_area_height'], 
+    font=fonte_help, 
+    fg_color=help_fg_color,
+    text_color=help_text_color
+)
 # Não fazer pack() aqui - será mostrada apenas ao editar
 
 # Área principal de conteúdo
-saida = ctk.CTkTextbox(root, width=800, height=500, font=("Consolas", 14))
+saida = ctk.CTkTextbox(root, width=800, height=500, font=fonte_output)
 saida.pack(pady=5, fill="both", expand=True)
 
 def escrever_saida(texto):
@@ -178,7 +281,7 @@ class HTMLToTkinterParser(HTMLParser):
         
     def handle_starttag(self, tag, attrs):
         """Processa tags de abertura HTML"""
-        if tag in ['h1', 'h2', 'h3']:
+        if tag in ['h1', 'h2', 'h3', 'h4']:
             self.tag_stack.append(tag)
         elif tag == 'strong' or tag == 'b':
             self.tag_stack.append('bold')
@@ -206,8 +309,8 @@ class HTMLToTkinterParser(HTMLParser):
             
     def handle_endtag(self, tag):
         """Processa tags de fechamento HTML"""
-        if tag in ['h1', 'h2', 'h3']:
-            if self.tag_stack and self.tag_stack[-1] in ['h1', 'h2', 'h3']:
+        if tag in ['h1', 'h2', 'h3', 'h4']:
+            if self.tag_stack and self.tag_stack[-1] in ['h1', 'h2', 'h3', 'h4']:
                 self.tag_stack.pop()
             self.textbox.insert("end", "\n")
         elif tag in ['strong', 'b']:
@@ -253,6 +356,10 @@ class HTMLToTkinterParser(HTMLParser):
             else:
                 lexer = TextLexer()
             
+            # Obter cor de fundo baseada no tema
+            md_colors = get_markdown_colors(config['theme'])
+            code_bg = md_colors['code_bg']
+            
             # Cores para syntax highlighting (mesmas dos snippets)
             cores = {
                 'Keyword': '#569CD6',
@@ -266,9 +373,9 @@ class HTMLToTkinterParser(HTMLParser):
                 'Name': '#9CDCFE',
             }
             
-            # Configurar tags de cores
+            # Configurar tags de cores com fundo adaptativo
             for token_type, cor in cores.items():
-                self.textbox.tag_config(token_type, foreground=cor, background="#2D2D2D")
+                self.textbox.tag_config(token_type, foreground=cor, background=code_bg)
             
             # Processar tokens e inserir com cores
             for token_type, value in lex(codigo, lexer):
@@ -281,7 +388,7 @@ class HTMLToTkinterParser(HTMLParser):
                 elif token_name in cores:
                     self.textbox.insert("end", value, token_name)
                 else:
-                    # Texto sem cor específica, mas com fundo escuro
+                    # Texto sem cor específica, mas com fundo adaptativo
                     self.textbox.insert("end", value, 'code_block')
         except Exception as e:
             # Em caso de erro, inserir código sem formatação
@@ -301,20 +408,23 @@ class HTMLToTkinterParser(HTMLParser):
 
 def configurar_tags_markdown():
     """
-    Configura tags de formatação Markdown no CTkTextbox
-    Nota: Não podemos usar 'font' nas tags devido ao scaling do CustomTkinter
+    Configura tags de formatação Markdown no CTkTextbox com cores adaptativas ao tema
+    Nota: CustomTkinter não suporta 'font' em tags devido ao scaling
     """
-    # Cabeçalhos - apenas cores (tamanho não pode ser alterado)
-    saida.tag_config("h1", foreground="#569CD6", spacing1=10, spacing3=5)
-    saida.tag_config("h2", foreground="#4EC9B0", spacing1=8, spacing3=4)
-    saida.tag_config("h3", foreground="#DCDCAA", spacing1=6, spacing3=3)
+    # Obter cores baseadas no tema atual
+    cores = get_markdown_colors(config['theme'])
     
-    # Formatação de texto - CustomTkinter não suporta bold/italic em tags
-    # Vamos usar apenas cores diferentes para destacar
-    saida.tag_config("bold", foreground="#FFFFFF")  # Branco mais forte
-    saida.tag_config("italic", foreground="#B4B4B4")  # Cinza claro
-    saida.tag_config("code", background="#2D2D2D", foreground="#CE9178")
-    saida.tag_config("code_block", background="#2D2D2D", foreground="#CE9178")
+    # Cabeçalhos - com cores e espaçamento (sem font devido ao scaling)
+    saida.tag_config("h1", foreground=cores['h1'], spacing1=10, spacing3=5)
+    saida.tag_config("h2", foreground=cores['h2'], spacing1=8, spacing3=4)
+    saida.tag_config("h3", foreground=cores['h3'], spacing1=6, spacing3=3)
+    saida.tag_config("h4", foreground=cores['h4'], spacing1=4, spacing3=2)
+    
+    # Formatação de texto - cores adaptativas
+    saida.tag_config("bold", foreground=cores['bold'])
+    saida.tag_config("italic", foreground=cores['italic'])
+    saida.tag_config("code", background=cores['code_bg'], foreground=cores['code_fg'])
+    saida.tag_config("code_block", background=cores['code_bg'], foreground=cores['code_fg'])
     
     # Listas
     saida.tag_config("list", lmargin1=20, lmargin2=40)
@@ -806,7 +916,7 @@ def executar_comando(event=None):
         return
 
     if comando.lower() == 'sair':
-        salvar_config_janela(root)
+        salvar_config_janela(root, config)
         root.destroy()
         return
 
@@ -1398,7 +1508,7 @@ root.bind("<Control-s>", salvar_nota_edicao)
 root.bind("<Escape>", cancelar_edicao_nota)
 
 # Salvar a posição e tamanho da janela ao fechar
-root.protocol("WM_DELETE_WINDOW", lambda: (salvar_config_janela(root), root.destroy()))
+root.protocol("WM_DELETE_WINDOW", lambda: (salvar_config_janela(root, config), root.destroy()))
 
 limpar_saida()
 escrever_saida("========================================")

@@ -1,1 +1,19 @@
-{"geometry": "688x789+-1510+165"}
+{
+    "_instrucoes": {
+        "tema": "Opções disponíveis: 'dark' (escuro) ou 'light' (claro)",
+        "fontes": "Recomendado usar fontes monoespaçadas: 'Consolas', 'Courier New', 'Roboto Mono', 'Fira Code'",
+        "tamanhos": "Tamanhos são definidos em pixels"
+    },
+    "geometry": "800x600+-1566+174",
+    "theme": "light",
+    "fonts": {
+        "input_size": 12,
+        "output_size": 14,
+        "help_size": 12,
+        "family": "Consolas",
+        "fallback": "Courier New"
+    },
+    "interface": {
+        "help_area_height": 45
+    }
+}
