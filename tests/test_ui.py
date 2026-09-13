@@ -549,3 +549,54 @@ class TestRecuperacao(BaseUI):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+@unittest.skipUnless(_tem_display(), "sem display para Tk")
+class TestFonteELayout(BaseUI):
+    def test_familia_escolhida_existe_de_fato(self):
+        """Pedir familia inexistente ao Tk devolve fonte proporcional em silencio."""
+        import tkinter.font as tkfont
+        self.assertIn(self.view.familia, set(tkfont.families()))
+
+    def test_familia_escolhida_e_monoespacada(self):
+        import tkinter.font as tkfont
+        f = tkfont.Font(family=self.view.familia, size=14)
+        self.assertEqual(f.measure('0'), f.measure('W'),
+                         f"{self.view.familia} não é monoespaçada; o alinhamento "
+                         "por contagem de caracteres depende disso")
+
+    def test_colunas_dentro_dos_limites(self):
+        from keybase.ui.view import LARGURA_MAXIMA, LARGURA_MINIMA
+        self.assertGreaterEqual(self.view.colunas(), LARGURA_MINIMA)
+        self.assertLessEqual(self.view.colunas(), LARGURA_MAXIMA)
+
+    def test_separador_cabe_na_largura(self):
+        largura = self.view.colunas()
+        for linha in self.tela().splitlines():
+            if linha.startswith("─"):
+                self.assertLessEqual(len(linha), largura)
+
+    def test_contadores_alinhados_a_direita(self):
+        self.criar_pasta("Curto")
+        self.digitar('1'); self.criar_pasta("x"); self.digitar('V')
+        self.criar_pasta("Um nome bem mais comprido que o outro")
+        self.digitar('2'); self.criar_pasta("y"); self.criar_pasta("z"); self.digitar('V')
+
+        fins = [len(l.rstrip()) for l in self.tela().splitlines() if l.rstrip().endswith(']')]
+        self.assertEqual(len(fins), 2)
+        self.assertEqual(fins[0], fins[1], "os contadores [N] devem terminar na mesma coluna")
+
+    def test_nome_longo_e_truncado_sem_estourar(self):
+        largura = self.view.colunas()
+        self.criar_pasta("N" * 300)
+        for linha in self.tela().splitlines():
+            self.assertLessEqual(len(linha.rstrip()), largura)
+
+    def test_breadcrumb_longo_colapsa_o_meio(self):
+        from keybase.ui.layout import montar_breadcrumb
+        from keybase.model import nova_raiz
+        cadeia = [nova_raiz()] + [tree.novo_folder("Nivel " + "x" * 20) for _ in range(6)]
+        texto = montar_breadcrumb(cadeia, 60)
+        self.assertLessEqual(len(texto), 60)
+        self.assertIn("…", texto)
+        self.assertTrue(texto.startswith("~"))

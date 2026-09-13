@@ -1,18 +1,25 @@
 """Primitivas de desenho do terminal: breadcrumb, linhas de item e rodape.
 
-Convencao visual 100% ASCII (mais '─' e '…'): Consolas e Courier New no Windows
-nao garantem glifo para emoji num widget Text, que acabaria desenhando caixas.
+Convencao visual 100% ASCII (mais '─' e '…'): fontes monoespacadas comuns nao
+garantem glifo para emoji num widget Text, que acabaria desenhando caixas.
 Pasta = nome com '/' no fim e contagem entre colchetes; nota = nome puro.
+
+Toda largura vem de TerminalView.colunas(), calculada da largura real do widget
+e da largura de um caractere na fonte - nao de uma constante. Alinhar por
+contagem de caracteres so funciona com fonte monoespacada, e a escolha da
+familia e feita em view._escolher_familia().
 """
 
 from ..model import Folder
 from ..tree import contar_itens
 
-LARGURA = 78
+LARGURA_PADRAO = 78
 MARCA_RAIZ = "~"
+RECUO = "  "
+LARGURA_NUMERO = 2
 
 
-def montar_breadcrumb(cadeia, largura=LARGURA):
+def montar_breadcrumb(cadeia, largura=LARGURA_PADRAO):
     """Caminho legivel, colapsando o meio quando nao cabe.
 
     Mantem sempre a raiz e os dois ultimos niveis: ~ / Python / … / ORM / Qu...
@@ -31,48 +38,54 @@ def montar_breadcrumb(cadeia, largura=LARGURA):
         texto = " / ".join(partes)
         if len(texto) <= largura:
             return texto
-        # ja colapsado ao minimo; trunca o ultimo segmento
         break
 
     if len(texto) > largura:
-        texto = texto[:largura - 1] + "…"
+        texto = texto[:max(1, largura - 1)] + "…"
     return texto
 
 
-def linha_item(numero, no, largura=LARGURA):
+def linha_item(numero, no, largura=LARGURA_PADRAO):
     """Partes (texto, tag) de uma linha da listagem."""
-    prefixo = f"  {numero:>2}  "
+    prefixo = f"{RECUO}{numero:>{LARGURA_NUMERO}}  "
     partes = [(prefixo, 'numero')]
 
     if isinstance(no, Folder):
-        nome = no.nome + "/"
+        contador = f"[{contar_itens(no)}]" if no.filhos else ""
+        espaco_nome = largura - len(prefixo) - len(contador) - 2
+        nome = truncar(no.nome + "/", espaco_nome)
         partes.append((nome, 'pasta'))
-        total = contar_itens(no)
-        if total:
-            contador = f"[{total}]"
-            espaco = largura - len(prefixo) - len(nome) - len(contador)
-            partes.append((" " * max(2, espaco), None))
+        if contador:
+            preenchimento = largura - len(prefixo) - len(nome) - len(contador)
+            partes.append((" " * max(2, preenchimento), None))
             partes.append((contador, 'contador'))
     else:
-        partes.append((no.nome, 'nota'))
+        partes.append((truncar(no.nome, largura - len(prefixo)), 'nota'))
 
     return partes
 
 
-def linha_resultado(numero, resultado):
+def linha_resultado(numero, resultado, largura=LARGURA_PADRAO):
     """Duas ou tres linhas por hit de busca: rotulo+nome, caminho e trecho."""
+    prefixo = f"{RECUO}{numero:>{LARGURA_NUMERO}}  "
+    rotulo = f"[{resultado.rotulo_tipo}]  "
+    recuo = " " * (len(prefixo) + len(rotulo))
+
     linhas = [[
-        (f"  {numero:>2}  ", 'numero'),
-        (f"[{resultado.rotulo_tipo}]  ", 'contador'),
-        (resultado.no.nome, 'pasta' if resultado.e_pasta else 'nota'),
+        (prefixo, 'numero'),
+        (rotulo, 'contador'),
+        (truncar(resultado.no.nome, largura - len(prefixo) - len(rotulo)),
+         'pasta' if resultado.e_pasta else 'nota'),
     ]]
-    linhas.append([("      " + " " * 8, None), (resultado.caminho, 'contador')])
+    linhas.append([(recuo, None),
+                   (truncar(resultado.caminho, largura - len(recuo)), 'contador')])
     if resultado.trecho:
-        linhas.append([("      " + " " * 8, None), (resultado.trecho, 'dica')])
+        linhas.append([(recuo, None),
+                       (truncar(resultado.trecho, largura - len(recuo)), 'dica')])
     return linhas
 
 
-def montar_rodape(comandos, rotulos, disponiveis, largura=LARGURA):
+def montar_rodape(comandos, rotulos, disponiveis, largura=LARGURA_PADRAO):
     """Rodape gerado a partir do dict de comandos da tela.
 
     Como o texto sai do mesmo dict que o despacho usa, menu e comportamento nao
@@ -85,12 +98,20 @@ def montar_rodape(comandos, rotulos, disponiveis, largura=LARGURA):
     linhas = []
     atual = ""
     for item in itens:
-        candidato = f"{atual}   {item}" if atual else f"  {item}"
-        if len(candidato) > largura:
+        candidato = f"{atual}   {item}" if atual else f"{RECUO}{item}"
+        if len(candidato) > largura and atual:
             linhas.append(atual)
-            atual = f"  {item}"
+            atual = f"{RECUO}{item}"
         else:
             atual = candidato
     if atual:
         linhas.append(atual)
     return linhas
+
+
+def truncar(texto, largura):
+    if largura < 4:
+        return texto[:max(0, largura)]
+    if len(texto) <= largura:
+        return texto
+    return texto[:largura - 1] + "…"

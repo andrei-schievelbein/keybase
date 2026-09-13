@@ -107,9 +107,11 @@ class App:
         """Mensagem one-shot, consumida no proximo render.
 
         Tem lugar fixo no layout - na versao anterior o status era injetado em
-        "1.0" no meio do conteudo ja renderizado.
+        "1.0" no meio do conteudo ja renderizado. Truncada porque pode conter o
+        nome de um item, que o usuario controla e pode ser bem longo.
         """
-        self._flash = mensagem
+        from .layout import truncar
+        self._flash = truncar(mensagem, self.view.colunas() - 4)
         self._flash_erro = erro
 
     def consumir_flash(self):

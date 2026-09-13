@@ -98,7 +98,9 @@ class Screen:
 
     def desenhar_rodape(self):
         from ..layout import montar_rodape
-        linhas = montar_rodape(self.COMANDOS, self.ROTULOS, self.comandos_disponiveis())
+        linhas = montar_rodape(self.COMANDOS, self.ROTULOS,
+                               self.comandos_disponiveis(),
+                               largura=self.app.view.colunas())
         if linhas:
             self.app.view.separador()
             for linha in linhas:

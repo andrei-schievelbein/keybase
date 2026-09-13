@@ -10,6 +10,7 @@ editor. Na versao anterior notas e snippets eram cadastrados por este campo, o
 que destruia qualquer conteudo com quebra de linha.
 """
 
+from ..layout import truncar
 from .base import Screen
 
 CONFIRMACAO_FORTE = "DELETAR"
@@ -34,10 +35,10 @@ class PromptScreen(Screen):
     def render(self):
         view = self.app.view
         if self.contexto:
-            view.linha(self.contexto, 'breadcrumb')
+            view.linha(truncar(self.contexto, view.colunas()), 'breadcrumb')
             view.separador()
         view.linha()
-        view.linha("  " + self.pergunta, 'nota')
+        view.linha("  " + truncar(self.pergunta, view.colunas() - 4), 'nota')
         if self._erro:
             view.linha()
             view.linha("  " + self._erro, 'erro')
@@ -97,10 +98,11 @@ class ConfirmScreen(Screen):
     def render(self):
         view = self.app.view
         view.linha()
-        view.linha("  " + self.pergunta, 'erro' if self.forte else 'nota')
+        view.linha("  " + truncar(self.pergunta, view.colunas() - 4),
+                   'erro' if self.forte else 'nota')
         if self.detalhe:
             view.linha()
-            view.linha("  " + self.detalhe, 'dica')
+            view.linha("  " + truncar(self.detalhe, view.colunas() - 4), 'dica')
         if self._erro:
             view.linha()
             view.linha("  " + self._erro, 'erro')

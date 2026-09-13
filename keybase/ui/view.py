@@ -15,12 +15,19 @@ de sentinelas ('CTRL_S' injetado no campo de entrada) que truncava qualquer
 nota terminada nessa palavra.
 """
 
+import tkinter.font as tkfont
+
 import customtkinter as ctk
 
 from .markdown_render import configurar_tags, render_markdown
 from .theme import cores_interface, cores_markdown, cores_tokens
 
-LARGURA_COLUNAS = 78
+#: Usadas quando a familia configurada nao existe nesta maquina.
+MONOESPACADAS = ('Consolas', 'Menlo', 'DejaVu Sans Mono', 'Courier New',
+                 'Monaco', 'Liberation Mono', 'Courier')
+
+LARGURA_MINIMA = 40
+LARGURA_MAXIMA = 200
 
 
 class TerminalView:
@@ -41,16 +48,49 @@ class TerminalView:
 
     def _criar_fontes(self):
         fontes = self.config['fonts']
+        familia = self._escolher_familia(fontes)
 
-        def fonte(tamanho):
+        self.familia = familia
+        self.fonte_input = ctk.CTkFont(family=familia, size=fontes['input_size'])
+        self.fonte_output = ctk.CTkFont(family=familia, size=fontes['output_size'])
+        self.fonte_help = ctk.CTkFont(family=familia, size=fontes['help_size'])
+
+        # Largura de um caractere na fonte de saida: e ela que define quantas
+        # colunas cabem, e todo o alinhamento do terminal depende disso.
+        medidor = tkfont.Font(family=familia, size=fontes['output_size'])
+        self._largura_char = max(1, medidor.measure('0'))
+
+    @staticmethod
+    def _escolher_familia(fontes):
+        """Primeira familia monoespacada que exista de fato nesta maquina.
+
+        Pedir uma familia inexistente ao Tk nao levanta erro: ele devolve a
+        fonte proporcional do sistema em silencio. Como o layout do terminal
+        alinha por contagem de caracteres, isso desmontava a tela inteira -
+        era o que acontecia no macOS, onde 'Consolas' nao existe.
+        """
+        try:
+            disponiveis = set(tkfont.families())
+        except Exception:
+            return fontes['family']
+
+        preferidas = [fontes.get('family'), fontes.get('fallback')]
+        preferidas += [f for f in MONOESPACADAS if f not in preferidas]
+        for familia in preferidas:
+            if familia and familia in disponiveis:
+                return familia
+        return fontes['family']
+
+    def colunas(self):
+        """Quantos caracteres cabem na largura atual da area de leitura."""
+        largura_px = self.out.winfo_width()
+        if largura_px <= 1:  # ainda nao mapeado: usa a geometria configurada
             try:
-                return ctk.CTkFont(family=fontes['family'], size=tamanho)
-            except Exception:
-                return ctk.CTkFont(family=fontes['fallback'], size=tamanho)
-
-        self.fonte_input = fonte(fontes['input_size'])
-        self.fonte_output = fonte(fontes['output_size'])
-        self.fonte_help = fonte(fontes['help_size'])
+                largura_px = int(self.config['geometry'].split('x')[0]) - 40
+            except (ValueError, IndexError, KeyError):
+                largura_px = 760
+        colunas = (largura_px - 20) // self._largura_char
+        return max(LARGURA_MINIMA, min(LARGURA_MAXIMA, colunas))
 
     def _criar_widgets(self):
         self.entrada = ctk.CTkEntry(self.root, width=800, font=self.fonte_input)
@@ -138,8 +178,8 @@ class TerminalView:
             self.out.insert("end", "\n")
         self._com_escrita(escrever)
 
-    def separador(self, largura=LARGURA_COLUNAS):
-        self.linha("─" * largura, 'separador')
+    def separador(self, largura=None):
+        self.linha("─" * (largura or self.colunas()), 'separador')
 
     def markdown(self, texto):
         self._com_escrita(
