@@ -4,7 +4,7 @@ import os
 
 a = Analysis(
     ['keybase.pyw'],
-    pathex=[],
+    pathex=[SPECPATH],  # resolve o pacote keybase/ ao lado do entrypoint
     binaries=[],
     datas=[(os.path.join(SPECPATH, 'keybase.ico'), '.')],  # Incluir o ícone no executável
     hiddenimports=[],

@@ -24,6 +24,10 @@ ENV/
 
 # User data files (não versionar dados pessoais)
 data.json
+keybase_data.json
+keybase_data.bak.json
+keybase_data.snapshot-*.json
+*.json.tmp
 window_config.json
 
 # Workflows (arquivos de configuração local do agente)

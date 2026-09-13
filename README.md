@@ -4,7 +4,7 @@
 
 ![KeyBase Logo](keybase.png)
 
-Um gerenciador elegante de atalhos, notas e snippets de código para seus programas favoritos.
+Suas notas em Markdown, organizadas em pastas — na profundidade que você quiser.
 
 ![Python](https://img.shields.io/badge/Python-3.x-blue.svg)
 ![CustomTkinter](https://img.shields.io/badge/CustomTkinter-5.x-orange.svg)
@@ -14,192 +14,189 @@ Um gerenciador elegante de atalhos, notas e snippets de código para seus progra
 
 ## 📖 Sobre
 
-KeyBase é uma aplicação desktop moderna desenvolvida em Python que permite você gerenciar e organizar:
+KeyBase é uma aplicação desktop em Python para guardar referências rápidas: atalhos de teclado, comandos, trechos de código, anotações — o que você precisar consultar no dia a dia.
 
-- ⌨️ Atalhos de teclado
-- 📝 Notas importantes
-- 💻 Snippets de código
+A organização fica por sua conta. Existem apenas dois conceitos:
 
-Para cada programa que você usa, você pode manter uma biblioteca organizada de referências rápidas, tornando seu trabalho mais eficiente.
+- **📁 Pasta** — uma categoria. Pode conter notas e outras pastas, sem limite de profundidade.
+- **📄 Nota** — um texto em Markdown.
+
+Não há tipos fixos de conteúdo. Um "snippet" é só uma nota com um bloco de código; um "atalho" é uma nota com a combinação no título. Você decide a hierarquia:
+
+```
+~
+├── Python/
+│   ├── Pandas/
+│   │   ├── Leitura de arquivos
+│   │   └── Agrupamentos
+│   └── Ambientes virtuais
+├── Vscode/
+│   ├── Navegação/
+│   │   ├── Ctrl + P
+│   │   └── Ctrl + G
+│   └── Extensões
+└── Rascunhos
+```
 
 ## ✨ Características
 
-- 🎯 Interface moderna e intuitiva usando CustomTkinter
-- 🔍 Busca rápida de programas
-- 📱 Design responsivo
-- 💾 Salvamento automático de dados
-- 🎨 Tema escuro elegante
+- 🗂️ **Pastas aninhadas** sem limite de profundidade
+- ⌨️ **Interface de teclado** — navegação por números e letras, sem mouse
+- 🔍 **Busca em toda a base** por nome, descrição e conteúdo, mostrando o caminho de cada resultado
+- 🎯 **Filtro local** (`/termo`) para pastas grandes
+- 📝 **Markdown** com cabeçalhos, listas, ênfase e citações
+- 🎨 **Syntax highlighting** em blocos de código (qualquer linguagem suportada pelo Pygments)
+- ✏️ **Editor dedicado** — Ctrl+S salva, Esc cancela
+- 💾 **Gravação atômica** com backup automático e snapshot diário
+- 🌓 Temas claro e escuro
 - 🪟 Memoriza posição e tamanho da janela
-- 📝 **Renderização Markdown** para notas e atalhos
-- ✏️ **Edição rápida** com Ctrl+S para salvar e Esc para cancelar
-- 🎨 **Syntax highlighting** para snippets de código (suporta 11 linguagens)
-- 📊 **Contadores inteligentes** mostrando quantidade de itens
-- 🔖 **Snippets Markdown** com suporte a blocos de código
 
 ## 🚀 Como Usar
 
-1. Execute o KeyBase
-2. Pressione Enter para ver todos os programas ou comece a digitar para buscar
-3. Selecione um programa pelo número
-4. Gerencie atalhos, notas e snippets através do menu intuitivo
-
-### Menu Principal
+O KeyBase é operado inteiramente pelo teclado. Digite o comando no campo de cima e pressione Enter.
 
 ```
-========================
-1 - Ver atalhos
-2 - Ver notas
-3 - Ver snippets
-========================
-4 - Adicionar
-5 - Editar
-6 - Deletar
-========================
-7 - Editar nome do programa
-8 - Editar descrição
-9 - Deletar programa
-========================
+ ~ / Python / Pandas
+ ──────────────────────────────────────────────────────────
+   1  Leitura de arquivos/                            [4]
+   2  Agrupamentos
+   3  Merge e join
+ ──────────────────────────────────────────────────────────
+  nº abrir   C pasta   N nota   R renomear   E editar
+  D deletar  V voltar  B buscar  M raiz   ? ajuda   sair
 ```
+
+### Comandos
+
+| Comando | O que faz |
+|---------|-----------|
+| `1` `2` `3` … | Abre o item pelo número da lista |
+| `C` | Cria uma pasta na pasta atual |
+| `N` | Cria uma nota na pasta atual (e já abre o editor) |
+| `E` ou `E3` | Edita o conteúdo de uma nota |
+| `R` ou `R3` | Renomeia um item |
+| `D` ou `D3` | Apaga um item |
+| `V` | Volta um nível (ou limpa o filtro) |
+| `M` | Vai direto para a raiz |
+| `B` | Busca em toda a base |
+| `/termo` | Filtra só a pasta atual |
+| `?` | Ajuda |
+| `sair` | Encerra |
+
+Comandos que agem sobre um item aceitam o número junto (`D3` apaga o item 3) ou sozinho (`D` pergunta qual).
+
+### No editor
+
+| Tecla | Ação |
+|-------|------|
+| `Ctrl+S` | Salva e volta |
+| `Esc` | Cancela (pergunta antes de descartar) |
+
+Para um bloco de código com destaque de sintaxe, use as cercas do Markdown:
+
+````markdown
+```python
+df = pd.read_csv("dados.csv")
+```
+````
 
 ## 🛠️ Instalação
 
 ### Usuários Windows
 
-
-#### GitHub Releases
-1. Baixe a última versão do executável na seção [Releases](https://github.com/andrei-schievelbein/keybase/releases)
-2. Execute o arquivo `KeyBase.exe`
-3. Pronto! Não precisa de instalação
+Baixe a última versão do executável em [Releases](https://github.com/andrei-schievelbein/keybase/releases) e execute. Não precisa instalar nada.
 
 ### Desenvolvedores
 
 ```bash
-# Clone o repositório
 git clone https://github.com/andrei-schievelbein/keybase.git
-
-# Entre no diretório
 cd keybase
-
-# Instale as dependências
 pip install -r requirements.txt
-
-# Execute o programa
 python keybase.pyw
+```
+
+Testes:
+
+```bash
+python -m unittest discover -s tests -t .
 ```
 
 ## 📦 Arquivos e Portabilidade
 
-### Executável Standalone
-
-O KeyBase é distribuído como um **executável standalone** (`.exe`), o que significa:
-
-- ✅ **Não precisa de instalação** - Basta executar o arquivo
-- ✅ **Não precisa de Python instalado** - Tudo está embutido no executável
-- ✅ **Totalmente portátil** - Pode ser executado de um pen drive
-
-
-### Arquivos Gerados
-
-Quando você executa o KeyBase, ele cria automaticamente alguns arquivos no **mesmo diretório** onde o executável está localizado:
+O KeyBase é portátil: os dados ficam **ao lado do executável**, então dá para rodar de um pen drive. Se esse diretório não for gravável (por exemplo, um `.exe` instalado em `C:\Program Files`), os dados vão para `%APPDATA%\KeyBase` em vez de se perderem.
 
 | Arquivo | Necessário? | Descrição |
 |---------|-------------|-----------|
-| **KeyBase_latest.exe** | ✅ **Obrigatório** | O executável principal do programa |
-| **data.json** | ⚠️ **Recomendado** | Armazena todas as suas notas, atalhos e snippets. Sem ele, você perde seus dados |
-| **window_config.json** | ❌ **Opcional** | Salva o tamanho e posição da janela. Será recriado automaticamente se não existir |
+| **KeyBase.exe** | ✅ Obrigatório | O programa |
+| **keybase_data.json** | ⚠️ Recomendado | Suas pastas e notas. Sem ele, você começa do zero |
+| **keybase_data.bak.json** | ❌ Automático | Cópia da versão anterior, gravada antes de cada alteração |
+| **keybase_data.snapshot-*.json** | ❌ Automático | Uma cópia por dia, guardando os últimos 7 dias |
+| **window_config.json** | ❌ Opcional | Tamanho, posição, tema e fontes. Recriado se faltar |
 
-### Uso Portátil (Pen Drive)
+### Se o arquivo de dados for corrompido
 
-Para usar o KeyBase em um pen drive:
-
-**Mínimo absoluto:**
-```
-📁 MeuPenDrive
-  └── KeyBase_latest.exe
-```
-
-**Recomendado (mantém seus dados):**
-```
-📁 MeuPenDrive
-  ├── KeyBase_latest.exe
-  └── data.json
-```
-
-**Completo (mantém dados + preferências):**
-```
-📁 MeuPenDrive
-  ├── KeyBase_latest.exe
-  ├── data.json
-  └── window_config.json
-```
-
-> **💡 Dica:** Se você executar o KeyBase pela primeira vez sem o `data.json`, ele criará um arquivo vazio. Seus dados serão salvos automaticamente conforme você adiciona programas, notas, atalhos e snippets.
+O KeyBase **não sobrescreve** um arquivo que não conseguiu ler. Ele abre em modo somente leitura, mostra o erro e oferece restaurar o backup ou um dos snapshots — seus dados continuam no disco enquanto isso.
 
 ## 🔧 Tecnologias
 
-- [Python](https://www.python.org/) - Linguagem de programação
-- [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter) - Framework moderno para interfaces gráficas
-- [Pygments](https://pygments.org/) - Syntax highlighting para snippets de código
-- [Markdown](https://python-markdown.github.io/) - Renderização de Markdown
-- [PyInstaller](https://www.pyinstaller.org/) - Para criar o executável
+- [Python](https://www.python.org/)
+- [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter) — interface
+- [Markdown](https://python-markdown.github.io/) — renderização
+- [Pygments](https://pygments.org/) — syntax highlighting
+- [PyInstaller](https://www.pyinstaller.org/) — executável
 
 ## 📝 Estrutura de Dados
 
-O KeyBase usa um arquivo JSON para armazenar os dados com a seguinte estrutura:
-
 ```json
 {
-    "programas": [
-        {
-            "nome": "Nome do Programa",
-            "descricao": "Descrição do Programa",
-            "atalhos": [
-                {
-                    "combinacao": "Ctrl + C",
-                    "descricao": "Copiar"
-                }
-            ],
-            "notas": [
-                {
-                    "descricao": "Título da Nota",
-                    "texto": "Conteúdo detalhado da nota"
-                }
-            ],
-            "snippets": [
-                {
-                    "descricao": "Descrição do Snippet",
-                    "codigo": "print('Hello World')",
-                    "linguagem": "python"
-                }
-            ]
-        }
-    ]
+    "schema_version": 2,
+    "app_version": "2.0.0",
+    "atualizado_em": "2026-09-13T16:22:04+00:00",
+    "raiz": {
+        "id": "raiz",
+        "tipo": "folder",
+        "nome": "KeyBase",
+        "descricao": "",
+        "criado_em": "2026-09-13T16:00:00+00:00",
+        "atualizado_em": "2026-09-13T16:22:04+00:00",
+        "filhos": [
+            {
+                "id": "7f3a1c2b9d4e4f0aa1b2c3d4e5f60718",
+                "tipo": "folder",
+                "nome": "Vscode",
+                "descricao": "Editor principal",
+                "criado_em": "2026-09-13T16:01:10+00:00",
+                "atualizado_em": "2026-09-13T16:20:00+00:00",
+                "filhos": [
+                    {
+                        "id": "c3d4e5f60718293a4b5c6d7e8f901234",
+                        "tipo": "file",
+                        "nome": "Ctrl + P",
+                        "conteudo": "Abre o seletor rápido de arquivos.",
+                        "criado_em": "2026-09-13T16:03:00+00:00",
+                        "atualizado_em": "2026-09-13T16:22:04+00:00"
+                    }
+                ]
+            }
+        ]
+    }
 }
 ```
 
+Um `folder` tem `filhos`; um `file` tem `conteudo`. A ordem de exibição é derivada (pastas antes de notas, alfabético), não armazenada — reordenar o arquivo à mão não muda nada nem quebra referências.
+
+> **Formato anterior (v1):** versões até a 1.0.2 usavam `data.json`, com `programas` contendo listas separadas de `atalhos`, `notas` e `snippets`. Esse arquivo não é lido nem modificado pela versão atual. O script `importar_legado.py` converte esse conteúdo para o formato novo, se você quiser aproveitá-lo.
+
 ## 🤝 Contribuindo
 
-Contribuições são sempre bem-vindas! Sinta-se à vontade para:
-
-1. 🍴 Fazer um Fork
-2. 👯 Clonar o repositório
-3. 🔧 Criar uma branch para sua feature
-4. ✏️ Fazer commit das mudanças
-5. 👍 Fazer push para a branch
-6. 🎉 Criar um novo Pull Request
+Contribuições são bem-vindas — abra uma issue ou um pull request.
 
 ## 📄 Licença
 
-Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+MIT. Veja [LICENSE](LICENSE).
 
 ## 👤 Autor
 
 Feito com ❤️ por [Andrei Schievelbein](https://www.linkedin.com/in/andrei-schievelbein/)
 
 ---
-
-<div align="center">
-
-Se este projeto te ajudou, deixe uma ⭐️!
-
-</div>
