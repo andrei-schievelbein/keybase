@@ -40,7 +40,7 @@ class ViewerScreen(Screen):
         view = self.app.view
         cadeia = self.app.caminho_de(self.file_id)
 
-        view.linha(montar_breadcrumb(cadeia), 'breadcrumb')
+        view.linha(montar_breadcrumb(cadeia, view.colunas()), 'breadcrumb')
         view.separador()
 
         msg, erro = self.app.consumir_flash()

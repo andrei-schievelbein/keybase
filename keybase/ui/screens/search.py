@@ -62,7 +62,7 @@ class SearchResultsScreen(Screen):
         view.linha()
 
         for i, resultado in enumerate(self.resultados, start=1):
-            for partes in linha_resultado(i, resultado):
+            for partes in linha_resultado(i, resultado, view.colunas()):
                 view.trechos(partes)
             view.linha()
 

@@ -72,7 +72,8 @@ class BrowserScreen(Screen):
         view = self.app.view
 
         cadeia = self.app.caminho_de(self.node_id)
-        breadcrumb = montar_breadcrumb(cadeia)
+        largura = view.colunas()
+        breadcrumb = montar_breadcrumb(cadeia, largura)
         if self.filtro:
             view.trechos([
                 (breadcrumb, 'breadcrumb'),
@@ -96,7 +97,7 @@ class BrowserScreen(Screen):
             self._render_vazio()
         else:
             for i, no in enumerate(self.itens, start=1):
-                view.trechos(linha_item(i, no))
+                view.trechos(linha_item(i, no, largura))
 
         if self.filtro:
             total = tree.contar_itens(self.folder)
