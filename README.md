@@ -56,14 +56,19 @@ Não há tipos fixos de conteúdo. Um "snippet" é só uma nota com um bloco de 
 O KeyBase é operado inteiramente pelo teclado. Digite o comando no campo de cima e pressione Enter.
 
 ```
+==============================================================
  ~ / Python / Pandas
- ──────────────────────────────────────────────────────────
-   1  Leitura de arquivos/                            [4]
-   2  Agrupamentos
-   3  Merge e join
- ──────────────────────────────────────────────────────────
-  nº abrir   C pasta   N nota   R renomear   E editar
-  D deletar  V voltar  B buscar  M raiz   ? ajuda   sair
+==============================================================
+ 1 - Leitura de arquivos/                                 [4]
+ 2 - Agrupamentos
+ 3 - Merge e join
+==============================================================
+   C - Nova pasta       D - Deletar
+   N - Nova nota        B - Buscar
+   E - Editar nota      V - Voltar
+   R - Renomear         M - Ir para a raiz
+   ? - Ajuda         sair - Encerrar
+==============================================================
 ```
 
 ### Comandos

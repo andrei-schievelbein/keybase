@@ -178,8 +178,19 @@ class TerminalView:
             self.out.insert("end", "\n")
         self._com_escrita(escrever)
 
-    def separador(self, largura=None):
-        self.linha("─" * (largura or self.colunas()), 'separador')
+    def barra(self, largura=None):
+        """Barra de '=' delimitando um bloco, no estilo da versao 1."""
+        from .layout import barra
+        self.linha(barra(largura or self.colunas()), 'separador')
+
+    #: mantido como apelido para nao espalhar a troca de nome pelas telas
+    separador = barra
+
+    def cabecalho(self, texto, tag='breadcrumb'):
+        """Bloco de topo: barra, titulo, barra."""
+        self.barra()
+        self.linha(" " + texto, tag)
+        self.barra()
 
     def markdown(self, texto):
         self._com_escrita(

@@ -34,29 +34,28 @@ SECOES = [
 
 class HelpScreen(Screen):
     COMANDOS = {'V': 'cmd_voltar'}
-    ROTULOS = {'V': 'voltar'}
+    ROTULOS = {'V': 'Voltar'}
 
     def render(self):
         view = self.app.view
-        view.linha("Ajuda — comandos do KeyBase", 'breadcrumb')
-        view.separador()
+        view.cabecalho("AJUDA - COMANDOS DO KEYBASE")
 
         for titulo, linhas in SECOES:
-            view.linha()
-            view.linha("  " + titulo, 'pasta')
+            view.linha(" " + titulo.upper(), 'pasta')
             for comando, descricao in linhas:
                 view.trechos([
-                    ("    " + comando.ljust(14), 'flash'),
+                    (f" {comando:>13} - ", 'flash'),
                     (descricao, 'nota'),
                 ])
+            view.linha()
 
-        view.linha()
-        view.separador()
-        view.linha("  Uma pasta pode conter outras pastas e notas, sem limite de "
+        view.barra()
+        view.linha(" Uma pasta pode conter outras pastas e notas, sem limite de "
                    "profundidade.", 'dica')
-        view.linha("  Notas são escritas em Markdown.", 'dica')
-        view.linha()
-        view.linha("  V ou Enter para voltar", 'dica')
+        view.linha(" Notas são escritas em Markdown.", 'dica')
+        view.barra()
+        view.linha(" V ou ENTER para voltar", 'dica')
+        view.barra()
 
     def selecionar(self, indice):
         self.app.pop()

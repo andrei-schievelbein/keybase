@@ -12,7 +12,7 @@ descasamento que fez a versao anterior abrir o item errado depois de uma busca.
 
 from ... import search, tree
 from ...model import File, Folder
-from ..layout import montar_breadcrumb
+from ..layout import montar_breadcrumb, truncar
 from .base import Screen
 from .prompt import ConfirmScreen, PromptScreen
 
@@ -30,9 +30,9 @@ class BrowserScreen(Screen):
         '?': 'cmd_ajuda',
     }
     ROTULOS = {
-        'C': 'pasta', 'N': 'nota', 'E': 'editar', 'R': 'renomear',
-        'D': 'deletar', 'B': 'buscar', 'V': 'voltar', 'M': 'raiz',
-        '?': 'ajuda',
+        'C': 'Nova pasta', 'N': 'Nova nota', 'E': 'Editar nota',
+        'R': 'Renomear', 'D': 'Deletar', 'B': 'Buscar',
+        'V': 'Voltar', 'M': 'Ir para a raiz', '?': 'Ajuda',
     }
 
     def __init__(self, app, node_id):
@@ -73,25 +73,25 @@ class BrowserScreen(Screen):
 
         cadeia = self.app.caminho_de(self.node_id)
         largura = view.colunas()
-        breadcrumb = montar_breadcrumb(cadeia, largura)
+        breadcrumb = montar_breadcrumb(cadeia, largura - 2)
+
+        view.barra()
         if self.filtro:
             view.trechos([
-                (breadcrumb, 'breadcrumb'),
-                ("    filtro: ", 'contador'),
+                (" " + breadcrumb, 'breadcrumb'),
+                ("   filtro: ", 'contador'),
                 (f'"{self.filtro}"', 'flash'),
             ])
         else:
-            view.linha(breadcrumb, 'breadcrumb')
-
-        if self.folder is not None and self.folder.descricao and not self.filtro:
-            view.linha("  " + self.folder.descricao, 'contador')
-
-        view.separador()
+            view.linha(" " + breadcrumb, 'breadcrumb')
+            if self.folder is not None and self.folder.descricao:
+                view.linha(" " + truncar(self.folder.descricao, largura - 2), 'contador')
+        view.barra()
 
         msg, erro = self.app.consumir_flash()
         if msg:
-            view.linha("  " + msg, 'erro' if erro else 'flash')
-            view.linha()
+            view.linha(" " + msg, 'erro' if erro else 'flash')
+            view.barra()
 
         if not self.itens:
             self._render_vazio()
@@ -101,21 +101,19 @@ class BrowserScreen(Screen):
 
         if self.filtro:
             total = tree.contar_itens(self.folder)
-            view.linha()
-            view.linha(f"  {len(self.itens)} de {total} itens   ·   V limpa o filtro",
+            view.linha(f" {len(self.itens)} de {total} itens - V limpa o filtro",
                        'contador')
 
+        view.barra()
         self.desenhar_rodape()
 
     def _render_vazio(self):
         view = self.app.view
         if self.filtro:
-            view.linha("  (nenhum item corresponde ao filtro)", 'vazio')
+            view.linha(" Nenhum item corresponde ao filtro.", 'vazio')
             return
-        view.linha("  (pasta vazia)", 'vazio')
-        view.linha()
-        view.linha("   C  criar uma sub-pasta aqui", 'dica')
-        view.linha("   N  criar uma nota aqui", 'dica')
+        view.linha(" Pasta vazia.", 'vazio')
+        view.linha(" Use C para criar uma sub-pasta ou N para criar uma nota.", 'dica')
 
     def help_text(self):
         return None
@@ -314,8 +312,7 @@ class BrowserScreen(Screen):
                 self.app,
                 f"Apagar {tree.resumo_delecao(no)}?",
                 aplicar,
-                detalhe="Esta ação não pode ser desfeita pelo app, mas um backup "
-                        "é gravado antes." if forte else "",
+                detalhe="Um backup é gravado antes." if forte else "",
                 forte=forte,
             ))
 

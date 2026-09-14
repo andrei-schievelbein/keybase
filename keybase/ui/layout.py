@@ -1,7 +1,10 @@
-"""Primitivas de desenho do terminal: breadcrumb, linhas de item e rodape.
+"""Primitivas de desenho do terminal: barras, breadcrumb, itens e menu.
 
-Convencao visual 100% ASCII (mais '─' e '…'): fontes monoespacadas comuns nao
-garantem glifo para emoji num widget Text, que acabaria desenhando caixas.
+Estilo visual herdado da versao 1: blocos delimitados por barras de '=' e
+linhas no formato "N - Rotulo", densas e alinhadas. Tudo em ASCII (mais '…'):
+fontes monoespacadas comuns nao garantem glifo para emoji num widget Text, que
+acabaria desenhando caixas.
+
 Pasta = nome com '/' no fim e contagem entre colchetes; nota = nome puro.
 
 Toda largura vem de TerminalView.colunas(), calculada da largura real do widget
@@ -15,8 +18,13 @@ from ..tree import contar_itens
 
 LARGURA_PADRAO = 78
 MARCA_RAIZ = "~"
-RECUO = "  "
+CARACTERE_BARRA = "="
 LARGURA_NUMERO = 2
+LARGURA_LETRA = 4  # cabe 'sair' alinhado com as letras isoladas
+
+
+def barra(largura=LARGURA_PADRAO):
+    return CARACTERE_BARRA * largura
 
 
 def montar_breadcrumb(cadeia, largura=LARGURA_PADRAO):
@@ -46,8 +54,8 @@ def montar_breadcrumb(cadeia, largura=LARGURA_PADRAO):
 
 
 def linha_item(numero, no, largura=LARGURA_PADRAO):
-    """Partes (texto, tag) de uma linha da listagem."""
-    prefixo = f"{RECUO}{numero:>{LARGURA_NUMERO}}  "
+    """Partes (texto, tag) de uma linha da listagem, no formato 'N - Nome'."""
+    prefixo = f"{numero:>{LARGURA_NUMERO}} - "
     partes = [(prefixo, 'numero')]
 
     if isinstance(no, Folder):
@@ -67,8 +75,8 @@ def linha_item(numero, no, largura=LARGURA_PADRAO):
 
 def linha_resultado(numero, resultado, largura=LARGURA_PADRAO):
     """Duas ou tres linhas por hit de busca: rotulo+nome, caminho e trecho."""
-    prefixo = f"{RECUO}{numero:>{LARGURA_NUMERO}}  "
-    rotulo = f"[{resultado.rotulo_tipo}]  "
+    prefixo = f"{numero:>{LARGURA_NUMERO}} - "
+    rotulo = f"[{resultado.rotulo_tipo}] "
     recuo = " " * (len(prefixo) + len(rotulo))
 
     linhas = [[
@@ -85,27 +93,35 @@ def linha_resultado(numero, resultado, largura=LARGURA_PADRAO):
     return linhas
 
 
-def montar_rodape(comandos, rotulos, disponiveis, largura=LARGURA_PADRAO):
-    """Rodape gerado a partir do dict de comandos da tela.
+def celula_comando(letra, rotulo):
+    """'   C - Nova pasta' — a letra alinhada a direita para 'sair' encaixar."""
+    return f"{letra:>{LARGURA_LETRA}} - {rotulo}"
 
-    Como o texto sai do mesmo dict que o despacho usa, menu e comportamento nao
+
+def montar_menu(comandos, rotulos, disponiveis, largura=LARGURA_PADRAO, extras=()):
+    """Menu em duas colunas, no formato da versao 1.
+
+    Sai do mesmo dict que despacha os comandos, entao menu e comportamento nao
     podem divergir - na versao anterior divergiam.
     """
-    itens = [f"{letra} {rotulos[letra]}"
+    itens = [(letra, rotulos[letra])
              for letra in comandos
              if letra in disponiveis and letra in rotulos]
+    itens += [par for par in extras]
+    if not itens:
+        return []
+
+    metade = (len(itens) + 1) // 2
+    esquerda, direita = itens[:metade], itens[metade:]
+    coluna = max(len(celula_comando(l, r)) for l, r in esquerda) + 4
+    coluna = min(coluna, max(20, largura // 2))
 
     linhas = []
-    atual = ""
-    for item in itens:
-        candidato = f"{atual}   {item}" if atual else f"{RECUO}{item}"
-        if len(candidato) > largura and atual:
-            linhas.append(atual)
-            atual = f"{RECUO}{item}"
-        else:
-            atual = candidato
-    if atual:
-        linhas.append(atual)
+    for i, (letra, rotulo) in enumerate(esquerda):
+        texto = celula_comando(letra, rotulo).ljust(coluna)
+        if i < len(direita):
+            texto += celula_comando(*direita[i])
+        linhas.append(truncar(texto.rstrip(), largura))
     return linhas
 
 
