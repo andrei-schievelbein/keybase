@@ -34,16 +34,17 @@ class PromptScreen(Screen):
 
     def render(self):
         view = self.app.view
+        largura = view.colunas()
         if self.contexto:
-            view.linha(truncar(self.contexto, view.colunas()), 'breadcrumb')
-            view.separador()
-        view.linha()
-        view.linha("  " + truncar(self.pergunta, view.colunas() - 4), 'nota')
+            view.cabecalho(truncar(self.contexto, largura - 2))
+        else:
+            view.barra()
+        view.linha(" " + truncar(self.pergunta, largura - 2), 'nota')
         if self._erro:
-            view.linha()
-            view.linha("  " + self._erro, 'erro')
-        view.linha()
-        view.linha("  Enter confirma · Esc cancela", 'dica')
+            view.linha(" " + truncar(self._erro, largura - 2), 'erro')
+        view.barra()
+        view.linha(" ENTER confirma - ESC cancela", 'dica')
+        view.barra()
 
         if not self._preenchido and self.valor_inicial:
             # Renomear ja vem com o nome atual no campo: editar e melhor que
@@ -97,20 +98,20 @@ class ConfirmScreen(Screen):
 
     def render(self):
         view = self.app.view
-        view.linha()
-        view.linha("  " + truncar(self.pergunta, view.colunas() - 4),
+        largura = view.colunas()
+        view.barra()
+        view.linha(" " + truncar(self.pergunta, largura - 2),
                    'erro' if self.forte else 'nota')
         if self.detalhe:
-            view.linha()
-            view.linha("  " + truncar(self.detalhe, view.colunas() - 4), 'dica')
+            view.linha(" " + truncar(self.detalhe, largura - 2), 'dica')
         if self._erro:
-            view.linha()
-            view.linha("  " + self._erro, 'erro')
-        view.linha()
+            view.linha(" " + truncar(self._erro, largura - 2), 'erro')
+        view.barra()
         if self.forte:
-            view.linha(f"  Digite {CONFIRMACAO_FORTE} para confirmar · Esc cancela", 'dica')
+            view.linha(f" Digite {CONFIRMACAO_FORTE} para confirmar - ESC cancela", 'dica')
         else:
-            view.linha("  S confirma · qualquer outra tecla cancela", 'dica')
+            view.linha(" S confirma - qualquer outra tecla cancela", 'dica')
+        view.barra()
 
     def handle_input(self, texto):
         texto = (texto or "").strip()

@@ -18,7 +18,8 @@ class SearchResultsScreen(Screen):
         'M': 'cmd_raiz',
         '?': 'cmd_ajuda',
     }
-    ROTULOS = {'B': 'nova busca', 'V': 'voltar', 'M': 'raiz', '?': 'ajuda'}
+    ROTULOS = {'B': 'Nova busca', 'V': 'Voltar',
+               'M': 'Ir para a raiz', '?': 'Ajuda'}
 
     def __init__(self, app, termo):
         super().__init__(app)
@@ -38,27 +39,28 @@ class SearchResultsScreen(Screen):
     def render(self):
         view = self.app.view
 
-        view.trechos([("Busca: ", 'breadcrumb'), (f'"{self.termo}"', 'flash')])
-        view.separador()
+        view.barra()
+        view.trechos([(" Busca: ", 'breadcrumb'), (f'"{self.termo}"', 'flash')])
+        view.barra()
 
         if self.erro:
-            view.linha()
-            view.linha("  " + self.erro, 'erro')
+            view.linha(" " + self.erro, 'erro')
+            view.barra()
             self.desenhar_rodape()
             return
 
         if not self.resultados:
-            view.linha()
-            view.linha("  (nenhum resultado)", 'vazio')
+            view.linha(" Nenhum resultado.", 'vazio')
+            view.barra()
             self.desenhar_rodape()
             return
 
         plural = "resultados" if self.total != 1 else "resultado"
         if self.total > len(self.resultados):
-            view.linha(f"  mostrando {len(self.resultados)} de {self.total} {plural}",
+            view.linha(f" Mostrando {len(self.resultados)} de {self.total} {plural}",
                        'contador')
         else:
-            view.linha(f"  {self.total} {plural}", 'contador')
+            view.linha(f" {self.total} {plural}", 'contador')
         view.linha()
 
         for i, resultado in enumerate(self.resultados, start=1):
@@ -66,6 +68,7 @@ class SearchResultsScreen(Screen):
                 view.trechos(partes)
             view.linha()
 
+        view.barra()
         self.desenhar_rodape()
 
     def comandos_disponiveis(self):

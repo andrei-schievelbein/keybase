@@ -79,6 +79,15 @@ class BaseUI(unittest.TestCase):
     def nome_tela(self):
         return type(self.app.atual).__name__
 
+    def assertNaTela(self, trecho):
+        """Procura na tela ignorando caixa e acento (o estilo do texto muda)."""
+        from keybase.tree import normalizar
+        self.assertIn(normalizar(trecho), normalizar(self.tela()))
+
+    def assertNaoNaTela(self, trecho):
+        from keybase.tree import normalizar
+        self.assertNotIn(normalizar(trecho), normalizar(self.tela()))
+
     def criar_pasta(self, nome):
         self.digitar('C')
         self.digitar(nome)
@@ -95,7 +104,7 @@ class BaseUI(unittest.TestCase):
 
 class TestNavegacao(BaseUI):
     def test_raiz_comeca_vazia(self):
-        self.assertIn("pasta vazia", self.tela())
+        self.assertNaTela("pasta vazia")
         self.assertIn("~", self.tela())
 
     def test_criar_e_entrar_em_pasta(self):
@@ -437,7 +446,7 @@ class TestAjudaERodape(BaseUI):
     def test_ajuda_abre_e_volta(self):
         self.digitar('?')
         self.assertEqual(self.nome_tela(), 'HelpScreen')
-        self.assertIn("comandos do KeyBase", self.tela())
+        self.assertNaTela("comandos do KeyBase")
         self.digitar('V')
         self.assertEqual(self.nome_tela(), 'BrowserScreen')
 
@@ -455,10 +464,10 @@ class TestAjudaERodape(BaseUI):
                               f"{classe.__name__}: {letra} sem rótulo no rodapé")
 
     def test_rodape_esconde_voltar_na_raiz(self):
-        self.assertNotIn("V voltar", self.tela())
+        self.assertNaoNaTela("V - Voltar")
         self.criar_pasta("A")
         self.digitar('1')
-        self.assertIn("V voltar", self.tela())
+        self.assertNaTela("V - Voltar")
 
     def test_comando_invalido_avisa(self):
         self.digitar('XYZ')
@@ -521,8 +530,8 @@ class TestRecuperacao(BaseUI):
             app.stack = [RecoveryScreen(app, e, self.arquivo)]
             app.rerender()
 
-        self.assertIn("Não foi possível ler", self.tela())
-        self.assertIn("Restaurar", self.tela())
+        self.assertNaTela("não foi possível ler")
+        self.assertNaTela("Restaurar")
         # o arquivo corrompido continua intacto
         self.assertEqual(self.arquivo.read_text(encoding='utf-8'), corrompido)
 
@@ -570,11 +579,17 @@ class TestFonteELayout(BaseUI):
         self.assertGreaterEqual(self.view.colunas(), LARGURA_MINIMA)
         self.assertLessEqual(self.view.colunas(), LARGURA_MAXIMA)
 
-    def test_separador_cabe_na_largura(self):
+    def test_barras_ocupam_a_largura_exata(self):
         largura = self.view.colunas()
-        for linha in self.tela().splitlines():
-            if linha.startswith("─"):
-                self.assertLessEqual(len(linha), largura)
+        barras = [l for l in self.tela().splitlines() if l.startswith("=")]
+        self.assertTrue(barras, "a tela deve ter barras de '=' delimitando blocos")
+        for linha in barras:
+            self.assertEqual(len(linha), largura)
+
+    def test_menu_no_formato_letra_traco_rotulo(self):
+        self.assertNaTela("C - Nova pasta")
+        self.assertNaTela("N - Nova nota")
+        self.assertNaTela("sair - Encerrar")
 
     def test_contadores_alinhados_a_direita(self):
         self.criar_pasta("Curto")

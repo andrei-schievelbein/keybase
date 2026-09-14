@@ -96,12 +96,17 @@ class Screen:
         """Letras ativas agora. Sobrescreva para esconder o que nao se aplica."""
         return set(self.COMANDOS)
 
+    #: pares (letra, rotulo) acrescentados ao fim do menu
+    EXTRAS = (("sair", "Encerrar"),)
+
     def desenhar_rodape(self):
-        from ..layout import montar_rodape
-        linhas = montar_rodape(self.COMANDOS, self.ROTULOS,
-                               self.comandos_disponiveis(),
-                               largura=self.app.view.colunas())
+        from ..layout import montar_menu
+        view = self.app.view
+        linhas = montar_menu(self.COMANDOS, self.ROTULOS,
+                             self.comandos_disponiveis(),
+                             largura=view.colunas(),
+                             extras=self.EXTRAS)
         if linhas:
-            self.app.view.separador()
             for linha in linhas:
-                self.app.view.linha(linha, 'dica')
+                view.linha(linha, 'dica')
+            view.barra()

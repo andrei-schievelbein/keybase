@@ -17,8 +17,8 @@ class ViewerScreen(Screen):
         '?': 'cmd_ajuda',
     }
     ROTULOS = {
-        'E': 'editar', 'R': 'renomear', 'D': 'deletar',
-        'V': 'voltar', 'M': 'raiz', '?': 'ajuda',
+        'E': 'Editar nota', 'R': 'Renomear', 'D': 'Deletar',
+        'V': 'Voltar', 'M': 'Ir para a raiz', '?': 'Ajuda',
     }
 
     def __init__(self, app, file_id):
@@ -40,13 +40,12 @@ class ViewerScreen(Screen):
         view = self.app.view
         cadeia = self.app.caminho_de(self.file_id)
 
-        view.linha(montar_breadcrumb(cadeia, view.colunas()), 'breadcrumb')
-        view.separador()
+        view.cabecalho(montar_breadcrumb(cadeia, view.colunas() - 2))
 
         msg, erro = self.app.consumir_flash()
         if msg:
-            view.linha("  " + msg, 'erro' if erro else 'flash')
-            view.linha()
+            view.linha(" " + msg, 'erro' if erro else 'flash')
+            view.barra()
 
         # O cabecalho vai ANTES do markdown. Na versao anterior ele era inserido
         # em "1.0" depois da renderizacao, deslocando as tags ja posicionadas.
@@ -54,11 +53,9 @@ class ViewerScreen(Screen):
             if self.file.conteudo.strip():
                 view.markdown(self.file.conteudo)
             else:
-                view.linha()
-                view.linha("  (nota vazia)", 'vazio')
-                view.linha()
-                view.linha("   E  escrever o conteúdo", 'dica')
+                view.linha(" Nota vazia. Use E para escrever o conteúdo.", 'vazio')
 
+        view.barra()
         self.desenhar_rodape()
 
     def help_text(self):

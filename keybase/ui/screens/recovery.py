@@ -21,30 +21,25 @@ class RecoveryScreen(Screen):
 
     def render(self):
         view = self.app.view
-        view.linha("Não foi possível ler seus dados", 'erro')
-        view.separador()
-        view.linha()
-        view.linha("  " + str(self.erro), 'erro')
-        view.linha()
-        view.linha(f"  Arquivo: {self.caminho}", 'contador')
-        view.linha()
-        view.linha("  Nada foi alterado. O app está em modo somente leitura,", 'dica')
-        view.linha("  então seus dados continuam no disco exatamente como estão.", 'dica')
-        view.linha()
-        view.separador()
-        view.linha()
+        view.cabecalho("NÃO FOI POSSÍVEL LER SEUS DADOS", 'erro')
+        view.linha(" " + str(self.erro), 'erro')
+        view.linha(f" Arquivo: {self.caminho}", 'contador')
+        view.barra()
+        view.linha(" Nada foi alterado. O app está em modo somente leitura,", 'dica')
+        view.linha(" então seus dados continuam no disco exatamente como estão.", 'dica')
+        view.barra()
 
         for i, (rotulo, _) in enumerate(self.opcoes, start=1):
-            view.trechos([(f"  {i:>2}  ", 'numero'), (f"Restaurar {rotulo}", 'nota')])
+            view.trechos([(f"{i:>2} - ", 'numero'), (f"Restaurar {rotulo}", 'nota')])
 
         if not self.opcoes:
-            view.linha("  (não há backups disponíveis para restaurar)", 'vazio')
-            view.linha()
-            view.linha("  Você pode corrigir o arquivo à mão num editor de texto", 'dica')
-            view.linha("  e reabrir o KeyBase.", 'dica')
+            view.linha(" Não há backups disponíveis para restaurar.", 'vazio')
+            view.linha(" Você pode corrigir o arquivo à mão num editor de texto", 'dica')
+            view.linha(" e reabrir o KeyBase.", 'dica')
 
-        view.linha()
-        view.linha("  Digite 'sair' para encerrar sem alterar nada.", 'dica')
+        view.barra()
+        view.linha(" Digite 'sair' para encerrar sem alterar nada.", 'dica')
+        view.barra()
 
     def selecionar(self, indice):
         if not (0 <= indice < len(self.opcoes)):
