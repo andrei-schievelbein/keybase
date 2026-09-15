@@ -90,6 +90,16 @@ class Screen:
         """Esc. Por padrao equivale a voltar."""
         self.on_back()
 
+    def on_modo(self, modo):
+        """Ctrl+1/2/3. No-op: so a EditorScreen implementa.
+
+        E por ser no-op aqui que os atalhos de modo sao inertes fora da edicao,
+        sem nenhum `if` espalhado pela janela.
+        """
+
+    def on_ciclar_modo(self):
+        """Ctrl+E. Mesma logica do on_modo."""
+
     # --- rodape ------------------------------------------------------------
 
     def comandos_disponiveis(self):

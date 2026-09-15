@@ -232,8 +232,17 @@ class TestTemaClaro(unittest.TestCase):
         self.assertIn('#795E26', html)   # Name.Function do tema claro
 
     def test_fundo_do_codigo_muda_por_tema(self):
-        self.assertIn('#2D2D2D', render('```\nx\n```', 'dark'))
-        self.assertIn('#F0F0F0', render('```\nx\n```', 'light'))
+        from keybase.qt.theme import cores_markdown
+        for tema in ('dark', 'light'):
+            self.assertIn(cores_markdown(tema)['code_bg'], render('```\nx\n```', tema))
+
+    def test_fundo_do_codigo_contrasta_com_o_da_janela(self):
+        """Sem contraste suficiente o bloco some no fundo."""
+        from keybase.qt.theme import cores_interface, cores_markdown
+        for tema in ('dark', 'light'):
+            fundo = cores_interface(tema)['fundo']
+            codigo = cores_markdown(tema)['code_bg']
+            self.assertNotEqual(fundo.lower(), codigo.lower())
 
 
 if __name__ == '__main__':

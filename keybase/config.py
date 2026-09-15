@@ -6,8 +6,6 @@ nao depender de variavel global.
 
 import json
 
-import customtkinter as ctk
-
 from .paths import arquivo_config
 
 DEFAULT_CONFIG = {
@@ -27,6 +25,10 @@ DEFAULT_CONFIG = {
     },
     'interface': {
         'help_area_height': 60,
+    },
+    'editor': {
+        'modo': 'editar',
+        'proporcao': [1, 1],
     },
 }
 
@@ -52,11 +54,18 @@ def carregar_config():
     return config
 
 
-def salvar_config(janela, config_atual):
-    """Grava a config, com as instrucoes no topo para quem editar a mao."""
+def salvar_config(config_atual, geometria):
+    """Grava a config, com as instrucoes no topo para quem editar a mao.
+
+    Recebe a geometria ja como STRING, nao a janela. Assim este modulo nao
+    depende de nenhum toolkit e pode ser testado sem display - e, sobretudo,
+    nao repete o bug da versao anterior, que fazia `config['geometry'] =
+    janela.geometry()`: em Qt isso devolve um QRect, o json.dump estoura com
+    TypeError e o except OSError ao redor nao pega.
+    """
     try:
         config = dict(config_atual)
-        config['geometry'] = janela.geometry()
+        config['geometry'] = geometria
 
         ordenado = {
             '_instrucoes': config.pop('_instrucoes', DEFAULT_CONFIG['_instrucoes'])
@@ -65,12 +74,8 @@ def salvar_config(janela, config_atual):
 
         with open(arquivo_config(), 'w', encoding='utf-8') as f:
             json.dump(ordenado, f, indent=4, ensure_ascii=False)
-    except OSError as e:
+    except (OSError, TypeError, ValueError) as e:
         print(f"Erro ao salvar config: {e}")
-
-
-def aplicar_tema(tema):
-    ctk.set_appearance_mode(tema)
 
 
 def _copia_profunda(valor):

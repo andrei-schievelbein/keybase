@@ -19,8 +19,8 @@ from ..tree import construir_indice
 
 
 class App:
-    def __init__(self, root, view, doc, caminho_dados, config):
-        self.root = root
+    def __init__(self, janela, view, doc, caminho_dados, config):
+        self.janela = janela
         self.view = view
         self.doc = doc
         self.caminho_dados = caminho_dados
@@ -147,14 +147,13 @@ class App:
 
     # --- eventos -----------------------------------------------------------
 
-    def submit(self, event=None):
+    def submit(self):
         comando = self.view.ler_entrada()
         self.view.limpar_entrada()
         if self.atual:
             self.atual.handle_input(comando)
-        return "break"
 
-    def save(self, event=None):
+    def save(self):
         """Ctrl+S vai direto ao metodo da tela ativa.
 
         Substitui o hack de injetar a sentinela 'CTRL_S' no campo de entrada,
@@ -162,18 +161,26 @@ class App:
         """
         if self.atual:
             self.atual.on_save()
-        return "break"
 
-    def cancel(self, event=None):
+    def cancel(self):
         if self.atual:
             self.atual.on_cancel()
-        return "break"
+
+    def modo(self, qual):
+        """Ctrl+1/2/3. No-op na classe base, entao e inerte fora do editor."""
+        if self.atual:
+            self.atual.on_modo(qual)
+
+    def ciclar_modo(self):
+        """Ctrl+E. Mesma logica do modo()."""
+        if self.atual:
+            self.atual.on_ciclar_modo()
 
     def sair(self):
         from ..config import salvar_config
         storage.salvar_se_sujo(self.doc, self.caminho_dados)
-        salvar_config(self.root, self.config)
-        self.root.destroy()
+        salvar_config(self.config, self.janela.geometria_texto())
+        self.janela.encerrar()
 
     def ao_fechar(self):
         self.sair()
