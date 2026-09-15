@@ -12,6 +12,7 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QGuiApplication, QKeySequence, QShortcut
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
+from . import atalhos
 from .painel_nota import DIVIDIDO, EDITAR, PREVIEW
 from .theme import cores_interface
 from .view import TerminalView
@@ -154,23 +155,26 @@ class JanelaPrincipal(QWidget):
         self._atalhos(app)
 
     def _atalhos(self, app):
-        def liga(sequencia, acao):
-            atalho = QShortcut(QKeySequence(sequencia), self)
-            # WindowShortcut: dispara com o foco em QUALQUER widget da janela.
-            # E o que faz Ctrl+S e Esc valerem tanto no campo quanto no editor,
-            # sem precisar registrar em cada widget.
-            atalho.setContext(Qt.ShortcutContext.WindowShortcut)
-            atalho.activated.connect(acao)
-            return atalho
+        self._registrados = []
 
-        # StandardKey em vez de string literal: no macOS o Qt ja mapeia para
-        # Cmd+S, que e o comportamento nativo esperado
-        liga(QKeySequence.StandardKey.Save, app.save)
-        liga(QKeySequence.StandardKey.Cancel, app.cancel)
-        liga("Ctrl+1", lambda: app.modo(EDITAR))
-        liga("Ctrl+2", lambda: app.modo(PREVIEW))
-        liga("Ctrl+3", lambda: app.modo(DIVIDIDO))
-        liga("Ctrl+E", app.ciclar_modo)
+        def liga(sequencia, acao):
+            # atalhos.variantes registra tambem o Ctrl fisico no macOS, onde o
+            # Qt mapeia "Ctrl+X" para Cmd+X
+            for combinacao in atalhos.variantes(sequencia):
+                atalho = QShortcut(combinacao, self)
+                # WindowShortcut: dispara com o foco em QUALQUER widget da
+                # janela. E o que faz Ctrl+S e Esc valerem tanto no campo
+                # quanto no editor, sem registrar em cada widget.
+                atalho.setContext(Qt.ShortcutContext.WindowShortcut)
+                atalho.activated.connect(acao)
+                self._registrados.append(atalho)
+
+        liga(atalhos.SALVAR, app.save)
+        liga(atalhos.CANCELAR, app.cancel)
+        liga(atalhos.MODO_EDITAR, lambda: app.modo(EDITAR))
+        liga(atalhos.MODO_PREVIEW, lambda: app.modo(PREVIEW))
+        liga(atalhos.MODO_DIVIDIDO, lambda: app.modo(DIVIDIDO))
+        liga(atalhos.MODO_CICLAR, app.ciclar_modo)
 
     # --- geometria ---------------------------------------------------------
 
