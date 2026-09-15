@@ -20,7 +20,7 @@ def cores_markdown(tema):
             'texto': '#D4D4D4',
             'bold': '#FFFFFF',
             'italic': '#B4B4B4',
-            'code_bg': '#2D2D2D',
+            'code_bg': '#333333',
             'code_fg': '#CE9178',
             'quote': '#8A8A8A',
             'quote_borda': '#4A4A4A',

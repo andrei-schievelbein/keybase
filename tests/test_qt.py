@@ -1,6 +1,10 @@
-"""Testes da camada de UI dirigindo o app de verdade, sem interacao manual.
+"""Testes da UI Qt dirigindo o app de verdade, sem interacao manual.
 
-Exigem display (Tk). Pulam sozinhos quando nao ha um.
+Rodam headless com QT_QPA_PLATFORM=offscreen, inclusive em CI - melhor que a
+suite Tk anterior, que se auto-pulava quando nao havia display.
+
+A QApplication e singleton de processo e NUNCA e destruida: criar e destruir
+uma por teste e fonte conhecida de segfault.
 """
 
 import os
@@ -10,57 +14,66 @@ import tempfile
 import unittest
 from pathlib import Path
 
+# ANTES de qualquer import de PySide6: o plugin de plataforma e escolhido na
+# criacao da QApplication e a variavel e lida nesse momento.
+os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 try:
-    import customtkinter as ctk
-    _tk_erro = None
+    from PySide6.QtWidgets import QApplication
+    _qt_erro = None
 except Exception as e:  # pragma: no cover
-    ctk = None
-    _tk_erro = e
+    QApplication = None
+    _qt_erro = e
 
 from keybase import storage, tree
 from keybase.config import DEFAULT_CONFIG
 from keybase.model import ID_RAIZ
 
-
-def _tem_display():
-    if ctk is None:
-        return False
-    try:
-        r = ctk.CTk()
-        r.destroy()
-        return True
-    except Exception:
-        return False
+_QAPP = None
 
 
-@unittest.skipUnless(_tem_display(), f"sem display para Tk ({_tk_erro})")
+def _app_qt():
+    global _QAPP
+    _QAPP = QApplication.instance() or QApplication([])
+    return _QAPP
+
+
+@unittest.skipUnless(QApplication is not None, f"PySide6 indisponivel ({_qt_erro})")
 class BaseUI(unittest.TestCase):
     def setUp(self):
-        from keybase.ui.app import App
-        from keybase.ui.screens.browser import BrowserScreen
-        from keybase.ui.view import TerminalView
+        from keybase.qt.app import App
+        from keybase.qt.janela import JanelaPrincipal
+        from keybase.qt.screens.browser import BrowserScreen
 
+        _app_qt()
         self.dir = Path(tempfile.mkdtemp())
         self.arquivo = self.dir / 'keybase_data.json'
 
         config = {k: (dict(v) if isinstance(v, dict) else v)
                   for k, v in DEFAULT_CONFIG.items()}
         config['theme'] = 'light'
+        config['geometry'] = '800x600'
+        self.config = config
 
-        self.root = ctk.CTk()
-        self.root.withdraw()
-        self.view = TerminalView(self.root, config)
+        self.janela = JanelaPrincipal(config)
+        self.view = self.janela.view
+        self.janela.resize(800, 600)
+        self.janela.show()   # offscreen: show() resolve a geometria de verdade
 
         doc = storage.Documento.novo()
-        self.app = App(self.root, self.view, doc, self.arquivo, config)
+        self.app = App(self.janela, self.view, doc, self.arquivo, config)
+        self.janela.ligar(self.app)
         self.app.stack = [BrowserScreen(self.app, ID_RAIZ)]
         self.app.rerender()
 
     def tearDown(self):
         try:
-            self.root.destroy()
+            self.janela._encerrando = True   # nao dispara ao_fechar no close
+            self.janela.close()
+            self.janela.deleteLater()
+            _app_qt().processEvents()        # NUNCA qapp.quit()
         except Exception:
             pass
         shutil.rmtree(self.dir, ignore_errors=True)
@@ -69,12 +82,11 @@ class BaseUI(unittest.TestCase):
 
     def digitar(self, comando):
         """Simula digitar no campo de entrada e apertar Enter."""
-        self.view.entrada.delete(0, 'end')
-        self.view.entrada.insert(0, comando)
+        self.view.entrada.setText(comando)
         self.app.submit()
 
     def tela(self):
-        return self.view.out.get("1.0", "end")
+        return self.view.out.toPlainText()
 
     def nome_tela(self):
         return type(self.app.atual).__name__
@@ -88,6 +100,19 @@ class BaseUI(unittest.TestCase):
         from keybase.tree import normalizar
         self.assertNotIn(normalizar(trecho), normalizar(self.tela()))
 
+    def editor(self):
+        return self.view.painel.editor
+
+    def digitar_no_editor(self, texto):
+        self.editor().setPlainText(texto)
+
+    def anexar_no_editor(self, texto):
+        """Insere no FIM: definir_texto deixa o cursor no inicio."""
+        from PySide6.QtGui import QTextCursor
+        editor = self.editor()
+        editor.moveCursor(QTextCursor.MoveOperation.End)
+        editor.insertPlainText(texto)
+
     def criar_pasta(self, nome):
         self.digitar('C')
         self.digitar(nome)
@@ -96,11 +121,9 @@ class BaseUI(unittest.TestCase):
         self.digitar('N')
         self.digitar(nome)          # cai no editor
         if conteudo:
-            self.view.edit.delete("1.0", "end")
-            self.view.edit.insert("1.0", conteudo)
+            self.digitar_no_editor(conteudo)
         self.app.save()             # Ctrl+S
         self.digitar('')            # sai do viewer
-
 
 class TestNavegacao(BaseUI):
     def test_raiz_comeca_vazia(self):
@@ -191,7 +214,7 @@ class TestCriacao(BaseUI):
         self.digitar('igual')  # mesma coisa ignorando caixa
         self.assertEqual(self.nome_tela(), 'PromptScreen')
         self.assertIn("Já existe", self.tela())
-        self.assertEqual(self.view.entrada.get(), 'igual')
+        self.assertEqual(self.view.entrada.text(), 'igual')
 
     def test_nome_vazio_cancela(self):
         self.digitar('C')
@@ -224,7 +247,7 @@ class TestEdicao(BaseUI):
         self.criar_nota("Nota", "original")
         self.digitar('1')            # viewer
         self.digitar('E')            # editor
-        self.view.edit.insert("end", " alterado")
+        self.anexar_no_editor(' alterado')
         self.app.cancel()            # Esc
         self.assertEqual(self.nome_tela(), 'ConfirmScreen')
         self.assertIn("Descartar", self.tela())
@@ -233,7 +256,7 @@ class TestEdicao(BaseUI):
         self.criar_nota("Nota", "original")
         self.digitar('1')
         self.digitar('E')
-        self.view.edit.insert("end", " alterado")
+        self.anexar_no_editor(' alterado')
         self.app.cancel()
         self.digitar('S')            # sim, descartar
         recarregado = storage.carregar(self.arquivo)
@@ -246,13 +269,13 @@ class TestEdicao(BaseUI):
         self.criar_nota("Nota", "original")
         self.digitar('1')
         self.digitar('E')
-        self.view.edit.insert("end", " descartado")
+        self.anexar_no_editor(' descartado')
         self.app.cancel()
         self.digitar('S')
         # a segunda edição tem de funcionar normalmente
         self.digitar('E')
         self.assertEqual(self.nome_tela(), 'EditorScreen')
-        self.view.edit.insert("end", " salvo")
+        self.anexar_no_editor(' salvo')
         self.app.save()
         self.assertEqual(storage.carregar(self.arquivo).raiz.filhos[0].conteudo,
                          "original salvo")
@@ -296,7 +319,7 @@ class TestRenomearDeletar(BaseUI):
     def test_renomear_vem_pre_preenchido(self):
         self.criar_pasta("Antigo")
         self.digitar('R1')
-        self.assertEqual(self.view.entrada.get(), 'Antigo')
+        self.assertEqual(self.view.entrada.text(), 'Antigo')
 
     def test_renomear_aplica(self):
         self.criar_pasta("Antigo")
@@ -452,9 +475,9 @@ class TestAjudaERodape(BaseUI):
 
     def test_rodape_so_mostra_comando_implementado(self):
         """Rodape e despacho saem do mesmo dict, entao nao podem divergir."""
-        from keybase.ui.screens.browser import BrowserScreen
-        from keybase.ui.screens.search import SearchResultsScreen
-        from keybase.ui.screens.viewer import ViewerScreen
+        from keybase.qt.screens.browser import BrowserScreen
+        from keybase.qt.screens.search import SearchResultsScreen
+        from keybase.qt.screens.viewer import ViewerScreen
 
         for classe in (BrowserScreen, ViewerScreen, SearchResultsScreen):
             for letra, metodo in classe.COMANDOS.items():
@@ -475,35 +498,35 @@ class TestAjudaERodape(BaseUI):
 
     def test_saida_e_somente_leitura(self):
         # CTkTextbox nao expoe 'state' via cget; o estado fica no widget Tk interno
-        self.assertEqual(str(self.view.out._textbox.cget('state')), 'disabled')
+        self.assertTrue(self.view.out.isReadOnly())
 
     def test_digitar_na_saida_nao_altera_o_conteudo(self):
+        from PySide6.QtTest import QTest
         antes = self.tela()
-        self.view.out._textbox.event_generate('<Key>', keysym='a')
-        self.root.update_idletasks()
+        self.view.out.setFocus()
+        QTest.keyClicks(self.view.out, 'abc')
+        _app_qt().processEvents()
         self.assertEqual(self.tela(), antes)
 
 
 class TestModos(BaseUI):
     def test_editor_e_saida_sao_exclusivos(self):
-        self.assertTrue(self.view.out.winfo_manager())
-        self.assertFalse(self.view.edit.winfo_manager())
+        """A tela dividida nunca pode vazar para o modo terminal."""
+        self.assertIs(self.view.pilha.currentWidget(), self.view.out)
 
         self.digitar('N')
         self.digitar('Nota')
-        self.assertTrue(self.view.edit.winfo_manager())
-        self.assertFalse(self.view.out.winfo_manager())
+        self.assertIs(self.view.pilha.currentWidget(), self.view.painel)
 
         self.app.save()
-        self.assertTrue(self.view.out.winfo_manager())
-        self.assertFalse(self.view.edit.winfo_manager())
+        self.assertIs(self.view.pilha.currentWidget(), self.view.out)
 
     def test_barra_de_dica_so_aparece_no_editor(self):
-        self.assertFalse(self.view.ajuda.winfo_manager())
+        self.assertFalse(self.view.ajuda.isVisibleTo(self.janela))
         self.digitar('N')
         self.digitar('Nota')
-        self.assertTrue(self.view.ajuda.winfo_manager())
-        self.assertIn("Ctrl+S", self.view.ajuda.get("1.0", "end"))
+        self.assertTrue(self.view.ajuda.isVisibleTo(self.janela))
+        self.assertIn("Ctrl+S", self.view.ajuda.text())
 
     def test_ctrl_s_fora_do_editor_e_inocuo(self):
         self.app.save()
@@ -512,8 +535,8 @@ class TestModos(BaseUI):
 
 class TestRecuperacao(BaseUI):
     def test_arquivo_corrompido_entra_em_modo_recuperacao(self):
-        from keybase.ui.app import App
-        from keybase.ui.screens.recovery import RecoveryScreen
+        from keybase.qt.app import App
+        from keybase.qt.screens.recovery import RecoveryScreen
 
         self.criar_pasta("A")
         self.criar_pasta("B")          # gera .bak
@@ -526,7 +549,7 @@ class TestRecuperacao(BaseUI):
         except storage.StorageError as e:
             doc = storage.Documento.novo()
             doc.somente_leitura = True
-            app = App(self.root, self.view, doc, self.arquivo, self.app.config)
+            app = App(self.janela, self.view, doc, self.arquivo, self.config)
             app.stack = [RecoveryScreen(app, e, self.arquivo)]
             app.rerender()
 
@@ -536,8 +559,8 @@ class TestRecuperacao(BaseUI):
         self.assertEqual(self.arquivo.read_text(encoding='utf-8'), corrompido)
 
     def test_restaurar_backup_recupera_os_dados(self):
-        from keybase.ui.app import App
-        from keybase.ui.screens.recovery import RecoveryScreen
+        from keybase.qt.app import App
+        from keybase.qt.screens.recovery import RecoveryScreen
 
         self.criar_pasta("A")
         self.criar_pasta("B")
@@ -548,7 +571,7 @@ class TestRecuperacao(BaseUI):
         except storage.StorageError as e:
             doc = storage.Documento.novo()
             doc.somente_leitura = True
-            app = App(self.root, self.view, doc, self.arquivo, self.app.config)
+            app = App(self.janela, self.view, doc, self.arquivo, self.config)
             app.stack = [RecoveryScreen(app, e, self.arquivo)]
             app.rerender()
             app.atual.selecionar(0)
@@ -560,22 +583,33 @@ if __name__ == "__main__":
     unittest.main(verbosity=2)
 
 
-@unittest.skipUnless(_tem_display(), "sem display para Tk")
 class TestFonteELayout(BaseUI):
     def test_familia_escolhida_existe_de_fato(self):
-        """Pedir familia inexistente ao Tk devolve fonte proporcional em silencio."""
-        import tkinter.font as tkfont
-        self.assertIn(self.view.familia, set(tkfont.families()))
+        """Pedir familia inexistente ao Qt devolve outra fonte em silencio."""
+        from PySide6.QtGui import QFontDatabase
+        self.assertIn(self.view.familia, set(QFontDatabase.families()))
+
+    def test_familia_resolvida_e_a_pedida(self):
+        """QFontInfo revela a substituicao silenciosa; e o bug historico."""
+        from PySide6.QtGui import QFontInfo
+        self.assertEqual(QFontInfo(self.view.fonte_saida).family().lower(),
+                         self.view.familia.lower())
 
     def test_familia_escolhida_e_monoespacada(self):
-        import tkinter.font as tkfont
-        f = tkfont.Font(family=self.view.familia, size=14)
-        self.assertEqual(f.measure('0'), f.measure('W'),
-                         f"{self.view.familia} não é monoespaçada; o alinhamento "
+        from PySide6.QtGui import QFontMetricsF
+        metrica = QFontMetricsF(self.view.fonte_saida)
+        larguras = {metrica.horizontalAdvance(c) for c in ('0', 'W', 'i', '=', '~')}
+        self.assertEqual(len(larguras), 1,
+                         f"{self.view.familia} nao e monoespacada; o alinhamento "
                          "por contagem de caracteres depende disso")
 
+    def test_glifo_de_reticencias_existe(self):
+        """Se vier de fonte substituta, o truncamento desalinha."""
+        from keybase.qt import fonte
+        self.assertTrue(fonte.tem_reticencias(self.view.fonte_saida))
+
     def test_colunas_dentro_dos_limites(self):
-        from keybase.ui.view import LARGURA_MAXIMA, LARGURA_MINIMA
+        from keybase.qt.view import LARGURA_MAXIMA, LARGURA_MINIMA
         self.assertGreaterEqual(self.view.colunas(), LARGURA_MINIMA)
         self.assertLessEqual(self.view.colunas(), LARGURA_MAXIMA)
 
@@ -608,10 +642,258 @@ class TestFonteELayout(BaseUI):
             self.assertLessEqual(len(linha.rstrip()), largura)
 
     def test_breadcrumb_longo_colapsa_o_meio(self):
-        from keybase.ui.layout import montar_breadcrumb
+        from keybase.qt.layout import montar_breadcrumb
         from keybase.model import nova_raiz
         cadeia = [nova_raiz()] + [tree.novo_folder("Nivel " + "x" * 20) for _ in range(6)]
         texto = montar_breadcrumb(cadeia, 60)
         self.assertLessEqual(len(texto), 60)
         self.assertIn("…", texto)
         self.assertTrue(texto.startswith("~"))
+
+
+class TestModosDeEdicao(BaseUI):
+    """Os tres modos e a troca entre eles - o recurso novo deste port."""
+
+    def abrir_editor(self, conteudo="# Titulo\n\ntexto do corpo"):
+        self.criar_nota("Nota", conteudo)
+        self.digitar('1')     # viewer
+        self.digitar('E')     # editor
+        return self.view.painel
+
+    def test_abre_no_modo_editar(self):
+        painel = self.abrir_editor()
+        self.assertEqual(painel.modo(), 'editar')
+        self.assertTrue(painel.editor.isVisibleTo(self.janela))
+        self.assertFalse(painel.preview.isVisibleTo(self.janela))
+
+    def test_ctrl_3_divide_a_tela(self):
+        painel = self.abrir_editor()
+        self.app.modo('dividido')
+        self.assertEqual(painel.modo(), 'dividido')
+        self.assertTrue(painel.editor.isVisibleTo(self.janela))
+        self.assertTrue(painel.preview.isVisibleTo(self.janela))
+
+    def test_ctrl_2_mostra_so_o_preview(self):
+        painel = self.abrir_editor()
+        self.app.modo('preview')
+        self.assertFalse(painel.editor.isVisibleTo(self.janela))
+        self.assertTrue(painel.preview.isVisibleTo(self.janela))
+
+    def test_ctrl_e_cicla_os_tres(self):
+        painel = self.abrir_editor()
+        self.assertEqual(painel.modo(), 'editar')
+        self.app.ciclar_modo(); self.assertEqual(painel.modo(), 'preview')
+        self.app.ciclar_modo(); self.assertEqual(painel.modo(), 'dividido')
+        self.app.ciclar_modo(); self.assertEqual(painel.modo(), 'editar')
+
+    def test_preview_renderiza_texto_NAO_salvo(self):
+        """E a razao de existir do recurso."""
+        painel = self.abrir_editor("original")
+        self.anexar_no_editor("\n\nlinha ainda nao salva")
+        self.app.modo('preview')
+        painel.forcar_render()
+        self.assertIn("linha ainda nao salva", painel.preview.toPlainText())
+        # e o disco continua com o original
+        self.assertNotIn("nao salva", storage.carregar(self.arquivo).raiz.filhos[0].conteudo)
+
+    def test_trocar_de_modo_preserva_texto_e_cursor(self):
+        painel = self.abrir_editor("linha um\nlinha dois\nlinha tres")
+        cursor = painel.editor.textCursor()
+        cursor.setPosition(15)
+        painel.editor.setTextCursor(cursor)
+        texto_antes = painel.texto()
+        posicao_antes = painel.editor.textCursor().position()
+
+        self.app.modo('dividido')
+        self.app.modo('preview')
+        self.app.modo('editar')
+
+        self.assertEqual(painel.texto(), texto_antes)
+        self.assertEqual(painel.editor.textCursor().position(), posicao_antes)
+
+    def test_markdown_completo_no_preview(self):
+        painel = self.abrir_editor(
+            "| a | b |\n|---|---|\n| 1 | 2 |\n\n- [x] feita\n\n~~cortado~~")
+        self.app.modo('preview')
+        painel.forcar_render()
+        html = painel.preview.document().toHtml()
+        self.assertIn('<table', html)
+        texto = painel.preview.toPlainText()
+        self.assertIn('☑', texto)
+        self.assertIn('cortado', texto)
+
+    def test_debounce_agrupa_digitacao(self):
+        painel = self.abrir_editor()
+        self.app.modo('dividido')
+        painel.forcar_render()
+        antes = painel._renders
+        for i in range(5):
+            self.anexar_no_editor(f"\nlinha {i}")
+        # o timer ainda nao disparou: nenhuma renderizacao intermediaria
+        self.assertEqual(painel._renders, antes)
+        painel.forcar_render()
+        self.assertEqual(painel._renders, antes + 1)
+
+    def test_nao_renderiza_com_preview_oculto(self):
+        painel = self.abrir_editor()
+        antes = painel._renders
+        for i in range(5):
+            self.anexar_no_editor(f"\nlinha {i}")
+        self.assertEqual(painel._renders, antes)
+
+    def test_rolagem_do_preview_sobrevive_a_rerenderizacao(self):
+        """Sem isto o preview salta para o topo a cada tecla.
+
+        Feito no modo preview, nao no dividido: no dividido a sincronia
+        editor->preview mexeria na rolagem de proposito, mascarando o que este
+        teste mede.
+        """
+        painel = self.abrir_editor("\n\n".join(f"paragrafo {i}" for i in range(200)))
+        self.app.modo('preview')
+        painel.forcar_render()
+        _app_qt().processEvents()
+
+        barra = painel.preview.verticalScrollBar()
+        if barra.maximum() == 0:
+            self.skipTest("conteudo nao gerou rolagem no ambiente offscreen")
+        barra.setValue(barra.maximum() // 2)
+        fracao_antes = barra.value() / barra.maximum()
+
+        self.digitar_no_editor(
+            "\n\n".join(f"paragrafo {i}" for i in range(200)) + "\n\nmais um")
+        painel.forcar_render()
+        _app_qt().processEvents()
+
+        fracao_depois = barra.value() / barra.maximum() if barra.maximum() else 0
+        self.assertAlmostEqual(fracao_antes, fracao_depois, delta=0.15)
+
+    def test_sincronia_de_rolagem_no_dividido(self):
+        """Rolar o editor leva o preview junto, proporcionalmente."""
+        painel = self.abrir_editor("\n\n".join(f"paragrafo {i}" for i in range(200)))
+        self.app.modo('dividido')
+        painel.forcar_render()
+        _app_qt().processEvents()
+
+        origem = painel.editor.verticalScrollBar()
+        destino = painel.preview.verticalScrollBar()
+        if origem.maximum() == 0 or destino.maximum() == 0:
+            self.skipTest("conteudo nao gerou rolagem no ambiente offscreen")
+
+        destino.setValue(0)
+        origem.setValue(origem.maximum())
+        _app_qt().processEvents()
+        self.assertGreater(destino.value(), 0)
+
+    def test_salvar_do_modo_dividido(self):
+        painel = self.abrir_editor("antes")
+        self.app.modo('dividido')
+        self.digitar_no_editor("depois de editar no dividido")
+        self.app.save()
+        self.assertEqual(storage.carregar(self.arquivo).raiz.filhos[0].conteudo,
+                         "depois de editar no dividido")
+        self.assertEqual(self.nome_tela(), 'ViewerScreen')
+
+    def test_nota_terminada_em_CTRL_S_sobrevive_no_dividido(self):
+        """Regressao historica, agora tambem pelo caminho do modo dividido."""
+        painel = self.abrir_editor("x")
+        self.app.modo('dividido')
+        self.digitar_no_editor("instrucoes\n\nCTRL_S")
+        self.app.save()
+        self.assertEqual(storage.carregar(self.arquivo).raiz.filhos[0].conteudo,
+                         "instrucoes\n\nCTRL_S")
+
+    def test_modo_persiste_na_config(self):
+        self.abrir_editor()
+        self.app.modo('dividido')
+        self.assertEqual(self.config['editor']['modo'], 'dividido')
+
+    def test_modo_persiste_entre_notas(self):
+        self.abrir_editor()
+        self.app.modo('dividido')
+        self.app.save()
+        self.digitar('')          # sai do viewer
+        self.criar_pasta("outra") if False else None
+        self.digitar('N'); self.digitar('Segunda nota')
+        self.assertEqual(self.view.modo_edicao_atual(), 'dividido')
+
+    def test_barra_de_dica_mostra_o_modo(self):
+        self.abrir_editor()
+        self.assertIn('[editar]', self.view.ajuda.text())
+        self.app.modo('dividido')
+        self.assertIn('[dividido]', self.view.ajuda.text())
+
+    def test_atalhos_de_modo_sao_inertes_fora_do_editor(self):
+        """No-op na classe Screen: nenhum `if` na janela."""
+        self.criar_pasta("Pasta")
+        antes = self.tela()
+        self.app.modo('dividido')
+        self.app.modo('preview')
+        self.app.ciclar_modo()
+        self.assertEqual(self.nome_tela(), 'BrowserScreen')
+        self.assertEqual(self.tela(), antes)
+        self.assertIs(self.view.pilha.currentWidget(), self.view.out)
+
+    def test_esc_no_dividido_com_alteracao_pede_confirmacao(self):
+        self.abrir_editor("original")
+        self.app.modo('dividido')
+        self.anexar_no_editor(" alterado")
+        self.app.cancel()
+        self.assertEqual(self.nome_tela(), 'ConfirmScreen')
+
+
+class TestEditorComportamento(BaseUI):
+    def abrir(self, conteudo=""):
+        self.criar_nota("Nota", conteudo or "x")
+        self.digitar('1'); self.digitar('E')
+        return self.view.painel.editor
+
+    def test_tab_insere_espacos(self):
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+        editor = self.abrir("")
+        editor.setPlainText("")
+        editor.setFocus()
+        QTest.keyClick(editor, Qt.Key.Key_Tab)
+        self.assertEqual(editor.toPlainText(), "    ")
+
+    def test_enter_continua_lista(self):
+        from PySide6.QtCore import Qt
+        from PySide6.QtGui import QTextCursor
+        from PySide6.QtTest import QTest
+        editor = self.abrir()
+        editor.setPlainText("- primeiro")
+        editor.moveCursor(QTextCursor.MoveOperation.End)
+        QTest.keyClick(editor, Qt.Key.Key_Return)
+        self.assertEqual(editor.toPlainText(), "- primeiro\n- ")
+
+    def test_enter_numera_lista_ordenada(self):
+        from PySide6.QtCore import Qt
+        from PySide6.QtGui import QTextCursor
+        from PySide6.QtTest import QTest
+        editor = self.abrir()
+        editor.setPlainText("1. um")
+        editor.moveCursor(QTextCursor.MoveOperation.End)
+        QTest.keyClick(editor, Qt.Key.Key_Return)
+        self.assertEqual(editor.toPlainText(), "1. um\n2. ")
+
+    def test_enter_em_lista_vazia_encerra(self):
+        from PySide6.QtCore import Qt
+        from PySide6.QtGui import QTextCursor
+        from PySide6.QtTest import QTest
+        editor = self.abrir()
+        editor.setPlainText("- ")
+        editor.moveCursor(QTextCursor.MoveOperation.End)
+        QTest.keyClick(editor, Qt.Key.Key_Return)
+        self.assertEqual(editor.toPlainText(), "\n")
+
+    def test_editor_mostra_markdown_cru(self):
+        editor = self.abrir("# Titulo\n\n```python\nx = 1\n```")
+        self.assertIn("```python", editor.toPlainText())
+        self.assertIn("# Titulo", editor.toPlainText())
+
+    def test_texto_e_round_trip_exato(self):
+        """O editor nunca altera o conteudo do usuario."""
+        original = "linha\ttab\n\n  espacos  \n\nCTRL_S"
+        editor = self.abrir()
+        editor.setPlainText(original)
+        self.assertEqual(self.view.texto_editor(), original)

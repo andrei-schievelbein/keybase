@@ -1,35 +1,48 @@
-"""Bootstrap: monta a janela, carrega os dados e entra no mainloop."""
+"""Bootstrap: monta a janela, carrega os dados e entra no event loop."""
 
-import customtkinter as ctk
+import sys
+
+from PySide6.QtCore import QTimer
+from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import QApplication
 
 from . import paths, storage
-from .config import aplicar_tema, carregar_config, salvar_config
+from .config import carregar_config
 from .model import ID_RAIZ
-from .ui.app import App
-from .ui.screens.browser import BrowserScreen
-from .ui.screens.recovery import RecoveryScreen
-from .ui.view import TerminalView
+from .qt.app import App
+from .qt.estilo import aplicar_tema
+from .qt.janela import JanelaPrincipal
+from .qt.screens.browser import BrowserScreen
+from .qt.screens.recovery import RecoveryScreen
 
 
-def _carregar_icone(root):
+def _icone():
     try:
-        icone = paths.recurso('keybase.ico')
-        if icone.exists():
-            root.iconbitmap(str(icone))
+        caminho = paths.recurso('keybase.ico')
+        if caminho.exists():
+            # O Qt le .ico em todas as plataformas, diferente do iconbitmap do
+            # Tk, que so funcionava no Windows.
+            return QIcon(str(caminho))
     except Exception as e:
         print(f"Aviso: não foi possível carregar o ícone: {e}")
+    return None
 
 
 def main():
     config = carregar_config()
-    aplicar_tema(config['theme'])
 
-    root = ctk.CTk()
-    root.title("KeyBase")
-    _carregar_icone(root)
-    root.geometry(config['geometry'])
+    qapp = QApplication(sys.argv)
+    qapp.setApplicationName("KeyBase")
+    aplicar_tema(qapp, config['theme'])
 
-    view = TerminalView(root, config)
+    icone = _icone()
+    if icone is not None:
+        qapp.setWindowIcon(icone)
+
+    janela = JanelaPrincipal(config)
+    if icone is not None:
+        janela.setWindowIcon(icone)
+
     caminho = paths.arquivo_dados()
 
     erro_carga = None
@@ -42,7 +55,8 @@ def main():
         doc = storage.Documento.novo()
         doc.somente_leitura = True
 
-    app = App(root, view, doc, caminho, config)
+    app = App(janela, janela.view, doc, caminho, config)
+    janela.ligar(app)
 
     if erro_carga is not None:
         app.stack = [RecoveryScreen(app, erro_carga, caminho)]
@@ -51,15 +65,12 @@ def main():
         if doc.avisos:
             app.flash("Arquivo reparado: " + "; ".join(doc.avisos))
 
-    view.entrada.bind("<Return>", app.submit)
-    root.bind("<Control-s>", app.save)
-    root.bind("<Control-S>", app.save)
-    root.bind("<Escape>", app.cancel)
-    root.protocol("WM_DELETE_WINDOW", app.ao_fechar)
-
+    janela.aplicar_geometria(config['geometry'])
+    janela.show()          # antes do rerender: colunas() so e valida depois
     app.rerender()
-    root.after(100, view.entrada.focus_set)
-    root.mainloop()
+
+    QTimer.singleShot(0, janela.view.focar_entrada)
+    sys.exit(qapp.exec())
 
 
 if __name__ == "__main__":

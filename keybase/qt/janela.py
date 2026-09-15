@@ -1,0 +1,226 @@
+"""Janela principal: layout, atalhos e ciclo de vida.
+
+A janela nao sabe qual tela esta ativa - ela so traduz tecla em verbo e
+entrega ao App, que despacha para a tela do topo da pilha. Como os metodos
+correspondentes sao no-op na classe Screen, um atalho de modo apertado fora do
+editor simplesmente nao faz nada, sem nenhum `if` aqui.
+"""
+
+import re
+
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QGuiApplication, QKeySequence, QShortcut
+from PySide6.QtWidgets import QVBoxLayout, QWidget
+
+from .painel_nota import DIVIDIDO, EDITAR, PREVIEW
+from .theme import cores_interface
+from .view import TerminalView
+
+ATRASO_RESIZE_MS = 120
+TAMANHO_MINIMO = (400, 300)
+
+PADRAO_GEOMETRIA = re.compile(
+    r'^\s*(\d+)\s*x\s*(\d+)(?:([+-])(-?\d+)([+-])(-?\d+))?\s*$'
+)
+
+
+def parse_geometria(texto):
+    """'800x600+100+50' -> (800, 600, 100, 50). None se nao casar.
+
+    Aceita a forma que o Tk gravava para coordenada negativa ('+-1566'), que e
+    o que ha nos arquivos de configuracao existentes.
+    """
+    casamento = PADRAO_GEOMETRIA.match(texto or '')
+    if not casamento:
+        return None
+    largura, altura = int(casamento.group(1)), int(casamento.group(2))
+    if casamento.group(3) is None:
+        return largura, altura, None, None
+    x = int(casamento.group(4)) * (-1 if casamento.group(3) == '-' else 1)
+    y = int(casamento.group(6)) * (-1 if casamento.group(5) == '-' else 1)
+    return largura, altura, x, y
+
+
+def formatar_geometria(largura, altura, x, y):
+    return f"{largura}x{altura}+{x}+{y}"
+
+
+def ajustar_a_area(largura, altura, x, y, areas):
+    """Encaixa a janela numa das areas disponiveis.
+
+    Funcao pura (recebe retangulos, nao consulta o sistema) para poder ser
+    testada sem display. Resolve o caso real de uma geometria salva num monitor
+    secundario que nao existe mais - hoje a janela abriria fora da tela.
+    """
+    if not areas:
+        return largura, altura, x or 0, y or 0
+
+    largura = max(TAMANHO_MINIMO[0], largura)
+    altura = max(TAMANHO_MINIMO[1], altura)
+
+    if x is None or y is None:
+        ax, ay, aw, ah = areas[0]
+        largura, altura = min(largura, aw), min(altura, ah)
+        return largura, altura, ax + (aw - largura) // 2, ay + (ah - altura) // 2
+
+    def intersecao(area):
+        ax, ay, aw, ah = area
+        dx = max(0, min(x + largura, ax + aw) - max(x, ax))
+        dy = max(0, min(y + altura, ay + ah) - max(y, ay))
+        return dx * dy
+
+    melhor = max(areas, key=intersecao)
+    if intersecao(melhor) == 0:
+        # a geometria salva nao alcanca tela nenhuma: centraliza na primaria
+        ax, ay, aw, ah = areas[0]
+        largura, altura = min(largura, aw), min(altura, ah)
+        return largura, altura, ax + (aw - largura) // 2, ay + (ah - altura) // 2
+
+    ax, ay, aw, ah = melhor
+    largura, altura = min(largura, aw), min(altura, ah)
+    x = min(max(x, ax), ax + aw - largura)
+    y = min(max(y, ay), ay + ah - altura)
+    return largura, altura, x, y
+
+
+class JanelaPrincipal(QWidget):
+    def __init__(self, config, parent=None):
+        super().__init__(parent)
+        self.config = config
+        self.app = None
+        self._encerrando = False
+        self._colunas_pintadas = None
+
+        self.setWindowTitle("KeyBase")
+        self.view = TerminalView(config, self)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.view)
+
+        self._timer_resize = QTimer(self)
+        self._timer_resize.setSingleShot(True)
+        self._timer_resize.timeout.connect(self._ao_reajustar)
+
+        self.setStyleSheet(self._folha())
+
+    def _folha(self):
+        c = cores_interface(self.config['theme'])
+        return f"""
+        QWidget {{ background-color: {c['fundo']}; color: {c['texto']}; }}
+        QLineEdit#entrada {{
+            background-color: {c['entrada_bg']};
+            border: 1px solid {c['entrada_borda']};
+            border-radius: 4px;
+            padding: 6px;
+            selection-background-color: {c['selecao']};
+            selection-color: {c['selecao_texto']};
+        }}
+        QLabel#ajuda {{
+            background-color: {c['help_bg']};
+            color: {c['help_fg']};
+            padding: 6px;
+        }}
+        QTextBrowser, QPlainTextEdit {{
+            background-color: {c['fundo']};
+            color: {c['texto']};
+            border: none;
+            selection-background-color: {c['selecao']};
+            selection-color: {c['selecao_texto']};
+        }}
+        /* A barra da area de leitura fica sempre visivel (para a largura do
+           viewport nao depender do conteudo e nao gerar laco de repintura),
+           entao precisa ser discreta. */
+        QScrollBar:vertical {{
+            background: transparent; width: 10px; margin: 0;
+        }}
+        QScrollBar::handle:vertical {{
+            background: {c['entrada_borda']};
+            border-radius: 5px; min-height: 24px;
+        }}
+        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+            height: 0; border: none; background: none;
+        }}
+        QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{
+            background: none;
+        }}
+        """
+
+    # --- ligacao com o App -------------------------------------------------
+
+    def ligar(self, app):
+        self.app = app
+        self.view.entrada.returnPressed.connect(app.submit)
+        self._atalhos(app)
+
+    def _atalhos(self, app):
+        def liga(sequencia, acao):
+            atalho = QShortcut(QKeySequence(sequencia), self)
+            # WindowShortcut: dispara com o foco em QUALQUER widget da janela.
+            # E o que faz Ctrl+S e Esc valerem tanto no campo quanto no editor,
+            # sem precisar registrar em cada widget.
+            atalho.setContext(Qt.ShortcutContext.WindowShortcut)
+            atalho.activated.connect(acao)
+            return atalho
+
+        # StandardKey em vez de string literal: no macOS o Qt ja mapeia para
+        # Cmd+S, que e o comportamento nativo esperado
+        liga(QKeySequence.StandardKey.Save, app.save)
+        liga(QKeySequence.StandardKey.Cancel, app.cancel)
+        liga("Ctrl+1", lambda: app.modo(EDITAR))
+        liga("Ctrl+2", lambda: app.modo(PREVIEW))
+        liga("Ctrl+3", lambda: app.modo(DIVIDIDO))
+        liga("Ctrl+E", app.ciclar_modo)
+
+    # --- geometria ---------------------------------------------------------
+
+    def geometria_texto(self):
+        """width()/height() sao da area cliente e casam com resize();
+        x()/y() sao do frame e casam com move(). Misturar com geometry() faz a
+        janela subir alguns pixels a cada abertura."""
+        return formatar_geometria(self.width(), self.height(), self.x(), self.y())
+
+    def aplicar_geometria(self, texto):
+        valores = parse_geometria(texto)
+        if not valores:
+            self.resize(800, 600)
+            return
+        largura, altura, x, y = valores
+        areas = [(t.availableGeometry().x(), t.availableGeometry().y(),
+                  t.availableGeometry().width(), t.availableGeometry().height())
+                 for t in QGuiApplication.screens()]
+        largura, altura, x, y = ajustar_a_area(largura, altura, x, y, areas)
+        self.resize(largura, altura)
+        self.move(x, y)
+
+    # --- eventos -----------------------------------------------------------
+
+    def resizeEvent(self, evento):
+        super().resizeEvent(evento)
+        self._timer_resize.start(ATRASO_RESIZE_MS)
+
+    def _ao_reajustar(self):
+        """Repinta so quando a largura em caracteres realmente mudou.
+
+        Tres guardas contra laco: a repintura nao altera a largura do viewport
+        (a barra de rolagem e sempre visivel), a comparacao transforma resize
+        sem mudanca de coluna em no-op, e isto roda de um timer, nunca de
+        dentro de um paintEvent.
+        """
+        if self.app is None or self.view.em_edicao():
+            return
+        agora = self.view.colunas()
+        if agora != self._colunas_pintadas:
+            self._colunas_pintadas = agora
+            self.app.rerender()
+
+    def closeEvent(self, evento):
+        # A flag evita a recursao sair() -> close() -> closeEvent() -> sair()
+        if not self._encerrando and self.app is not None:
+            self._encerrando = True
+            self.app.ao_fechar()
+        evento.accept()
+
+    def encerrar(self):
+        self._encerrando = True
+        self.close()

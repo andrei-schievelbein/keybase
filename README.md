@@ -7,7 +7,7 @@
 Suas notas em Markdown, organizadas em pastas — na profundidade que você quiser.
 
 ![Python](https://img.shields.io/badge/Python-3.x-blue.svg)
-![CustomTkinter](https://img.shields.io/badge/CustomTkinter-5.x-orange.svg)
+![PySide6](https://img.shields.io/badge/PySide6-6.x-orange.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
 </div>
@@ -44,9 +44,10 @@ Não há tipos fixos de conteúdo. Um "snippet" é só uma nota com um bloco de 
 - ⌨️ **Interface de teclado** — navegação por números e letras, sem mouse
 - 🔍 **Busca em toda a base** por nome, descrição e conteúdo, mostrando o caminho de cada resultado
 - 🎯 **Filtro local** (`/termo`) para pastas grandes
-- 📝 **Markdown** com cabeçalhos, listas, ênfase e citações
+- 📝 **Markdown completo** — cabeçalhos com tamanhos reais, tabelas, listas de tarefa, riscado, notas de rodapé, citações e links
 - 🎨 **Syntax highlighting** em blocos de código (qualquer linguagem suportada pelo Pygments)
-- ✏️ **Editor dedicado** — Ctrl+S salva, Esc cancela
+- ✂️ **Editar, preview ou tela dividida** ao escrever uma nota — `Ctrl+1`/`Ctrl+2`/`Ctrl+3`, ou `Ctrl+E` para alternar
+- ✏️ **Editor dedicado** com realce de sintaxe — Ctrl+S salva, Esc cancela
 - 💾 **Gravação atômica** com backup automático e snapshot diário
 - 🌓 Temas claro e escuro
 - 🪟 Memoriza posição e tamanho da janela
@@ -96,6 +97,14 @@ Comandos que agem sobre um item aceitam o número junto (`D3` apaga o item 3) ou
 |-------|------|
 | `Ctrl+S` | Salva e volta |
 | `Esc` | Cancela (pergunta antes de descartar) |
+| `Ctrl+1` | Só o editor |
+| `Ctrl+2` | Só o preview (do texto **ainda não salvo**) |
+| `Ctrl+3` | Tela dividida: editor à esquerda, preview à direita |
+| `Ctrl+E` | Alterna entre os três |
+
+A tela só se divide durante a edição de uma nota. Em todo o resto do app, o terminal ocupa a tela inteira.
+
+No modo dividido, o preview acompanha o que você digita (com uma pausa curta) e a rolagem segue o editor.
 
 Para um bloco de código com destaque de sintaxe, use as cercas do Markdown:
 
@@ -123,8 +132,10 @@ python keybase.pyw
 Testes:
 
 ```bash
-python -m unittest discover -s tests -t .
+QT_QPA_PLATFORM=offscreen python -m unittest discover -s tests -t .
 ```
+
+Os testes rodam sem display, inclusive em CI.
 
 ## 📦 Arquivos e Portabilidade
 
@@ -145,8 +156,8 @@ O KeyBase **não sobrescreve** um arquivo que não conseguiu ler. Ele abre em mo
 ## 🔧 Tecnologias
 
 - [Python](https://www.python.org/)
-- [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter) — interface
-- [Markdown](https://python-markdown.github.io/) — renderização
+- [PySide6](https://doc.qt.io/qtforpython/) — interface (Qt)
+- [Markdown](https://python-markdown.github.io/) + [PyMdown Extensions](https://facelessuser.github.io/pymdown-extensions/) — renderização
 - [Pygments](https://pygments.org/) — syntax highlighting
 - [PyInstaller](https://www.pyinstaller.org/) — executável
 

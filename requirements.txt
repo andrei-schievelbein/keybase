@@ -1,3 +1,4 @@
-customtkinter>=5.2.0
-pygments
+PySide6-Essentials>=6.5
 markdown
+pymdown-extensions
+pygments
