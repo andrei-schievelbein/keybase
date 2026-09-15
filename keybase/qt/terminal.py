@@ -79,6 +79,15 @@ class AreaTerminal(QTextBrowser):
     def escrever(self, partes, tag_bloco=None):
         """Escreve uma linha composta de (texto, tag) e quebra no fim."""
         cursor = self.cursor_no_fim()
+
+        # Se o bloco atual ja tem conteudo, abre um novo ANTES de escrever. E o
+        # que acontece depois de inserir_html(): o insertHtml deixa o cursor
+        # dentro do ultimo bloco do HTML, e sem isto a proxima linha (a barra de
+        # '=', por exemplo) era anexada aquele bloco e herdava a fonte dele -
+        # uma barra em tamanho de cabecalho, estourando a largura.
+        if not cursor.block().text() == '':
+            cursor.insertBlock(self._bloco_padrao, QTextCharFormat())
+
         cursor.setBlockFormat(self._blocos.get(tag_bloco, self._bloco_padrao))
         for texto, tag in partes:
             formato = self._formatos.get(tag) if tag else QTextCharFormat()

@@ -61,6 +61,10 @@ class BaseUI(unittest.TestCase):
         self.view = self.janela.view
         self.janela.resize(800, 600)
         self.janela.show()   # offscreen: show() resolve a geometria de verdade
+        # WindowShortcut so dispara com a janela ATIVA, e no offscreen ela nao
+        # e ativada sozinha - sem isto os testes de tecla dariam falso negativo
+        self.janela.activateWindow()
+        _app_qt().processEvents()
 
         doc = storage.Documento.novo()
         self.app = App(self.janela, self.view, doc, self.arquivo, config)
@@ -526,7 +530,8 @@ class TestModos(BaseUI):
         self.digitar('N')
         self.digitar('Nota')
         self.assertTrue(self.view.ajuda.isVisibleTo(self.janela))
-        self.assertIn("Ctrl+S", self.view.ajuda.text())
+        from keybase.qt import atalhos
+        self.assertIn(atalhos.rotulo(atalhos.SALVAR), self.view.ajuda.text())
 
     def test_ctrl_s_fora_do_editor_e_inocuo(self):
         self.app.save()
@@ -897,3 +902,146 @@ class TestEditorComportamento(BaseUI):
         editor = self.abrir()
         editor.setPlainText(original)
         self.assertEqual(self.view.texto_editor(), original)
+
+
+class TestRegressaoLayoutDoViewer(BaseUI):
+    """O insertHtml deixa o cursor DENTRO do ultimo bloco do HTML.
+
+    Sem abrir um bloco novo antes de escrever, a barra de '=' era anexada a
+    esse bloco e herdava a fonte dele - uma barra em tamanho de cabecalho,
+    estourando a largura e quebrando em duas linhas.
+    """
+
+    def ver_nota(self, conteudo):
+        self.criar_nota("Nota", conteudo)
+        self.digitar('1')
+
+    def test_barra_depois_do_markdown_fica_na_propria_linha(self):
+        self.ver_nota("# titulo\n\n## subtitulo")
+        for linha in self.tela().splitlines():
+            if '=' in linha:
+                self.assertEqual(linha, '=' * len(linha),
+                                 f"barra misturada com texto: {linha!r}")
+
+    def test_nenhuma_linha_estoura_a_largura(self):
+        self.ver_nota("# titulo\n\n## subtitulo\n\ntexto normal")
+        largura = self.view.colunas()
+        for linha in self.tela().splitlines():
+            self.assertLessEqual(len(linha.rstrip()), largura,
+                                 f"linha maior que colunas(): {linha!r}")
+
+    def test_barras_tem_a_largura_exata_com_markdown(self):
+        self.ver_nota("# titulo\n\n## subtitulo")
+        largura = self.view.colunas()
+        barras = [l for l in self.tela().splitlines() if l.startswith('=')]
+        self.assertGreaterEqual(len(barras), 3)
+        for barra in barras:
+            self.assertEqual(len(barra), largura)
+
+    def test_cabecalho_termina_antes_do_conteudo(self):
+        self.ver_nota("# titulo")
+        linhas = self.tela().splitlines()
+        indice = next(i for i, l in enumerate(linhas) if l.strip() == 'titulo')
+        self.assertTrue(linhas[indice - 1].startswith('='))
+
+    def test_nota_vazia_nao_quebra(self):
+        self.ver_nota("")
+        largura = self.view.colunas()
+        for linha in self.tela().splitlines():
+            self.assertLessEqual(len(linha.rstrip()), largura)
+
+
+class TestAtalhosMultiplataforma(BaseUI):
+    """No macOS o Qt mapeia 'Ctrl+X' para Cmd+X, e o Ctrl FISICO nao dispara.
+
+    Por isso as duas variantes sao registradas la. Foi o que fez Ctrl+1/2/3 e
+    Ctrl+E nao funcionarem no Mac.
+    """
+
+    def test_variantes_no_macos_incluem_o_ctrl_fisico(self):
+        import sys as _sys
+
+        from PySide6.QtGui import QKeySequence
+
+        from keybase.qt import atalhos
+        variantes = atalhos.variantes('Ctrl+1')
+        portaveis = [v.toString(QKeySequence.SequenceFormat.PortableText)
+                     for v in variantes]
+        self.assertIn('Ctrl+1', portaveis)
+        if _sys.platform == 'darwin':
+            self.assertIn('Meta+1', portaveis,
+                          "no macOS o Ctrl fisico e 'Meta' para o Qt")
+        else:
+            self.assertEqual(len(variantes), 1)
+
+    def test_atalho_sem_modificador_nao_ganha_variante(self):
+        from keybase.qt import atalhos
+        self.assertEqual(len(atalhos.variantes('Esc')), 1)
+
+    def test_todos_os_modos_tem_atalho_registrado(self):
+        from keybase.qt import atalhos
+        for seq in (atalhos.SALVAR, atalhos.CANCELAR, atalhos.MODO_EDITAR,
+                    atalhos.MODO_PREVIEW, atalhos.MODO_DIVIDIDO, atalhos.MODO_CICLAR):
+            self.assertTrue(atalhos.variantes(seq))
+
+    def test_janela_registra_as_duas_variantes(self):
+        import sys as _sys
+        esperado = 12 if _sys.platform == 'darwin' else 6   # Esc nao duplica
+        self.assertGreaterEqual(len(self.janela._registrados), 6)
+        if _sys.platform == 'darwin':
+            self.assertEqual(len(self.janela._registrados), esperado - 1)
+
+    def test_rotulo_usa_a_convencao_da_plataforma(self):
+        import sys as _sys
+
+        from keybase.qt import atalhos
+        rotulo = atalhos.rotulo(atalhos.SALVAR)
+        if _sys.platform == 'darwin':
+            self.assertIn('⌘', rotulo)
+        else:
+            self.assertIn('Ctrl', rotulo)
+
+    def test_barra_de_dica_mostra_o_atalho_da_plataforma(self):
+        from keybase.qt import atalhos
+        self.criar_nota("Nota", "x")
+        self.digitar('1'); self.digitar('E')
+        self.assertIn(atalhos.rotulo(atalhos.MODO_DIVIDIDO), self.view.ajuda.text())
+
+    def test_atalho_de_modo_dispara_pela_tecla(self):
+        """Prova a fiacao de verdade, nao so a chamada direta a app.modo()."""
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+        self.criar_nota("Nota", "x")
+        self.digitar('1'); self.digitar('E')
+        self.assertEqual(self.view.modo_edicao_atual(), 'editar')
+
+        modificador = (Qt.KeyboardModifier.MetaModifier
+                       if sys.platform == 'darwin'
+                       else Qt.KeyboardModifier.ControlModifier)
+        alvo = _app_qt().focusWidget() or self.janela
+        QTest.keyClick(alvo, Qt.Key.Key_3, modificador)
+        _app_qt().processEvents()
+        self.assertEqual(self.view.modo_edicao_atual(), 'dividido')
+
+    def test_atalho_de_modo_dispara_tambem_pela_variante_nativa(self):
+        """No macOS, Cmd+3 e Ctrl+3 fisico devem valer os dois."""
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+        self.criar_nota("Nota", "x")
+        self.digitar('1'); self.digitar('E')
+        alvo = _app_qt().focusWidget() or self.janela
+
+        QTest.keyClick(alvo, Qt.Key.Key_2, Qt.KeyboardModifier.ControlModifier)
+        _app_qt().processEvents()
+        self.assertEqual(self.view.modo_edicao_atual(), 'preview')
+
+    def test_esc_dispara_pela_tecla(self):
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+        self.criar_nota("Nota", "original")
+        self.digitar('1'); self.digitar('E')
+        self.anexar_no_editor(" alterado")
+        alvo = _app_qt().focusWidget() or self.janela
+        QTest.keyClick(alvo, Qt.Key.Key_Escape)
+        _app_qt().processEvents()
+        self.assertEqual(self.nome_tela(), 'ConfirmScreen')

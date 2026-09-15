@@ -12,6 +12,7 @@ atalhos Ctrl+1/2/3 e Ctrl+E sao inertes em qualquer outro lugar do app.
 
 from ... import tree
 from ...model import File
+from .. import atalhos
 from ..layout import montar_breadcrumb
 from ..painel_nota import DIVIDIDO, EDITAR, MODOS, PREVIEW
 from .base import Screen
@@ -60,13 +61,16 @@ class EditorScreen(Screen):
         atual = self.app.view.modo_edicao_atual()
         trilha = "  ".join(f"[{ROTULO[m]}]" if m == atual else f" {ROTULO[m]} "
                            for m in MODOS)
+        r = atalhos.rotulo
         return (f"Editando: {montar_breadcrumb(cadeia)}   ·   {trilha}\n"
-                f"Ctrl+S salva · Esc cancela · Ctrl+1 editar · Ctrl+2 preview · "
-                f"Ctrl+3 dividido · Ctrl+E alterna")
+                f"{r(atalhos.SALVAR)} salva · {r(atalhos.CANCELAR)} cancela · "
+                f"{r(atalhos.MODO_EDITAR)} editar · {r(atalhos.MODO_PREVIEW)} preview · "
+                f"{r(atalhos.MODO_DIVIDIDO)} dividido · {r(atalhos.MODO_CICLAR)} alterna")
 
     def handle_input(self, texto):
         """O Enter do campo de entrada nao age durante a edicao."""
-        self.app.flash("Use Ctrl+S para salvar ou Esc para cancelar.")
+        self.app.flash(f"Use {atalhos.rotulo(atalhos.SALVAR)} para salvar "
+                       f"ou {atalhos.rotulo(atalhos.CANCELAR)} para cancelar.")
         self.app.view.focar_editor()
 
     # --- modos -------------------------------------------------------------

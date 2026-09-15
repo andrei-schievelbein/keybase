@@ -15,5 +15,12 @@
     },
     "interface": {
         "help_area_height": 45
+    },
+    "editor": {
+        "modo": "editar",
+        "proporcao": [
+            1,
+            1
+        ]
     }
 }

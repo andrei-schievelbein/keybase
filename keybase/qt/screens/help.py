@@ -1,5 +1,6 @@
 """HelpScreen: referencia de comandos."""
 
+from .. import atalhos
 from .base import Screen
 
 SECOES = [
@@ -21,8 +22,12 @@ SECOES = [
         ("/termo", "filtrar só a pasta atual, sem sair dela"),
     ]),
     ("No editor de notas", [
-        ("Ctrl+S", "salvar e voltar"),
-        ("Esc", "cancelar (pergunta antes de descartar)"),
+        (atalhos.rotulo(atalhos.SALVAR), "salvar e voltar"),
+        (atalhos.rotulo(atalhos.CANCELAR), "cancelar (pergunta antes de descartar)"),
+        (atalhos.rotulo(atalhos.MODO_EDITAR), "só o editor"),
+        (atalhos.rotulo(atalhos.MODO_PREVIEW), "só o preview (do texto não salvo)"),
+        (atalhos.rotulo(atalhos.MODO_DIVIDIDO), "tela dividida: editor e preview"),
+        (atalhos.rotulo(atalhos.MODO_CICLAR), "alterna entre os três modos"),
         ("```python", "abre um bloco de código com destaque de sintaxe"),
     ]),
     ("Outros", [
