@@ -4,8 +4,8 @@
         "fontes": "Recomendado usar fontes monoespaçadas: 'Consolas', 'Courier New', 'Roboto Mono', 'Fira Code'",
         "tamanhos": "Tamanhos são definidos em pixels"
     },
-    "geometry": "800x600+-1566+174",
-    "theme": "light",
+    "geometry": "630x578+2586+265",
+    "theme": "dark",
     "fonts": {
         "input_size": 12,
         "output_size": 14,
