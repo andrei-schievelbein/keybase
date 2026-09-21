@@ -43,7 +43,9 @@ Não há tipos fixos de conteúdo. Um "snippet" é só uma nota com um bloco de 
 - 🗂️ **Pastas aninhadas** sem limite de profundidade
 - ⌨️ **Interface de teclado** — navegação por números e letras, sem mouse
 - 🔍 **Busca em toda a base** por nome, descrição e conteúdo, mostrando o caminho de cada resultado
-- 🎯 **Filtro local** (`/termo`) para pastas grandes
+- 🎯 **Filtro instantâneo** — digite qualquer texto e Enter para filtrar o nível visível
+- 🔢 **Contador duplo** `[diretas]:[total]` — quantas notas estão soltas na pasta e quantas existem em toda a hierarquia
+- 💡 **Menu de comandos sob demanda** — escondido por padrão, aparece com `?` e some com `?`
 - 📝 **Markdown completo** — cabeçalhos com tamanhos reais, tabelas, listas de tarefa, riscado, notas de rodapé, citações e links
 - 🎨 **Syntax highlighting** em blocos de código (qualquer linguagem suportada pelo Pygments)
 - ✂️ **Editar, preview ou tela dividida** ao escrever uma nota — `Ctrl+1`/`Ctrl+2`/`Ctrl+3`, ou `Ctrl+E` para alternar
@@ -60,17 +62,55 @@ O KeyBase é operado inteiramente pelo teclado. Digite o comando no campo de cim
 ==============================================================
  ~ / Python / Pandas
 ==============================================================
- 1 - Leitura de arquivos/                                 [4]
+ 1 - Leitura de arquivos/                              [0]:[4]
  2 - Agrupamentos
  3 - Merge e join
 ==============================================================
-   C - Nova pasta       D - Deletar
-   N - Nova nota        B - Buscar
-   E - Editar nota      V - Voltar
-   R - Renomear         M - Ir para a raiz
-   ? - Ajuda         sair - Encerrar
+```
+
+### Os dois números da pasta
+
+Cada pasta mostra `[a]:[b]`, contando **notas** (sub-pastas não entram na conta):
+
+- **a** — notas soltas dentro da pasta;
+- **b** — todas as notas da hierarquia, entrando em cada sub-pasta.
+
+Assim `[0]:[4]` diz "nada solto aqui, mas tem 4 notas lá dentro", enquanto `[4]:[4]` diz "4 notas, e acabou". Pasta completamente vazia não mostra contador nenhum.
+
+### O menu de comandos
+
+O menu começa escondido, para não disputar espaço com o conteúdo.
+Digite `?` (ou `Ctrl+0`, ou clique no botão `?` ao lado do campo) e ele aparece
+logo abaixo do campo de comando; `?` de novo e ele some:
+
+```
+==============================================================
+   C - Nova pasta        D - Deletar
+   N - Nova nota         B - Buscar
+   E - Editar nota       V - Voltar
+   R - Renomear          M - Ir para a raiz
+  ?? - Ajuda completa  sair - Encerrar
+==============================================================
+ ~ / Python / Pandas
+==============================================================
+ 1 - Leitura de arquivos/                              [0]:[4]
+ 2 - Agrupamentos
+ 3 - Merge e join
 ==============================================================
 ```
+
+### Filtrando
+
+Digite qualquer texto que não seja um comando e dê Enter — o nível visível é filtrado pelo nome, ignorando acento e maiúsculas. `V` limpa o filtro.
+
+```
+digitou "agr"            →   1 - Agrupamentos
+                             1 de 3 itens - V limpa o filtro
+```
+
+O filtro nunca sai do lugar: o breadcrumb continua o mesmo e os números passam a indexar a lista filtrada, então `1` abre o primeiro item **do que está na tela**.
+
+Como as letras de comando continuam valendo, use a barra para filtrar por um termo que colida com elas: `/c` filtra por "c" em vez de criar uma pasta.
 
 ### Comandos
 
@@ -85,8 +125,10 @@ O KeyBase é operado inteiramente pelo teclado. Digite o comando no campo de cim
 | `V` | Volta um nível (ou limpa o filtro) |
 | `M` | Vai direto para a raiz |
 | `B` | Busca em toda a base |
-| `/termo` | Filtra só a pasta atual |
-| `?` | Ajuda |
+| `texto` | Filtra a pasta atual pelo nome — é só digitar e dar Enter |
+| `/texto` | O mesmo, para termos que colidem com um comando (`/b`, `/c`, `/sair`) |
+| `?` | Mostra ou esconde o menu de comandos (o mesmo que `Ctrl+0`) |
+| `??` | Ajuda completa |
 | `sair` | Encerra |
 
 Comandos que agem sobre um item aceitam o número junto (`D3` apaga o item 3) ou sozinho (`D` pergunta qual).

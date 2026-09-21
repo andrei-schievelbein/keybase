@@ -16,10 +16,8 @@ class SearchResultsScreen(Screen):
         'B': 'cmd_nova_busca',
         'V': 'cmd_voltar',
         'M': 'cmd_raiz',
-        '?': 'cmd_ajuda',
     }
-    ROTULOS = {'B': 'Nova busca', 'V': 'Voltar',
-               'M': 'Ir para a raiz', '?': 'Ajuda'}
+    ROTULOS = {'B': 'Nova busca', 'V': 'Voltar', 'M': 'Ir para a raiz'}
 
     def __init__(self, app, termo):
         super().__init__(app)
@@ -46,13 +44,11 @@ class SearchResultsScreen(Screen):
         if self.erro:
             view.linha(" " + self.erro, 'erro')
             view.barra()
-            self.desenhar_rodape()
             return
 
         if not self.resultados:
             view.linha(" Nenhum resultado.", 'vazio')
             view.barra()
-            self.desenhar_rodape()
             return
 
         plural = "resultados" if self.total != 1 else "resultado"
@@ -69,7 +65,6 @@ class SearchResultsScreen(Screen):
             view.linha()
 
         view.barra()
-        self.desenhar_rodape()
 
     def comandos_disponiveis(self):
         return set(self.COMANDOS)
@@ -96,7 +91,7 @@ class SearchResultsScreen(Screen):
 
         self.app.reset(pilha)
 
-    def cmd_nova_busca(self, alvo=None, resto=None):
+    def cmd_nova_busca(self, alvo=None):
         from .prompt import PromptScreen
 
         def buscar(termo):
@@ -104,15 +99,11 @@ class SearchResultsScreen(Screen):
 
         self.app.push(PromptScreen(self.app, "Buscar em toda a base:", buscar))
 
-    def cmd_voltar(self, alvo=None, resto=None):
+    def cmd_voltar(self, alvo=None):
         self.app.pop()
 
-    def cmd_raiz(self, alvo=None, resto=None):
+    def cmd_raiz(self, alvo=None):
         self.app.go_root()
-
-    def cmd_ajuda(self, alvo=None, resto=None):
-        from .help import HelpScreen
-        self.app.push(HelpScreen(self.app))
 
     def cmd_filtro(self, termo):
         self.app.replace(SearchResultsScreen(self.app, termo))

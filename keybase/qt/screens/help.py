@@ -18,8 +18,10 @@ SECOES = [
         ("D  ou  D3", "apagar um item"),
     ]),
     ("Buscar", [
+        ("texto", "filtrar a pasta atual pelo nome - basta digitar e dar Enter"),
+        ("/texto", "o mesmo, para termos que colidem com um comando (/b, /c)"),
         ("B", "buscar em toda a base (nome, descrição e conteúdo)"),
-        ("/termo", "filtrar só a pasta atual, sem sair dela"),
+        ("V", "limpa o filtro e volta a listar tudo"),
     ]),
     ("No editor de notas", [
         (atalhos.rotulo(atalhos.SALVAR), "salvar e voltar"),
@@ -31,7 +33,9 @@ SECOES = [
         ("```python", "abre um bloco de código com destaque de sintaxe"),
     ]),
     ("Outros", [
-        ("?", "esta ajuda"),
+        ("?", "mostra ou esconde o menu de comandos"),
+        (atalhos.rotulo(atalhos.AJUDA_DINAMICA), "o mesmo que ?"),
+        ("??", "esta ajuda completa"),
         ("sair", "encerrar (a janela também salva ao fechar)"),
     ]),
 ]
@@ -40,6 +44,8 @@ SECOES = [
 class HelpScreen(Screen):
     COMANDOS = {'V': 'cmd_voltar'}
     ROTULOS = {'V': 'Voltar'}
+    # Esta tela ja lista tudo: nao desenha o menu, e o '?'/Ctrl+0 fica inerte.
+    MOSTRA_MENU = False
 
     def render(self):
         view = self.app.view
@@ -65,8 +71,9 @@ class HelpScreen(Screen):
     def selecionar(self, indice):
         self.app.pop()
 
-    def cmd_voltar(self, alvo=None, resto=None):
+    def cmd_voltar(self, alvo=None):
         self.app.pop()
 
-    def desenhar_rodape(self):
-        pass
+    def cmd_ajuda_completa(self):
+        """Evita empilhar uma segunda HelpScreen, identica, sobre esta - o 'V'
+        de volta precisaria ser apertado duas vezes sem nada explicar por que."""

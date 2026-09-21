@@ -24,9 +24,12 @@ ENV/
 
 # User data files (não versionar dados pessoais)
 data.json
+data 2.json
 keybase_data.json
+keybase_data2.json
 keybase_data.bak.json
 keybase_data.snapshot-*.json
+keybase_data.pre-migracao-*.json
 *.json.tmp
 window_config.json
 

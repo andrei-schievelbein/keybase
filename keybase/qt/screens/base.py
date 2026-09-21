@@ -10,7 +10,10 @@ O parsing de comando fica aqui, resolvido uma vez so - e por isso que `D3` e
 
 import re
 
-PADRAO_COMANDO = re.compile(r'^([A-Za-z?])\s*(\d+)?(?:\s+(.*))?$')
+# Comando e uma letra, com alvo opcional colado ou separado: 'D', 'D3', 'D 3'.
+# Qualquer outra coisa cai no filtro, entao o padrao NAO pode aceitar texto
+# solto depois da letra - senao 'd ados' viraria o comando D em vez de filtro.
+PADRAO_COMANDO = re.compile(r'^([A-Za-z?])\s*(\d+)?$')
 PALAVRAS_SAIR = ('sair', 'exit', 'quit')
 
 
@@ -19,6 +22,11 @@ class Screen:
     COMANDOS = {}
     #: letra -> rotulo curto exibido no rodape
     ROTULOS = {}
+    #: False nas telas que nao desenham o menu (prompts, ajuda, recuperacao,
+    #: editor). Uma flag so, consumida pelo desenho E pelo '?'/Ctrl+0: e ela que
+    #: garante que o atalho seja inerte exatamente onde o menu nao aparece, em
+    #: vez de alternar em silencio um menu que esta fora da tela.
+    MOSTRA_MENU = True
 
     def __init__(self, app):
         self.app = app
@@ -49,6 +57,14 @@ class Screen:
         if texto.lower() in PALAVRAS_SAIR:
             return self.app.sair()
 
+        # '?' e '??' sao tratados aqui, e nao por COMANDOS, porque
+        # PADRAO_COMANDO casa uma LETRA so - '??' nunca chegaria ao despacho.
+        if texto == '??':
+            return self.cmd_ajuda_completa()
+
+        if texto == '?':
+            return self.on_ajuda()
+
         if texto.startswith('/'):
             return self.cmd_filtro(texto[1:].strip())
 
@@ -57,17 +73,20 @@ class Screen:
 
         match = PADRAO_COMANDO.match(texto)
         if match:
-            letra, alvo, resto = match.groups()
+            letra, alvo = match.groups()
             letra = letra.upper()
             metodo = self.COMANDOS.get(letra)
             if metodo:
                 alvo = int(alvo) - 1 if alvo else None
-                return getattr(self, metodo)(alvo=alvo, resto=resto)
+                return getattr(self, metodo)(alvo=alvo)
 
-        return self.entrada_invalida(texto)
+        # Nao e comando: o texto filtra o nivel visivel. Cada tela decide o que
+        # "filtrar" significa - a de busca global, por exemplo, refaz a busca.
+        return self.cmd_filtro(texto)
 
     def entrada_invalida(self, texto):
-        self.app.flash("Comando não reconhecido. Digite ? para ver a ajuda.", erro=True)
+        self.app.flash("Comando não reconhecido. Digite ? para ver os comandos "
+                       "ou ?? para a ajuda.", erro=True)
         self.app.rerender()
 
     def selecionar(self, indice):
@@ -75,8 +94,12 @@ class Screen:
         self.entrada_invalida(str(indice + 1))
 
     def cmd_filtro(self, termo):
-        """Trata /termo. Telas sem filtro ignoram."""
-        self.entrada_invalida('/' + termo)
+        """Texto livre (ou /termo). Telas sem nada a filtrar avisam.
+
+        E aqui que a recursao para: o fallback de handle_input chama cmd_filtro,
+        e quem nao sobrescreve cai neste aviso em vez de voltar ao parsing.
+        """
+        self.entrada_invalida(termo)
 
     # --- acoes padrao ------------------------------------------------------
 
@@ -100,23 +123,46 @@ class Screen:
     def on_ciclar_modo(self):
         """Ctrl+E. Mesma logica do on_modo."""
 
-    # --- rodape ------------------------------------------------------------
+    def on_ajuda(self):
+        """'?' na barra ou Ctrl+0: mostra/esconde o menu de comandos."""
+        if not self.MOSTRA_MENU:
+            return
+        self.app.menu_visivel = not self.app.menu_visivel
+        self.app.rerender()
+
+    def cmd_ajuda_completa(self):
+        """'??' na barra: a referencia completa."""
+        from .help import HelpScreen
+        self.app.push(HelpScreen(self.app))
+
+    # --- menu de comandos --------------------------------------------------
 
     def comandos_disponiveis(self):
         """Letras ativas agora. Sobrescreva para esconder o que nao se aplica."""
         return set(self.COMANDOS)
 
     #: pares (letra, rotulo) acrescentados ao fim do menu
-    EXTRAS = (("sair", "Encerrar"),)
+    EXTRAS = (("??", "Ajuda completa"), ("sair", "Encerrar"))
 
-    def desenhar_rodape(self):
+    def desenhar_menu(self):
+        """Menu de comandos: PRIMEIRO bloco da area de leitura, logo abaixo da
+        barra de pesquisa. Escondido por padrao - '?' ou Ctrl+0 o alterna.
+
+        Nao emite a barra de baixo: quem fecha o bloco e a barra de abertura da
+        propria tela, que de outro modo apareceria duplicada.
+        """
+        if not (self.MOSTRA_MENU and self.app.menu_visivel):
+            return
+
         from ..layout import montar_menu
         view = self.app.view
         linhas = montar_menu(self.COMANDOS, self.ROTULOS,
                              self.comandos_disponiveis(),
                              largura=view.colunas(),
                              extras=self.EXTRAS)
-        if linhas:
-            for linha in linhas:
-                view.linha(linha, 'dica')
-            view.barra()
+        if not linhas:
+            return
+
+        view.barra()
+        for linha in linhas:
+            view.linha(linha, 'dica')

@@ -8,8 +8,9 @@ Tres metodos sao novos, e fecham os unicos vazamentos de widget cru que
 existiam: `focar_editor`, `focar_entrada` e os de modo de edicao.
 
 Layout:
-    entrada   QLineEdit        sempre visivel, 1 linha, unico input curto
-    ajuda     QLabel           barra de dica, visivel sob demanda
+    entrada      QLineEdit     sempre visivel, 1 linha, unico input curto
+    botao_ajuda  QToolButton   quadrado, a direita da entrada, na mesma linha
+    ajuda        QLabel        barra de dica, visivel sob demanda
     pilha     QStackedWidget
       0       AreaTerminal     leitura (tela de terminal e markdown do viewer)
       1       PainelNota       edicao: editar / preview / dividido
@@ -17,8 +18,8 @@ Layout:
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QTextCursor
-from PySide6.QtWidgets import (QLabel, QLineEdit, QStackedWidget, QVBoxLayout,
-                               QWidget)
+from PySide6.QtWidgets import (QHBoxLayout, QLabel, QLineEdit, QStackedWidget,
+                               QToolButton, QVBoxLayout, QWidget)
 
 from . import fonte as mod_fonte
 from .painel_nota import EDITAR, PainelNota
@@ -59,6 +60,15 @@ class TerminalView(QWidget):
         self.entrada.setObjectName('entrada')
         self.entrada.setFont(self.fonte_entrada)
 
+        self.botao_ajuda = QToolButton()
+        self.botao_ajuda.setObjectName('botao_ajuda')
+        self.botao_ajuda.setText('?')
+        self.botao_ajuda.setFont(self.fonte_entrada)
+        # NoFocus: clicar no botao nao pode tirar o cursor da barra
+        self.botao_ajuda.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.botao_ajuda.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.botao_ajuda.setToolTip("Como ver a ajuda")
+
         self.ajuda = QLabel()
         self.ajuda.setObjectName('ajuda')
         self.ajuda.setFont(self.fonte_ajuda)
@@ -80,15 +90,32 @@ class TerminalView(QWidget):
         self.pilha.addWidget(self.out)      # IDX_LEITURA
         self.pilha.addWidget(self.painel)   # IDX_EDICAO
 
+        linha_entrada = QHBoxLayout()
+        linha_entrada.setContentsMargins(0, 0, 0, 0)
+        linha_entrada.setSpacing(5)
+        linha_entrada.addWidget(self.entrada, 1)
+        linha_entrada.addWidget(self.botao_ajuda)
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(5)
-        layout.addWidget(self.entrada)
+        layout.addLayout(linha_entrada)
         layout.addWidget(self.ajuda)
         layout.addWidget(self.pilha, 1)
 
         self._render = RenderizadorMarkdown(self.tema, self.config['fonts'])
         self.out.document().setDefaultStyleSheet(self._render.folha_de_estilo())
+
+    def showEvent(self, evento):
+        """Deixa o botao '?' quadrado, no mesmo lado que a altura da barra.
+
+        So aqui, e nao em _criar_widgets: a altura da barra so e definitiva
+        depois do polish do stylesheet, que a janela aplica DEPOIS de construir
+        a view.
+        """
+        super().showEvent(evento)
+        lado = max(24, self.entrada.sizeHint().height())
+        self.botao_ajuda.setFixedSize(lado, lado)
 
     # --- medida ------------------------------------------------------------
 
@@ -173,6 +200,12 @@ class TerminalView(QWidget):
     def ao_topo(self):
         self.out.moveCursor(QTextCursor.MoveOperation.Start)
         self.out.verticalScrollBar().setValue(0)
+
+    # --- botao de ajuda ----------------------------------------------------
+
+    def habilitar_ajuda(self, ativo):
+        """Apaga o botao onde o menu nao existe, para o clique nao ser inerte."""
+        self.botao_ajuda.setEnabled(bool(ativo))
 
     # --- barra de ajuda ----------------------------------------------------
 

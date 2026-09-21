@@ -20,6 +20,7 @@ MODO_EDITAR = 'Ctrl+1'
 MODO_PREVIEW = 'Ctrl+2'
 MODO_DIVIDIDO = 'Ctrl+3'
 MODO_CICLAR = 'Ctrl+E'
+AJUDA_DINAMICA = 'Ctrl+0'
 
 NO_MACOS = sys.platform == 'darwin'
 

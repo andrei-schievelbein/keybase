@@ -5,7 +5,8 @@ linhas no formato "N - Rotulo", densas e alinhadas. Tudo em ASCII (mais '…'):
 fontes monoespacadas comuns nao garantem glifo para emoji num widget Text, que
 acabaria desenhando caixas.
 
-Pasta = nome com '/' no fim e contagem entre colchetes; nota = nome puro.
+Pasta = nome com '/' no fim e o par '[diretas]:[total]' de contagem de NOTAS
+(soltas aqui : em toda a hierarquia); nota = nome puro.
 
 Toda largura vem de TerminalView.colunas(), calculada da largura real do widget
 e da largura de um caractere na fonte - nao de uma constante. Alinhar por
@@ -14,7 +15,7 @@ familia e feita em view._escolher_familia().
 """
 
 from ..model import Folder
-from ..tree import contar_itens
+from ..tree import contar_notas
 
 LARGURA_PADRAO = 78
 MARCA_RAIZ = "~"
@@ -59,7 +60,11 @@ def linha_item(numero, no, largura=LARGURA_PADRAO):
     partes = [(prefixo, 'numero')]
 
     if isinstance(no, Folder):
-        contador = f"[{contar_itens(no)}]" if no.filhos else ""
+        if no.filhos:
+            diretas, total = contar_notas(no)
+            contador = f"[{diretas}]:[{total}]"
+        else:
+            contador = ""   # pasta vazia nao ganha contador nenhum
         espaco_nome = largura - len(prefixo) - len(contador) - 2
         nome = truncar(no.nome + "/", espaco_nome)
         partes.append((nome, 'pasta'))

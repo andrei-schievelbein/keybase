@@ -14,11 +14,10 @@ class ViewerScreen(Screen):
         'D': 'cmd_deletar',
         'V': 'cmd_voltar',
         'M': 'cmd_raiz',
-        '?': 'cmd_ajuda',
     }
     ROTULOS = {
         'E': 'Editar nota', 'R': 'Renomear', 'D': 'Deletar',
-        'V': 'Voltar', 'M': 'Ir para a raiz', '?': 'Ajuda',
+        'V': 'Voltar', 'M': 'Ir para a raiz',
     }
 
     def __init__(self, app, file_id):
@@ -56,7 +55,6 @@ class ViewerScreen(Screen):
                 view.linha(" Nota vazia. Use E para escrever o conteúdo.", 'vazio')
 
         view.barra()
-        self.desenhar_rodape()
 
     def help_text(self):
         return None
@@ -67,21 +65,17 @@ class ViewerScreen(Screen):
 
     # --- comandos ----------------------------------------------------------
 
-    def cmd_editar(self, alvo=None, resto=None):
+    def cmd_editar(self, alvo=None):
         from .editor import EditorScreen
         self.app.push(EditorScreen(self.app, self.file_id))
 
-    def cmd_voltar(self, alvo=None, resto=None):
+    def cmd_voltar(self, alvo=None):
         self.app.pop()
 
-    def cmd_raiz(self, alvo=None, resto=None):
+    def cmd_raiz(self, alvo=None):
         self.app.go_root()
 
-    def cmd_ajuda(self, alvo=None, resto=None):
-        from .help import HelpScreen
-        self.app.push(HelpScreen(self.app))
-
-    def cmd_renomear(self, alvo=None, resto=None):
+    def cmd_renomear(self, alvo=None):
         pai = self.app.pai_de(self.file_id)
         if pai is None:
             return
@@ -105,7 +99,7 @@ class ViewerScreen(Screen):
             contexto=montar_breadcrumb(self.app.caminho_de(self.file_id)),
         ))
 
-    def cmd_deletar(self, alvo=None, resto=None):
+    def cmd_deletar(self, alvo=None):
         pai = self.app.pai_de(self.file_id)
         if pai is None:
             return

@@ -117,6 +117,22 @@ class JanelaPrincipal(QWidget):
             selection-background-color: {c['selecao']};
             selection-color: {c['selecao_texto']};
         }}
+        QToolButton#botao_ajuda {{
+            background-color: {c['entrada_bg']};
+            color: {c['texto']};
+            border: 1px solid {c['entrada_borda']};
+            border-radius: 4px;
+        }}
+        QToolButton#botao_ajuda:hover {{
+            background-color: {c['selecao']};
+            color: {c['selecao_texto']};
+        }}
+        /* Apagado nas telas sem menu (prompt, editor, ajuda): o clique ali seria
+           inerte, e um botao vivo que nao faz nada parece defeito. */
+        QToolButton#botao_ajuda:disabled {{
+            background-color: {c['fundo']};
+            color: {c['entrada_borda']};
+        }}
         QLabel#ajuda {{
             background-color: {c['help_bg']};
             color: {c['help_fg']};
@@ -152,6 +168,9 @@ class JanelaPrincipal(QWidget):
     def ligar(self, app):
         self.app = app
         self.view.entrada.returnPressed.connect(app.submit)
+        # o botao e so um terceiro caminho para o mesmo verbo: '?' na barra,
+        # Ctrl+0 e o clique alternam exatamente a mesma coisa
+        self.view.botao_ajuda.clicked.connect(app.alternar_menu)
         self._atalhos(app)
 
     def _atalhos(self, app):
@@ -175,6 +194,7 @@ class JanelaPrincipal(QWidget):
         liga(atalhos.MODO_PREVIEW, lambda: app.modo(PREVIEW))
         liga(atalhos.MODO_DIVIDIDO, lambda: app.modo(DIVIDIDO))
         liga(atalhos.MODO_CICLAR, app.ciclar_modo)
+        liga(atalhos.AJUDA_DINAMICA, app.alternar_menu)
 
     # --- geometria ---------------------------------------------------------
 
