@@ -185,13 +185,58 @@ class TestNavegacao(BaseUI):
         tela = self.tela()
         self.assertLess(tela.index("zzz pasta"), tela.index("aaa nota"))
 
-    def test_contagem_de_itens(self):
+    def linha_de(self, nome):
+        """A linha da listagem que contém esse nome."""
+        for linha in self.tela().splitlines():
+            if nome in linha:
+                return linha.rstrip()
+        self.fail(f"{nome!r} não está na tela:\n{self.tela()}")
+
+    def test_contador_separa_notas_diretas_do_total(self):
+        """[a]:[b] = notas soltas aqui : notas em toda a hierarquia."""
+        self.criar_pasta("Pai")
+        self.digitar('1')
+        self.criar_nota("solta")          # 1 nota direta em Pai
+        self.criar_pasta("Sub")
+        self.digitar('1')                 # pastas vêm antes das notas: 1 = Sub/
+        self.criar_nota("funda")          # 1 nota no nível de baixo
+        self.digitar('V'); self.digitar('V')
+        self.assertIn("[1]:[2]", self.linha_de("Pai/"))
+
+    def test_contador_ignora_pastas(self):
+        """Pasta só com sub-pastas não tem nota nenhuma: [0]:[0]."""
         self.criar_pasta("Pai")
         self.digitar('1')
         self.criar_pasta("F1")
         self.criar_pasta("F2")
         self.digitar('V')
-        self.assertIn("[2]", self.tela())
+        self.assertIn("[0]:[0]", self.linha_de("Pai/"))
+
+    def test_contador_repete_quando_nao_ha_sub_pasta(self):
+        self.criar_pasta("Pai")
+        self.digitar('1')
+        self.criar_nota("a"); self.criar_nota("b")
+        self.digitar('V')
+        self.assertIn("[2]:[2]", self.linha_de("Pai/"))
+
+    def test_pasta_vazia_nao_tem_contador(self):
+        self.criar_pasta("Vazia")
+        self.assertNotIn("[", self.linha_de("Vazia/"))
+
+    def test_contador_tem_o_mesmo_formato_nos_niveis_de_baixo(self):
+        """linha_item é a única função que desenha pasta, então todo nível usa
+        o mesmo formato — e a soma recursiva atravessa os níveis."""
+        self.criar_pasta("Pai")
+        self.digitar('1')
+        self.criar_pasta("Sub")
+        self.digitar('1')
+        self.criar_pasta("Neto")
+        self.digitar('1')
+        self.criar_nota("funda")          # a única nota, três níveis abaixo
+        self.digitar('V')                 # volta para dentro de Sub
+        self.assertIn("[1]:[1]", self.linha_de("Neto/"))
+        self.digitar('V')                 # volta para dentro de Pai
+        self.assertIn("[0]:[1]", self.linha_de("Sub/"))
 
     def test_tela_se_recupera_de_no_removido(self):
         self.criar_pasta("Some")
@@ -468,14 +513,263 @@ class TestBusca(BaseUI):
         self.digitar('1')
         self.assertIn("~ / ZZZ alvo", self.tela())
 
+    # --- texto livre filtra o nível visível --------------------------------
+
+    def test_texto_livre_filtra_sem_precisar_de_barra(self):
+        """O caso do pedido: 'num' + Enter deixa só Numpy, e 1 entra nela."""
+        self.criar_pasta("Numpy")
+        self.criar_pasta("Pandas")
+        self.digitar('num')
+        self.assertEqual(self.nome_tela(), 'BrowserScreen')
+        self.assertIn("Numpy/", self.tela())
+        self.assertNotIn("Pandas/", self.tela())
+        self.assertIn("1 de 2 itens", self.tela())
+        self.digitar('1')
+        self.assertIn("~ / Numpy", self.tela())
+
+    def test_texto_livre_filtra_em_qualquer_nivel(self):
+        self.criar_pasta("Vscode")
+        self.digitar('1')
+        self.criar_pasta("Atalhos")
+        self.digitar('1')
+        self.criar_nota("Ctrl + P")
+        self.criar_nota("Alt + Tab")
+        self.digitar('ctrl')
+        self.assertIn("~ / Vscode / Atalhos", self.tela())   # não saiu do lugar
+        self.assertIn("Ctrl + P", self.tela())
+        self.assertNotIn("Alt + Tab", self.tela())
+
+    def test_filtro_sem_resultado_aplica_e_o_V_destrava(self):
+        self.criar_pasta("Numpy")
+        self.criar_pasta("Pandas")
+        self.digitar('zzz')
+        self.assertIn("0 de 2 itens", self.tela())
+        self.assertIn("Nenhum item corresponde", self.tela())
+        self.digitar('V')
+        self.assertNotIn('filtro:', self.tela())
+        self.assertIn("Numpy/", self.tela())
+
+    def test_letra_de_comando_continua_comando(self):
+        """Texto livre não pode engolir os comandos de uma letra."""
+        self.criar_pasta("Cursor")
+        self.digitar('C')
+        self.assertEqual(self.nome_tela(), 'PromptScreen')
+        self.assertIn("Nome da nova pasta", self.tela())
+
+    def test_barra_filtra_termo_que_colide_com_comando(self):
+        """A escotilha: /c filtra por 'c' em vez de criar pasta."""
+        self.criar_pasta("Cursor")
+        self.criar_pasta("Numpy")
+        self.digitar('/c')
+        self.assertEqual(self.nome_tela(), 'BrowserScreen')
+        self.assertIn("Cursor/", self.tela())
+        self.assertNotIn("Numpy/", self.tela())
+
+    def test_letra_com_texto_filtra_em_vez_de_virar_comando(self):
+        """'d ados' casava com o comando D pelo grupo 'resto', que era morto."""
+        self.criar_pasta("d ados")
+        self.criar_pasta("Numpy")
+        self.digitar('d ados')
+        self.assertEqual(self.nome_tela(), 'BrowserScreen')
+        self.assertIn('filtro:', self.tela())
+        self.assertIn("d ados/", self.tela())
+        self.assertNotIn("Numpy/", self.tela())
+
+    def test_letra_com_numero_continua_comando_com_alvo(self):
+        """D3 e 'D 3' seguem valendo: só o texto solto virou filtro."""
+        self.criar_pasta("AAA")
+        self.digitar('D 1')
+        self.assertEqual(self.nome_tela(), 'ConfirmScreen')
+
+    def test_busca_global_nao_muda(self):
+        self.criar_pasta("Numpy")
+        self.digitar('B')
+        self.assertEqual(self.nome_tela(), 'PromptScreen')
+        self.digitar('numpy')
+        self.assertEqual(self.nome_tela(), 'SearchResultsScreen')
+
+    def test_texto_livre_na_tela_de_resultados_refaz_a_busca(self):
+        self.criar_pasta("Numpy")
+        self.criar_pasta("Pandas")
+        self.digitar('B'); self.digitar('numpy')
+        self.assertIn('Busca: "numpy"', self.tela())
+        self.digitar('pandas')
+        self.assertEqual(self.nome_tela(), 'SearchResultsScreen')
+        self.assertIn('Busca: "pandas"', self.tela())
+
 
 class TestAjudaERodape(BaseUI):
-    def test_ajuda_abre_e_volta(self):
-        self.digitar('?')
+    def test_ajuda_completa_abre_com_dois_pontos_de_interrogacao(self):
+        self.digitar('??')
         self.assertEqual(self.nome_tela(), 'HelpScreen')
         self.assertNaTela("comandos do KeyBase")
         self.digitar('V')
         self.assertEqual(self.nome_tela(), 'BrowserScreen')
+
+    def test_menu_comeca_escondido(self):
+        self.assertNaoNaTela("C - Nova pasta")
+
+    def test_interrogacao_alterna_o_menu(self):
+        self.digitar('?')
+        self.assertNaTela("C - Nova pasta")
+        self.digitar('?')
+        self.assertNaoNaTela("C - Nova pasta")
+
+    def test_menu_vem_antes_do_breadcrumb(self):
+        """O menu e o PRIMEIRO bloco da area de leitura, nao mais o ultimo."""
+        self.digitar('?')
+        tela = self.tela()
+        self.assertLess(tela.index("C - Nova pasta"), tela.index("~"))
+
+    def test_menu_mostra_ajuda_completa_e_nao_o_antigo_rotulo(self):
+        self.digitar('?')
+        self.assertNaTela("?? - Ajuda completa")
+        self.assertNaoNaTela("? - Ajuda\n")
+
+    def test_menu_continua_ligado_ao_navegar(self):
+        """A visibilidade e do app, nao da instancia de tela."""
+        self.criar_pasta("A")
+        self.digitar('?')
+        self.digitar('1')
+        self.assertNaTela("C - Nova pasta")
+
+    def test_interrogacao_num_prompt_e_texto_literal(self):
+        """PromptScreen trata o input cru: da para nomear uma pasta '?'."""
+        self.digitar('C')
+        self.assertEqual(self.nome_tela(), 'PromptScreen')
+        self.digitar('?')
+        self.assertEqual(self.nome_tela(), 'BrowserScreen')
+        self.assertNaTela("?")
+        self.assertIsNotNone(next((n for n in self.app.atual.itens
+                                   if n.nome == '?'), None))
+
+    def test_ajuda_completa_nao_empilha_sobre_si_mesma(self):
+        self.digitar('??')
+        altura = len(self.app.stack)
+        self.digitar('??')
+        self.assertEqual(len(self.app.stack), altura)
+        self.assertEqual(self.nome_tela(), 'HelpScreen')
+
+    def test_ajuda_completa_lista_os_dois_comandos(self):
+        from keybase.qt import atalhos
+        self.digitar('??')
+        self.assertNaTela("esta ajuda completa")
+        self.assertNaTela("mostra ou esconde o menu")
+        self.assertIn(atalhos.rotulo(atalhos.AJUDA_DINAMICA), self.tela())
+
+    # --- Ctrl+0 ------------------------------------------------------------
+
+    def test_ctrl_zero_alterna_o_menu(self):
+        self.app.alternar_menu()
+        self.assertNaTela("C - Nova pasta")
+        self.app.alternar_menu()
+        self.assertNaoNaTela("C - Nova pasta")
+
+    def test_ctrl_zero_dispara_pela_tecla(self):
+        """Prova a fiacao, nao so a chamada direta a app.alternar_menu()."""
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+        modificador = (Qt.KeyboardModifier.MetaModifier
+                       if sys.platform == 'darwin'
+                       else Qt.KeyboardModifier.ControlModifier)
+        alvo = _app_qt().focusWidget() or self.janela
+        QTest.keyClick(alvo, Qt.Key.Key_0, modificador)
+        _app_qt().processEvents()
+        self.assertNaTela("C - Nova pasta")
+
+    def test_ctrl_zero_e_inerte_onde_o_menu_nao_aparece(self):
+        """A regra: o atalho só age onde o menu é desenhado. Sem isso, o Ctrl+0
+        num prompt alternava em silêncio o menu da tela de baixo."""
+        self.digitar('C')
+        self.assertEqual(self.nome_tela(), 'PromptScreen')
+        self.app.alternar_menu()
+        self.assertFalse(self.app.menu_visivel)
+        self.digitar('')                      # cancela o prompt
+        self.assertNaoNaTela("C - Nova pasta")
+
+    def test_ctrl_zero_e_inerte_na_confirmacao(self):
+        self.criar_pasta("A")
+        self.digitar('D1')
+        self.assertEqual(self.nome_tela(), 'ConfirmScreen')
+        self.app.alternar_menu()
+        self.assertFalse(self.app.menu_visivel)
+
+    def test_ctrl_zero_e_inerte_na_ajuda_completa(self):
+        self.digitar('??')
+        self.app.alternar_menu()
+        self.assertFalse(self.app.menu_visivel)
+
+    def test_telas_sem_menu_declaram_a_flag(self):
+        """Uma flag só governa o desenho E o atalho: não podem divergir."""
+        from keybase.qt.screens.browser import BrowserScreen
+        from keybase.qt.screens.editor import EditorScreen
+        from keybase.qt.screens.help import HelpScreen
+        from keybase.qt.screens.prompt import ConfirmScreen, PromptScreen
+        from keybase.qt.screens.recovery import RecoveryScreen
+        from keybase.qt.screens.search import SearchResultsScreen
+        from keybase.qt.screens.viewer import ViewerScreen
+
+        for classe in (PromptScreen, ConfirmScreen, HelpScreen,
+                       RecoveryScreen, EditorScreen):
+            self.assertFalse(classe.MOSTRA_MENU, classe.__name__)
+        for classe in (BrowserScreen, ViewerScreen, SearchResultsScreen):
+            self.assertTrue(classe.MOSTRA_MENU, classe.__name__)
+
+    def test_ctrl_zero_no_editor_nao_mexe_no_texto(self):
+        self.criar_nota("Nota", "original")
+        self.digitar('1'); self.digitar('E')
+        self.anexar_no_editor(" alterado")
+        self.app.alternar_menu()
+        self.assertEqual(self.nome_tela(), 'EditorScreen')
+        self.assertIn("original alterado", self.editor().toPlainText())
+
+    # --- botao -------------------------------------------------------------
+
+    def test_botao_de_ajuda_nao_rouba_o_foco_da_barra(self):
+        from PySide6.QtCore import Qt
+        self.assertEqual(self.view.botao_ajuda.focusPolicy(),
+                         Qt.FocusPolicy.NoFocus)
+
+    def test_botao_de_ajuda_e_quadrado(self):
+        largura = self.view.botao_ajuda.width()
+        self.assertEqual(largura, self.view.botao_ajuda.height())
+        self.assertGreaterEqual(largura, 24)
+
+    def clicar_ajuda(self):
+        """Clique de verdade no botão, para provar a fiação e não só o verbo."""
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+        QTest.mouseClick(self.view.botao_ajuda, Qt.MouseButton.LeftButton)
+        _app_qt().processEvents()
+
+    def test_clique_no_botao_alterna_o_menu(self):
+        self.clicar_ajuda()
+        self.assertNaTela("C - Nova pasta")
+        self.clicar_ajuda()
+        self.assertNaoNaTela("C - Nova pasta")
+
+    def test_botao_e_barra_compartilham_o_mesmo_interruptor(self):
+        """Clicar liga; '?' na barra desliga. Um estado só, três caminhos."""
+        self.clicar_ajuda()
+        self.assertTrue(self.app.menu_visivel)
+        self.digitar('?')
+        self.assertFalse(self.app.menu_visivel)
+        self.app.alternar_menu()          # Ctrl+0
+        self.assertTrue(self.app.menu_visivel)
+
+    def test_botao_apaga_onde_o_menu_nao_existe(self):
+        self.assertTrue(self.view.botao_ajuda.isEnabled())
+        self.digitar('C')                 # prompt: sem menu
+        self.assertEqual(self.nome_tela(), 'PromptScreen')
+        self.assertFalse(self.view.botao_ajuda.isEnabled())
+        self.digitar('')                  # cancela
+        self.assertTrue(self.view.botao_ajuda.isEnabled())
+
+    def test_botao_apaga_no_editor(self):
+        self.criar_nota("Nota", "x")
+        self.digitar('1'); self.digitar('E')
+        self.assertEqual(self.nome_tela(), 'EditorScreen')
+        self.assertFalse(self.view.botao_ajuda.isEnabled())
 
     def test_rodape_so_mostra_comando_implementado(self):
         """Rodape e despacho saem do mesmo dict, entao nao podem divergir."""
@@ -491,12 +785,17 @@ class TestAjudaERodape(BaseUI):
                               f"{classe.__name__}: {letra} sem rótulo no rodapé")
 
     def test_rodape_esconde_voltar_na_raiz(self):
+        self.digitar('?')   # o menu nasce escondido
         self.assertNaoNaTela("V - Voltar")
         self.criar_pasta("A")
         self.digitar('1')
         self.assertNaTela("V - Voltar")
 
-    def test_comando_invalido_avisa(self):
+    def test_comando_invalido_avisa_onde_nao_ha_o_que_filtrar(self):
+        """No browser texto livre filtra; no viewer não há lista, então avisa."""
+        self.criar_nota("Nota", "x")
+        self.digitar('1')
+        self.assertEqual(self.nome_tela(), 'ViewerScreen')
         self.digitar('XYZ')
         self.assertIn("não reconhecido", self.tela())
 
@@ -626,19 +925,28 @@ class TestFonteELayout(BaseUI):
             self.assertEqual(len(linha), largura)
 
     def test_menu_no_formato_letra_traco_rotulo(self):
+        self.digitar('?')   # o menu nasce escondido
         self.assertNaTela("C - Nova pasta")
         self.assertNaTela("N - Nova nota")
         self.assertNaTela("sair - Encerrar")
 
     def test_contadores_alinhados_a_direita(self):
+        """Larguras diferentes de propósito ([9]:[9] vs [1]:[1]), senão o
+        alinhamento passaria de graça."""
         self.criar_pasta("Curto")
-        self.digitar('1'); self.criar_pasta("x"); self.digitar('V')
+        self.digitar('1')
+        for i in range(9):
+            self.criar_nota(f"n{i}")
+        self.digitar('V')
         self.criar_pasta("Um nome bem mais comprido que o outro")
-        self.digitar('2'); self.criar_pasta("y"); self.criar_pasta("z"); self.digitar('V')
+        self.digitar('2'); self.criar_nota("unica"); self.digitar('V')
 
-        fins = [len(l.rstrip()) for l in self.tela().splitlines() if l.rstrip().endswith(']')]
-        self.assertEqual(len(fins), 2)
-        self.assertEqual(fins[0], fins[1], "os contadores [N] devem terminar na mesma coluna")
+        linhas = [l.rstrip() for l in self.tela().splitlines() if l.rstrip().endswith(']')]
+        self.assertEqual(len(linhas), 2)
+        self.assertIn("[9]:[9]", linhas[0])
+        self.assertIn("[1]:[1]", linhas[1])
+        self.assertEqual(len(linhas[0]), len(linhas[1]),
+                         "os contadores devem terminar na mesma coluna")
 
     def test_nome_longo_e_truncado_sem_estourar(self):
         largura = self.view.colunas()
@@ -981,15 +1289,18 @@ class TestAtalhosMultiplataforma(BaseUI):
     def test_todos_os_modos_tem_atalho_registrado(self):
         from keybase.qt import atalhos
         for seq in (atalhos.SALVAR, atalhos.CANCELAR, atalhos.MODO_EDITAR,
-                    atalhos.MODO_PREVIEW, atalhos.MODO_DIVIDIDO, atalhos.MODO_CICLAR):
+                    atalhos.MODO_PREVIEW, atalhos.MODO_DIVIDIDO, atalhos.MODO_CICLAR,
+                    atalhos.AJUDA_DINAMICA):
             self.assertTrue(atalhos.variantes(seq))
 
     def test_janela_registra_as_duas_variantes(self):
-        import sys as _sys
-        esperado = 12 if _sys.platform == 'darwin' else 6   # Esc nao duplica
-        self.assertGreaterEqual(len(self.janela._registrados), 6)
-        if _sys.platform == 'darwin':
-            self.assertEqual(len(self.janela._registrados), esperado - 1)
+        from keybase.qt import atalhos
+        sequencias = (atalhos.SALVAR, atalhos.CANCELAR, atalhos.MODO_EDITAR,
+                      atalhos.MODO_PREVIEW, atalhos.MODO_DIVIDIDO,
+                      atalhos.MODO_CICLAR, atalhos.AJUDA_DINAMICA)
+        # conta pelas proprias variantes: o Esc nao duplica no macOS
+        esperado = sum(len(atalhos.variantes(s)) for s in sequencias)
+        self.assertEqual(len(self.janela._registrados), esperado)
 
     def test_rotulo_usa_a_convencao_da_plataforma(self):
         import sys as _sys

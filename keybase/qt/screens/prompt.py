@@ -17,6 +17,10 @@ CONFIRMACAO_FORTE = "DELETAR"
 
 
 class PromptScreen(Screen):
+    # A barra aqui e campo de nome, nao de comando: nada de menu, e o Ctrl+0
+    # fica inerte em vez de alternar em silencio o menu da tela de baixo.
+    MOSTRA_MENU = False
+
     def __init__(self, app, pergunta, on_submit, valor_inicial="",
                  validar=None, permitir_vazio=False, contexto=""):
         super().__init__(app)
@@ -78,12 +82,11 @@ class PromptScreen(Screen):
     def on_back(self):
         self.app.pop()
 
-    def desenhar_rodape(self):
-        pass
-
 
 class ConfirmScreen(Screen):
     """Confirmacao s/n, ou digitar DELETAR quando a acao apaga uma subarvore."""
+
+    MOSTRA_MENU = False
 
     def __init__(self, app, pergunta, on_yes, detalhe="", forte=False):
         super().__init__(app)
@@ -135,6 +138,3 @@ class ConfirmScreen(Screen):
 
     def on_back(self):
         self.app.pop()
-
-    def desenhar_rodape(self):
-        pass

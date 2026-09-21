@@ -28,6 +28,8 @@ class App:
         self.stack = []
         self._flash = None
         self._flash_erro = False
+        #: o menu de comandos comeca escondido e nao persiste entre sessoes
+        self.menu_visivel = False
         self.indice = construir_indice(doc.raiz)
 
     # --- arvore ------------------------------------------------------------
@@ -135,12 +137,16 @@ class App:
             return
 
         tela = self.stack[-1]
+        # mesma flag que governa o desenho e o '?'/Ctrl+0: o botao acompanha
+        self.view.habilitar_ajuda(tela.MOSTRA_MENU)
         if tela.usa_editor():
             self.view.dica(tela.help_text())
             tela.render()
         else:
             self.view.modo_leitura()
             self.view.limpar()
+            # antes de render(): o menu e o primeiro bloco da area de leitura
+            tela.desenhar_menu()
             tela.render()
             self.view.ao_topo()
             self.view.dica(tela.help_text())
@@ -175,6 +181,11 @@ class App:
         """Ctrl+E. Mesma logica do modo()."""
         if self.atual:
             self.atual.on_ciclar_modo()
+
+    def alternar_menu(self):
+        """Ctrl+0. Mesma logica do modo(): inerte onde a tela nao implementa."""
+        if self.atual:
+            self.atual.on_ajuda()
 
     def sair(self):
         from ..config import salvar_config

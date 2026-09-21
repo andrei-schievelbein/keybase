@@ -107,6 +107,29 @@ class TestContagem(unittest.TestCase):
         self.assertEqual(tree.contar_recursivo(vscode), (1, 1))
         self.assertEqual(tree.contar_recursivo(raiz), (2, 1))
 
+    def test_contar_notas_separa_direto_de_recursivo(self):
+        raiz, vscode, navegacao, _ = arvore_exemplo()
+        self.assertEqual(tree.contar_notas(raiz), (0, 1))      # nada solto, 1 no fundo
+        self.assertEqual(tree.contar_notas(vscode), (0, 1))
+        self.assertEqual(tree.contar_notas(navegacao), (1, 1))  # a nota está aqui
+
+    def test_contar_notas_ignora_pastas(self):
+        """Sub-pasta não é nota: não entra em nenhuma das duas metades."""
+        raiz = nova_raiz()
+        tree.adicionar(raiz, tree.novo_folder("so uma pasta"))
+        self.assertEqual(tree.contar_notas(raiz), (0, 0))
+
+    def test_contar_notas_soma_ramos_irmaos(self):
+        raiz = nova_raiz()
+        a, b = tree.novo_folder("A"), tree.novo_folder("B")
+        tree.adicionar(raiz, a)
+        tree.adicionar(raiz, b)
+        tree.adicionar(raiz, tree.novo_file("solta"))
+        for nome in ("a1", "a2"):
+            tree.adicionar(a, tree.novo_file(nome))
+        tree.adicionar(b, tree.novo_file("b1"))
+        self.assertEqual(tree.contar_notas(raiz), (1, 4))
+
     def test_contar_itens_conta_so_diretos(self):
         raiz, vscode, _, _ = arvore_exemplo()
         self.assertEqual(tree.contar_itens(raiz), 1)

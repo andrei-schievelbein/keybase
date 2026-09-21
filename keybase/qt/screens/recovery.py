@@ -10,6 +10,9 @@ from .base import Screen
 
 
 class RecoveryScreen(Screen):
+    # Modo somente leitura: nenhum comando do menu se aplica aqui.
+    MOSTRA_MENU = False
+
     def __init__(self, app, erro, caminho):
         super().__init__(app)
         self.erro = erro
@@ -64,6 +67,3 @@ class RecoveryScreen(Screen):
     def on_back(self):
         self.app.flash("Digite 'sair' para encerrar sem alterar nada.", erro=True)
         self.app.rerender()
-
-    def desenhar_rodape(self):
-        pass

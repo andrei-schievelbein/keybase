@@ -142,6 +142,16 @@ def contar_itens(folder):
     return len(folder.filhos)
 
 
+def contar_notas(folder):
+    """(diretas, na subarvore inteira) - o '[a]:[b]' da listagem.
+
+    So notas: sub-pasta nao entra em nenhuma das duas metades. A segunda reusa
+    contar_recursivo, que ja fazia essa caminhada para o resumo de delecao.
+    """
+    diretas = sum(1 for filho in folder.filhos if isinstance(filho, File))
+    return diretas, contar_recursivo(folder)[1]
+
+
 def contar_recursivo(folder):
     """(n_folders, n_files) em toda a subarvore, sem contar o proprio folder."""
     pastas = notas = 0

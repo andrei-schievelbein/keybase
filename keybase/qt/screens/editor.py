@@ -22,6 +22,10 @@ ROTULO = {EDITAR: 'editar', PREVIEW: 'preview', DIVIDIDO: 'dividido'}
 
 
 class EditorScreen(Screen):
+    # A area de leitura da lugar ao painel de edicao: nao ha menu aqui, e o
+    # Ctrl+0 fica inerte - um rerender nao pode passar perto do texto nao salvo.
+    MOSTRA_MENU = False
+
     def __init__(self, app, file_id):
         super().__init__(app)
         self.file_id = file_id

@@ -27,12 +27,11 @@ class BrowserScreen(Screen):
         'B': 'cmd_buscar',
         'V': 'cmd_voltar',
         'M': 'cmd_raiz',
-        '?': 'cmd_ajuda',
     }
     ROTULOS = {
         'C': 'Nova pasta', 'N': 'Nova nota', 'E': 'Editar nota',
         'R': 'Renomear', 'D': 'Deletar', 'B': 'Buscar',
-        'V': 'Voltar', 'M': 'Ir para a raiz', '?': 'Ajuda',
+        'V': 'Voltar', 'M': 'Ir para a raiz',
     }
 
     def __init__(self, app, node_id):
@@ -105,7 +104,6 @@ class BrowserScreen(Screen):
                        'contador')
 
         view.barra()
-        self.desenhar_rodape()
 
     def _render_vazio(self):
         view = self.app.view
@@ -162,10 +160,10 @@ class BrowserScreen(Screen):
             return
         self.app.pop()
 
-    def cmd_voltar(self, alvo=None, resto=None):
+    def cmd_voltar(self, alvo=None):
         self.on_back()
 
-    def cmd_raiz(self, alvo=None, resto=None):
+    def cmd_raiz(self, alvo=None):
         if self.na_raiz:
             self.filtro = ""
             self.app.rerender()
@@ -176,11 +174,7 @@ class BrowserScreen(Screen):
         self.filtro = termo
         self.app.rerender()
 
-    def cmd_ajuda(self, alvo=None, resto=None):
-        from .help import HelpScreen
-        self.app.push(HelpScreen(self.app))
-
-    def cmd_buscar(self, alvo=None, resto=None):
+    def cmd_buscar(self, alvo=None):
         from .search import SearchResultsScreen
 
         def abrir(termo):
@@ -204,7 +198,7 @@ class BrowserScreen(Screen):
             return None
         return validar
 
-    def cmd_nova_pasta(self, alvo=None, resto=None):
+    def cmd_nova_pasta(self, alvo=None):
         def criar(nome):
             novo = tree.novo_folder(nome)
             tree.adicionar(self.folder, novo)
@@ -218,7 +212,7 @@ class BrowserScreen(Screen):
             contexto=montar_breadcrumb(self.app.caminho_de(self.node_id)),
         ))
 
-    def cmd_nova_nota(self, alvo=None, resto=None):
+    def cmd_nova_nota(self, alvo=None):
         def criar(nome):
             from .editor import EditorScreen
             from .viewer import ViewerScreen
@@ -268,7 +262,7 @@ class BrowserScreen(Screen):
             contexto=montar_breadcrumb(self.app.caminho_de(self.node_id)),
         ))
 
-    def cmd_editar(self, alvo=None, resto=None):
+    def cmd_editar(self, alvo=None):
         def abrir(no):
             if not isinstance(no, File):
                 self.app.flash("Só é possível editar o conteúdo de uma nota.", erro=True)
@@ -281,7 +275,7 @@ class BrowserScreen(Screen):
 
         self._com_alvo(alvo, "Editar qual nota? (número)", abrir)
 
-    def cmd_renomear(self, alvo=None, resto=None):
+    def cmd_renomear(self, alvo=None):
         def renomear(no):
             def aplicar(nome):
                 tree.renomear(no, nome)
@@ -298,7 +292,7 @@ class BrowserScreen(Screen):
 
         self._com_alvo(alvo, "Renomear qual item? (número)", renomear)
 
-    def cmd_deletar(self, alvo=None, resto=None):
+    def cmd_deletar(self, alvo=None):
         def deletar(no):
             def aplicar():
                 self.app.snapshot()  # o backup e o 'undo' real
