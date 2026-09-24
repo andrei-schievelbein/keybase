@@ -1,7 +1,7 @@
 """DestinoScreen: escolher a pasta para onde mover (X) ou copiar (Y) um item.
 
 Uma tela so, que navega por dentro: o numero entra numa sub-pasta, Enter
-vazio sobe, M vai a raiz e '.' move para a pasta mostrada. Empilhar uma tela
+vazio sobe, M vai a raiz e C confirma (move ou copia) para a pasta mostrada. Empilhar uma tela
 por nivel, como o browser faz, obrigaria o cancelamento a desempilhar N telas.
 
 So pastas aparecem, e nunca o proprio item movido: entrar nele seria o unico
@@ -16,8 +16,8 @@ from .prompt import ConfirmScreen
 
 
 class DestinoScreen(Screen):
-    COMANDOS = {'V': 'cmd_voltar', 'M': 'cmd_raiz'}
-    ROTULOS = {'V': 'Subir um nível', 'M': 'Ir para a raiz'}
+    COMANDOS = {'C': 'cmd_confirmar', 'V': 'cmd_voltar', 'M': 'cmd_raiz'}
+    ROTULOS = {'C': 'Confirmar', 'V': 'Subir um nível', 'M': 'Ir para a raiz'}
     MOSTRA_MENU = False  # as instrucoes ja estao na tela
 
     def __init__(self, app, no_id, pasta_id, copiar=False):
@@ -59,7 +59,7 @@ class DestinoScreen(Screen):
         else:
             view.linha(" " + caminho, 'breadcrumb')
         view.barra()
-        view.trechos([(" . - ", 'numero'), (f"{verbo} para esta pasta", 'nota')])
+        view.trechos([(" C - ", 'numero'), (f"{verbo} para esta pasta", 'nota')])
         view.barra()
         if self.itens:
             for i, pasta in enumerate(self.itens, start=1):
@@ -68,8 +68,8 @@ class DestinoScreen(Screen):
             view.linha(" Nenhuma sub-pasta aqui.", 'vazio')
         view.barra()
         acao = "copia" if self.copiar else "move"
-        view.linha(f" Número entra na pasta · . {acao} para cá · ENTER sobe · "
-                   "M raiz · ESC cancela", 'dica')
+        view.linha(f" Número entra na pasta | C {acao} para cá | ENTER sobe | "
+                   "M raiz | ESC cancela", 'dica')
         view.barra()
 
     # --- navegacao ---------------------------------------------------------
@@ -108,10 +108,8 @@ class DestinoScreen(Screen):
         self.pasta_id = self.app.raiz.id
         self.app.rerender()
 
-    def cmd_filtro(self, termo):
-        if termo == '.':
-            return self.confirmar()
-        self.entrada_invalida(termo)
+    def cmd_confirmar(self, alvo=None):
+        self.confirmar()
 
     # --- mover ---------------------------------------------------------------
 

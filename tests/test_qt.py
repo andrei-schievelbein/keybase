@@ -1966,8 +1966,8 @@ class TestFase1(CofreMixin, BaseUI):
         self.criar_nota("Cmd", self.NOTA)
         self.digitar('Y2')
         self.assertEqual(self.nome_tela(), 'DestinoScreen')
-        self.assertIn(" . - Copiar para esta pasta", self.tela())
-        self.digitar('1'); self.digitar('.')
+        self.assertIn(" C - Copiar para esta pasta", self.tela())
+        self.digitar('1'); self.digitar('C')
         self.assertEqual(self.nome_tela(), 'BrowserScreen')
         self.assertNaTela("copiado para ~ / Destino")
         destino = self.app.raiz.filhos[0]
@@ -1984,27 +1984,27 @@ class TestFase1(CofreMixin, BaseUI):
         self.criar_pasta("B")
         self.digitar('Y1')
         self.digitar('1')    # a propria A nao aparece como destino: B e o 1
-        self.digitar('.')
+        self.digitar('C')
         b = next(f for f in self.app.raiz.filhos if f.nome == "B")
         self.assertEqual([f.nome for f in b.filhos], ["A"])
         self.assertEqual(b.filhos[0].filhos[0].conteudo, "x")
 
     def test_copiar_na_mesma_pasta_vira_copia(self):
         self.criar_nota("Cmd", "x")
-        self.digitar('Y1'); self.digitar('.')
+        self.digitar('Y1'); self.digitar('C')
         self.assertEqual(sorted(f.nome for f in self.app.raiz.filhos), ["Cmd", "Cmd (cópia)"])
 
     def test_copiar_desfaz_com_u(self):
         self.criar_pasta("Destino")
         self.criar_nota("Cmd", "x")
-        self.digitar('Y2'); self.digitar('1'); self.digitar('.')
+        self.digitar('Y2'); self.digitar('1'); self.digitar('C')
         self.digitar('U')
         self.assertEqual(self.app.raiz.filhos[0].filhos, [])
 
     def test_copiar_nota_cifrada_recifra_a_copia(self):
         self.nota_cifrada("Banco", "pin sigiloso-kappa")   # K1: a nota e o item 1
         self.criar_pasta("Destino")
-        self.digitar('Y2'); self.digitar('1'); self.digitar('.')
+        self.digitar('Y2'); self.digitar('1'); self.digitar('C')
         destino = next(f for f in self.app.raiz.filhos if f.nome == "Destino")
         copia = destino.filhos[0]
         self.assertTrue(copia.cifrado)
@@ -2021,7 +2021,7 @@ class TestFase1(CofreMixin, BaseUI):
         if self.nome_tela() == 'ConfirmScreen':
             self.digitar('S')
         self.digitar('1')
-        self.digitar('Y1'); self.digitar('M'); self.digitar('.')
+        self.digitar('Y1'); self.digitar('M'); self.digitar('C')
         self.assertEqual(self.nome_tela(), 'ConfirmScreen')
         self.assertNaTela("fica fora da pasta cifrada")
 
@@ -2064,9 +2064,9 @@ class TestFase1(CofreMixin, BaseUI):
         self.criar_nota("Nota", "x")
         self.digitar('X2')
         self.assertEqual(self.nome_tela(), 'DestinoScreen')
-        self.assertIn(" . - Mover para esta pasta", self.tela())
+        self.assertIn(" C - Mover para esta pasta", self.tela())
         self.digitar('1')          # entra em Destino
-        self.digitar('.')
+        self.digitar('C')
         self.assertEqual(self.nome_tela(), 'BrowserScreen')
         self.assertNaTela("movido para ~ / Destino")
         destino = self.app.raiz.filhos[0]
@@ -2082,7 +2082,7 @@ class TestFase1(CofreMixin, BaseUI):
     def test_mover_para_a_mesma_pasta_avisa(self):
         self.criar_nota("Nota", "x")
         self.digitar('X1')
-        self.digitar('.')
+        self.digitar('C')
         self.assertNaTela("já está nesta pasta")
 
     def test_nome_repetido_no_destino_e_recusado(self):
@@ -2093,7 +2093,7 @@ class TestFase1(CofreMixin, BaseUI):
         self.criar_nota("Nota", "fora")
         self.digitar('X2')
         self.digitar('1')
-        self.digitar('.')
+        self.digitar('C')
         self.assertNaTela("Já existe um item chamado 'Nota'")
 
     def test_enter_vazio_sobe_e_na_raiz_cancela(self):
@@ -2117,7 +2117,7 @@ class TestFase1(CofreMixin, BaseUI):
         self.digitar('K2')                      # nota cifrada por si
         if self.nome_tela() == 'ConfirmScreen':
             self.digitar('S')
-        self.digitar('X2'); self.digitar('1'); self.digitar('.')
+        self.digitar('X2'); self.digitar('1'); self.digitar('C')
         nota = self.app.raiz.filhos[0].filhos[0]
         self.assertFalse(nota.cifrado)          # a pasta ja protege
         self.assertNotIn("sigiloso-kappa", self.arquivo.read_text(encoding='utf-8'))
@@ -2132,7 +2132,7 @@ class TestFase1(CofreMixin, BaseUI):
         if self.nome_tela() == 'ConfirmScreen':
             self.digitar('S')
         self.digitar('1')
-        self.digitar('X1'); self.digitar('M'); self.digitar('.')
+        self.digitar('X1'); self.digitar('M'); self.digitar('C')
         self.assertEqual(self.nome_tela(), 'ConfirmScreen')
         self.assertNaTela("sai da pasta cifrada")
 
