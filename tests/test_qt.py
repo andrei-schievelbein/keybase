@@ -68,6 +68,9 @@ class BaseUI(unittest.TestCase):
 
         doc = storage.Documento.novo()
         self.app = App(self.janela, self.view, doc, self.arquivo, config)
+        # a tela de configuracao nunca pode tocar o arquivo real do usuario
+        self.arquivo_config = self.dir / 'keybase_config.toml'
+        self.app.caminho_config = self.arquivo_config
         self.janela.ligar(self.app)
         self.app.stack = [BrowserScreen(self.app, ID_RAIZ)]
         self.app.rerender()
@@ -100,6 +103,13 @@ class BaseUI(unittest.TestCase):
         from keybase.tree import normalizar
         self.assertIn(normalizar(trecho), normalizar(self.tela()))
 
+    def assertLinhaComFim(self, trecho, fim):
+        """Alguma linha contem `trecho` e TERMINA com `fim`: o formato das
+        marcas alinhadas a direita."""
+        linhas = [l.strip() for l in self.tela().splitlines()]
+        self.assertTrue(any(trecho in l and l.endswith(fim) for l in linhas),
+                        f"nenhuma linha {trecho!r} ... {fim!r} em:\n{self.tela()}")
+
     def assertNaoNaTela(self, trecho):
         from keybase.tree import normalizar
         self.assertNotIn(normalizar(trecho), normalizar(self.tela()))
@@ -117,9 +127,16 @@ class BaseUI(unittest.TestCase):
         editor.moveCursor(QTextCursor.MoveOperation.End)
         editor.insertPlainText(texto)
 
-    def criar_pasta(self, nome):
-        self.digitar('C')
+    def esc_no_editor(self):
+        """Esc no texto so leva o cursor para a barra; o segundo cancela."""
+        self.app.cancel()
+        self.assertFalse(self.view.foco_na_edicao())
+        self.app.cancel()
+
+    def criar_pasta(self, nome, cifrada=False):
+        self.digitar('P')
         self.digitar(nome)
+        self.digitar('s' if cifrada else '')   # "nascem cifradas?" - padrao nao
 
     def criar_nota(self, nome, conteudo=""):
         self.digitar('N')
@@ -146,6 +163,7 @@ class TestNavegacao(BaseUI):
         self.criar_pasta("Navegação")
         self.digitar('1')
         self.criar_pasta("Básico")
+        self.app._fim_do_flash()   # o aviso "criada" sai, o caminho volta
         self.assertIn("~ / Vscode / Navegação", self.tela())
         self.digitar('1')
         self.assertIn("~ / Vscode / Navegação / Básico", self.tela())
@@ -259,14 +277,14 @@ class TestCriacao(BaseUI):
 
     def test_nome_duplicado_e_recusado_sem_perder_o_digitado(self):
         self.criar_pasta("Igual")
-        self.digitar('C')
+        self.digitar('P')
         self.digitar('igual')  # mesma coisa ignorando caixa
         self.assertEqual(self.nome_tela(), 'PromptScreen')
         self.assertIn("Já existe", self.tela())
         self.assertEqual(self.view.entrada.text(), 'igual')
 
     def test_nome_vazio_cancela(self):
-        self.digitar('C')
+        self.digitar('P')
         self.digitar('')
         self.assertEqual(self.nome_tela(), 'BrowserScreen')
         self.assertEqual(self.app.raiz.filhos, [])
@@ -297,7 +315,7 @@ class TestEdicao(BaseUI):
         self.digitar('1')            # viewer
         self.digitar('E')            # editor
         self.anexar_no_editor(' alterado')
-        self.app.cancel()            # Esc
+        self.esc_no_editor()            # Esc
         self.assertEqual(self.nome_tela(), 'ConfirmScreen')
         self.assertIn("Descartar", self.tela())
 
@@ -306,7 +324,7 @@ class TestEdicao(BaseUI):
         self.digitar('1')
         self.digitar('E')
         self.anexar_no_editor(' alterado')
-        self.app.cancel()
+        self.esc_no_editor()
         self.digitar('S')            # sim, descartar
         recarregado = storage.carregar(self.arquivo)
         self.assertEqual(recarregado.raiz.filhos[0].conteudo, "original")
@@ -319,7 +337,7 @@ class TestEdicao(BaseUI):
         self.digitar('1')
         self.digitar('E')
         self.anexar_no_editor(' descartado')
-        self.app.cancel()
+        self.esc_no_editor()
         self.digitar('S')
         # a segunda edição tem de funcionar normalmente
         self.digitar('E')
@@ -333,7 +351,7 @@ class TestEdicao(BaseUI):
         self.criar_nota("Nota", "original")
         self.digitar('1')
         self.digitar('E')
-        self.app.cancel()
+        self.esc_no_editor()
         self.assertEqual(self.nome_tela(), 'ViewerScreen')
 
     def test_viewer_renderiza_markdown(self):
@@ -355,7 +373,7 @@ class TestEdicao(BaseUI):
         self.digitar('E1')
         self.assertEqual(self.nome_tela(), 'EditorScreen')
         # sair do editor cai no viewer, nao no browser
-        self.app.cancel()
+        self.esc_no_editor()
         self.assertEqual(self.nome_tela(), 'ViewerScreen')
 
     def test_editar_pasta_e_recusado(self):
@@ -552,7 +570,7 @@ class TestBusca(BaseUI):
     def test_letra_de_comando_continua_comando(self):
         """Texto livre não pode engolir os comandos de uma letra."""
         self.criar_pasta("Cursor")
-        self.digitar('C')
+        self.digitar('P')
         self.assertEqual(self.nome_tela(), 'PromptScreen')
         self.assertIn("Nome da nova pasta", self.tela())
 
@@ -607,19 +625,19 @@ class TestAjudaERodape(BaseUI):
         self.assertEqual(self.nome_tela(), 'BrowserScreen')
 
     def test_menu_comeca_escondido(self):
-        self.assertNaoNaTela("C - Nova pasta")
+        self.assertNaoNaTela("P - Nova pasta")
 
     def test_interrogacao_alterna_o_menu(self):
         self.digitar('?')
-        self.assertNaTela("C - Nova pasta")
+        self.assertNaTela("P - Nova pasta")
         self.digitar('?')
-        self.assertNaoNaTela("C - Nova pasta")
+        self.assertNaoNaTela("P - Nova pasta")
 
     def test_menu_vem_antes_do_breadcrumb(self):
         """O menu e o PRIMEIRO bloco da area de leitura, nao mais o ultimo."""
         self.digitar('?')
         tela = self.tela()
-        self.assertLess(tela.index("C - Nova pasta"), tela.index("~"))
+        self.assertLess(tela.index("P - Nova pasta"), tela.index("~"))
 
     def test_menu_mostra_ajuda_completa_e_nao_o_antigo_rotulo(self):
         self.digitar('?')
@@ -631,13 +649,14 @@ class TestAjudaERodape(BaseUI):
         self.criar_pasta("A")
         self.digitar('?')
         self.digitar('1')
-        self.assertNaTela("C - Nova pasta")
+        self.assertNaTela("P - Nova pasta")
 
     def test_interrogacao_num_prompt_e_texto_literal(self):
         """PromptScreen trata o input cru: da para nomear uma pasta '?'."""
-        self.digitar('C')
+        self.digitar('P')
         self.assertEqual(self.nome_tela(), 'PromptScreen')
         self.digitar('?')
+        self.digitar('')   # "nascem cifradas?" - padrao nao
         self.assertEqual(self.nome_tela(), 'BrowserScreen')
         self.assertNaTela("?")
         self.assertIsNotNone(next((n for n in self.app.atual.itens
@@ -661,9 +680,9 @@ class TestAjudaERodape(BaseUI):
 
     def test_ctrl_zero_alterna_o_menu(self):
         self.app.alternar_menu()
-        self.assertNaTela("C - Nova pasta")
+        self.assertNaTela("P - Nova pasta")
         self.app.alternar_menu()
-        self.assertNaoNaTela("C - Nova pasta")
+        self.assertNaoNaTela("P - Nova pasta")
 
     def test_ctrl_zero_dispara_pela_tecla(self):
         """Prova a fiacao, nao so a chamada direta a app.alternar_menu()."""
@@ -675,17 +694,17 @@ class TestAjudaERodape(BaseUI):
         alvo = _app_qt().focusWidget() or self.janela
         QTest.keyClick(alvo, Qt.Key.Key_0, modificador)
         _app_qt().processEvents()
-        self.assertNaTela("C - Nova pasta")
+        self.assertNaTela("P - Nova pasta")
 
     def test_ctrl_zero_e_inerte_onde_o_menu_nao_aparece(self):
         """A regra: o atalho só age onde o menu é desenhado. Sem isso, o Ctrl+0
         num prompt alternava em silêncio o menu da tela de baixo."""
-        self.digitar('C')
+        self.digitar('P')
         self.assertEqual(self.nome_tela(), 'PromptScreen')
         self.app.alternar_menu()
         self.assertFalse(self.app.menu_visivel)
         self.digitar('')                      # cancela o prompt
-        self.assertNaoNaTela("C - Nova pasta")
+        self.assertNaoNaTela("P - Nova pasta")
 
     def test_ctrl_zero_e_inerte_na_confirmacao(self):
         self.criar_pasta("A")
@@ -709,10 +728,10 @@ class TestAjudaERodape(BaseUI):
         from keybase.qt.screens.search import SearchResultsScreen
         from keybase.qt.screens.viewer import ViewerScreen
 
-        for classe in (PromptScreen, ConfirmScreen, HelpScreen,
-                       RecoveryScreen, EditorScreen):
+        for classe in (PromptScreen, ConfirmScreen, HelpScreen, RecoveryScreen):
             self.assertFalse(classe.MOSTRA_MENU, classe.__name__)
-        for classe in (BrowserScreen, ViewerScreen, SearchResultsScreen):
+        # o editor tem menu - o de atalhos de edicao, na barra de dica
+        for classe in (BrowserScreen, ViewerScreen, SearchResultsScreen, EditorScreen):
             self.assertTrue(classe.MOSTRA_MENU, classe.__name__)
 
     def test_ctrl_zero_no_editor_nao_mexe_no_texto(self):
@@ -744,9 +763,9 @@ class TestAjudaERodape(BaseUI):
 
     def test_clique_no_botao_alterna_o_menu(self):
         self.clicar_ajuda()
-        self.assertNaTela("C - Nova pasta")
+        self.assertNaTela("P - Nova pasta")
         self.clicar_ajuda()
-        self.assertNaoNaTela("C - Nova pasta")
+        self.assertNaoNaTela("P - Nova pasta")
 
     def test_botao_e_barra_compartilham_o_mesmo_interruptor(self):
         """Clicar liga; '?' na barra desliga. Um estado só, três caminhos."""
@@ -759,17 +778,64 @@ class TestAjudaERodape(BaseUI):
 
     def test_botao_apaga_onde_o_menu_nao_existe(self):
         self.assertTrue(self.view.botao_ajuda.isEnabled())
-        self.digitar('C')                 # prompt: sem menu
+        self.digitar('P')                 # prompt: sem menu
         self.assertEqual(self.nome_tela(), 'PromptScreen')
         self.assertFalse(self.view.botao_ajuda.isEnabled())
         self.digitar('')                  # cancela
         self.assertTrue(self.view.botao_ajuda.isEnabled())
 
-    def test_botao_apaga_no_editor(self):
+    def test_botao_fica_ativo_no_editor(self):
         self.criar_nota("Nota", "x")
         self.digitar('1'); self.digitar('E')
         self.assertEqual(self.nome_tela(), 'EditorScreen')
-        self.assertFalse(self.view.botao_ajuda.isEnabled())
+        self.assertTrue(self.view.botao_ajuda.isEnabled())
+
+    # --- menu de atalhos no editor ----------------------------------------
+
+    def abrir_editor(self, conteudo="original"):
+        self.criar_nota("Nota", conteudo)
+        self.digitar('1'); self.digitar('E')
+        self.assertEqual(self.nome_tela(), 'EditorScreen')
+
+    def test_botao_no_editor_mostra_os_atalhos_de_edicao(self):
+        from keybase.qt import atalhos
+        self.abrir_editor()
+        rotulo = atalhos.rotulo(atalhos.MODO_DIVIDIDO)
+        self.assertNotIn(rotulo, self.view.ajuda.text())
+        self.clicar_ajuda()
+        self.assertIn(rotulo + " - Dividido", self.view.ajuda.text())
+        self.clicar_ajuda()
+        self.assertNotIn(rotulo, self.view.ajuda.text())
+
+    def test_interrogacao_na_barra_alterna_o_menu_do_editor(self):
+        from keybase.qt import atalhos
+        self.abrir_editor()
+        self.digitar('?')
+        self.assertTrue(self.app.menu_visivel)
+        self.assertIn("Alternar modo", self.view.ajuda.text())
+        self.digitar('?')
+        self.assertFalse(self.app.menu_visivel)
+        self.assertNotIn("Alternar modo", self.view.ajuda.text())
+        self.assertEqual(self.nome_tela(), 'EditorScreen')
+        self.assertEqual(self.editor().toPlainText(), "original")
+
+    def test_interrogacao_no_editor_e_texto_da_nota(self):
+        self.abrir_editor()
+        self.anexar_no_editor(" ?")
+        self.assertFalse(self.app.menu_visivel)
+        self.app.save()
+        self.assertEqual(self.app.raiz.filhos[0].conteudo, "original ?")
+
+    def test_ajuda_completa_no_editor_preserva_o_texto(self):
+        self.abrir_editor()
+        self.anexar_no_editor(" nao salvo")
+        self.digitar('??')
+        self.assertEqual(self.nome_tela(), 'HelpScreen')
+        self.assertNaTela("AJUDA")
+        self.digitar('V')
+        self.assertEqual(self.nome_tela(), 'EditorScreen')
+        self.assertTrue(self.view.em_edicao())
+        self.assertEqual(self.editor().toPlainText(), "original nao salvo")
 
     def test_rodape_so_mostra_comando_implementado(self):
         """Rodape e despacho saem do mesmo dict, entao nao podem divergir."""
@@ -824,10 +890,12 @@ class TestModos(BaseUI):
         self.app.save()
         self.assertIs(self.view.pilha.currentWidget(), self.view.out)
 
-    def test_barra_de_dica_so_aparece_no_editor(self):
+    def test_barra_de_dica_so_aparece_no_editor_com_o_menu_aberto(self):
         self.assertFalse(self.view.ajuda.isVisibleTo(self.janela))
         self.digitar('N')
         self.digitar('Nota')
+        self.assertFalse(self.view.ajuda.isVisibleTo(self.janela))
+        self.digitar('?')
         self.assertTrue(self.view.ajuda.isVisibleTo(self.janela))
         from keybase.qt import atalhos
         self.assertIn(atalhos.rotulo(atalhos.SALVAR), self.view.ajuda.text())
@@ -926,7 +994,7 @@ class TestFonteELayout(BaseUI):
 
     def test_menu_no_formato_letra_traco_rotulo(self):
         self.digitar('?')   # o menu nasce escondido
-        self.assertNaTela("C - Nova pasta")
+        self.assertNaTela("P - Nova pasta")
         self.assertNaTela("N - Nova nota")
         self.assertNaTela("sair - Encerrar")
 
@@ -1131,9 +1199,36 @@ class TestModosDeEdicao(BaseUI):
 
     def test_barra_de_dica_mostra_o_modo(self):
         self.abrir_editor()
-        self.assertIn('[editar]', self.view.ajuda.text())
+        self.assertIn('[EDITAR]', self.view.edicao_modos.text())
         self.app.modo('dividido')
-        self.assertIn('[dividido]', self.view.ajuda.text())
+        self.assertIn('[DIVIDIDO]', self.view.edicao_modos.text())
+        self.assertNotIn('[EDITAR]', self.view.edicao_modos.text())
+
+    def test_cabecalho_do_editor_tem_modos_caminho_e_divisoria(self):
+        from keybase.qt.theme import cores_markdown
+        self.abrir_editor()
+        self.assertTrue(self.view.cabecalho_edicao_widget.isVisibleTo(self.janela))
+        self.assertIn(cores_markdown(self.config['theme'])['h1'],
+                      self.view.edicao_modos.text())
+        self.assertIn("Editando: ~ / Nota", self.view.edicao_caminho.text())
+        divisoria = self.view.edicao_divisoria
+        self.assertTrue(set(divisoria.text()) == {'='})
+        # acompanha a janela: a largura do rotulo segue a da area, nao o texto
+        self.assertLessEqual(divisoria.width(), self.janela.width())
+        self.digitar('')  # Enter vazio na barra
+        self.esc_no_editor()
+        self.assertFalse(self.view.cabecalho_edicao_widget.isVisibleTo(self.janela))
+
+    def test_esc_leva_o_cursor_para_a_barra_e_enter_volta(self):
+        self.abrir_editor("original")
+        self.view.focar_editor()
+        self.assertTrue(self.view.foco_na_edicao())
+        self.app.cancel()
+        self.assertEqual(self.nome_tela(), 'EditorScreen')
+        self.assertIs(_app_qt().focusWidget(), self.view.entrada)
+        self.digitar('')
+        self.assertTrue(self.view.foco_na_edicao())
+        self.assertEqual(self.editor().toPlainText(), "original")
 
     def test_atalhos_de_modo_sao_inertes_fora_do_editor(self):
         """No-op na classe Screen: nenhum `if` na janela."""
@@ -1150,7 +1245,7 @@ class TestModosDeEdicao(BaseUI):
         self.abrir_editor("original")
         self.app.modo('dividido')
         self.anexar_no_editor(" alterado")
-        self.app.cancel()
+        self.esc_no_editor()
         self.assertEqual(self.nome_tela(), 'ConfirmScreen')
 
 
@@ -1306,16 +1401,15 @@ class TestAtalhosMultiplataforma(BaseUI):
         import sys as _sys
 
         from keybase.qt import atalhos
-        rotulo = atalhos.rotulo(atalhos.SALVAR)
-        if _sys.platform == 'darwin':
-            self.assertIn('⌘', rotulo)
-        else:
-            self.assertIn('Ctrl', rotulo)
+        # Ctrl em todas as plataformas: no macOS o Ctrl fisico funciona
+        self.assertEqual(atalhos.rotulo(atalhos.SALVAR), 'Ctrl+S')
+        self.assertEqual(atalhos.rotulo(atalhos.CANCELAR), 'Esc')
 
     def test_barra_de_dica_mostra_o_atalho_da_plataforma(self):
         from keybase.qt import atalhos
         self.criar_nota("Nota", "x")
         self.digitar('1'); self.digitar('E')
+        self.digitar('?')   # os atalhos de modo ficam no menu
         self.assertIn(atalhos.rotulo(atalhos.MODO_DIVIDIDO), self.view.ajuda.text())
 
     def test_atalho_de_modo_dispara_pela_tecla(self):
@@ -1355,4 +1449,482 @@ class TestAtalhosMultiplataforma(BaseUI):
         alvo = _app_qt().focusWidget() or self.janela
         QTest.keyClick(alvo, Qt.Key.Key_Escape)
         _app_qt().processEvents()
+        self.assertEqual(self.nome_tela(), 'EditorScreen')   # foi para a barra
+        QTest.keyClick(_app_qt().focusWidget(), Qt.Key.Key_Escape)
+        _app_qt().processEvents()
         self.assertEqual(self.nome_tela(), 'ConfirmScreen')
+
+
+class CofreMixin:
+    """Senha de teste, scrypt barato e os passos de criar senha e cifrar nota."""
+    SENHA = "segredo1"
+
+    def setUp(self):
+        from keybase import cripto
+        self._n_original = cripto.SCRYPT_N
+        cripto.SCRYPT_N = 2 ** 10   # scrypt barato: so os testes
+        super().setUp()
+
+    def tearDown(self):
+        from keybase import cripto
+        cripto.SCRYPT_N = self._n_original
+        super().tearDown()
+
+    def criar_senha(self):
+        self.assertEqual(self.nome_tela(), 'ConfirmScreen')
+        self.assertNaTela("Não existe recuperação")
+        self.digitar('S')
+        self.assertTrue(self.app.atual.ENTRADA_SENHA)
+        self.digitar(self.SENHA)
+        self.digitar(self.SENHA)
+
+    def nota_cifrada(self, nome="Banco", conteudo="pin sigiloso-kappa"):
+        self.criar_nota(nome, conteudo)
+        self.digitar('K1')
+        self.criar_senha()
+        if self.nome_tela() == 'ConfirmScreen':   # oferta de sanear backups
+            self.digitar('S')
+        return self.app.raiz.filhos[0]
+
+
+class TestNotasCifradas(CofreMixin, BaseUI):
+    def test_cifrar_nota_tira_o_texto_do_arquivo_e_dos_backups(self):
+        nota = self.nota_cifrada()
+        self.assertTrue(nota.cifrado)
+        self.assertLinhaComFim("Banco", "[cifrada]")
+        self.assertNotIn("sigiloso-kappa", self.arquivo.read_text(encoding='utf-8'))
+        for _, arquivo in storage.backups_disponiveis(self.arquivo):
+            self.assertNotIn("sigiloso-kappa", arquivo.read_text(encoding='utf-8'))
+
+    def test_senha_curta_e_recusada(self):
+        self.criar_nota("Banco", "x")
+        self.digitar('K1')
+        self.digitar('S')
+        self.digitar('123')
+        self.assertNaTela("pelo menos")
+        self.assertEqual(self.view.entrada.text(), '')   # senha nao volta ao campo
+
+    def test_senhas_diferentes_sao_recusadas(self):
+        self.criar_nota("Banco", "x")
+        self.digitar('K1')
+        self.digitar('S')
+        self.digitar(self.SENHA)
+        self.digitar('outra-senha')
+        self.assertNaTela("não conferem")
+        self.assertIsNone(self.app.doc.cofre)
+
+    def test_campo_mascarado_so_no_prompt_de_senha(self):
+        from PySide6.QtWidgets import QLineEdit
+        self.criar_nota("Banco", "x")
+        self.digitar('K1')
+        self.digitar('S')
+        self.assertEqual(self.view.entrada.echoMode(), QLineEdit.EchoMode.Password)
+        self.digitar('')   # cancela
+        self.assertEqual(self.view.entrada.echoMode(), QLineEdit.EchoMode.Normal)
+
+    def test_trancar_e_abrir_com_senha(self):
+        self.nota_cifrada()
+        self.digitar('T')
+        self.assertIsNone(self.app.raiz.filhos[0].conteudo)
+        self.digitar('1')
+        self.assertEqual(self.nome_tela(), 'PromptScreen')
+        self.digitar('errada')
+        self.assertNaTela("Senha incorreta")
+        self.digitar(self.SENHA)
+        self.assertEqual(self.nome_tela(), 'ViewerScreen')
+        self.assertNaTela("pin sigiloso-kappa")
+
+    def test_auto_trancar_por_inatividade(self):
+        import time
+        self.nota_cifrada()
+        self.assertFalse(self.app.verificar_auto_trancar())
+        self.assertTrue(self.app.verificar_auto_trancar(agora=time.monotonic() + 3600))
+        self.assertFalse(self.app.cofre_destravado)
+        self.assertIsNone(self.app.raiz.filhos[0].conteudo)
+
+    def test_auto_trancar_espera_o_editor(self):
+        import time
+        self.nota_cifrada()
+        self.digitar('E1')
+        self.assertEqual(self.nome_tela(), 'EditorScreen')
+        self.assertFalse(self.app.verificar_auto_trancar(agora=time.monotonic() + 3600))
+        self.assertTrue(self.app.cofre_destravado)
+
+    def test_editar_nota_cifrada_grava_cifrado(self):
+        self.nota_cifrada()
+        self.digitar('E1')
+        self.digitar_no_editor("novo pin sigiloso-omega")
+        self.app.save()
+        texto = self.arquivo.read_text(encoding='utf-8')
+        self.assertNotIn("sigiloso-omega", texto)
+        recarregado = storage.carregar(self.arquivo)
+        self.assertTrue(recarregado.raiz.filhos[0].cifrado)
+
+    def test_viewer_trancado_pede_senha_com_A(self):
+        self.nota_cifrada()
+        self.digitar('1')
+        self.digitar('T')
+        self.assertNaTela("Nota cifrada e trancada")
+        self.digitar('A')
+        self.digitar(self.SENHA)
+        self.assertNaTela("pin sigiloso-kappa")
+
+    def test_decifrar_nota(self):
+        self.nota_cifrada()
+        self.digitar('K1')
+        self.assertEqual(self.nome_tela(), 'ConfirmScreen')
+        self.digitar('S')
+        self.assertFalse(self.app.raiz.filhos[0].cifrado)
+        self.assertIn("sigiloso-kappa", self.arquivo.read_text(encoding='utf-8'))
+
+    def test_pasta_criada_cifrada_faz_notas_nascerem_cifradas(self):
+        self.criar_pasta("Segredos", cifrada=True)
+        self.criar_senha()
+        pasta = self.app.raiz.filhos[0]
+        self.assertTrue(pasta.nasce_cifrada)
+        self.assertLinhaComFim("Segredos/", "[novas cifradas]")
+        self.digitar('1')
+        self.criar_nota("Cartao", "cvv sigiloso-sigma")
+        nota = pasta.filhos[0]
+        self.assertTrue(nota.cifrado)
+        self.assertNotIn("sigiloso-sigma", self.arquivo.read_text(encoding='utf-8'))
+
+    def test_pasta_padrao_nao_e_cifrada(self):
+        self.criar_pasta("Comum")
+        self.assertFalse(self.app.raiz.filhos[0].nasce_cifrada)
+        self.assertIsNone(self.app.doc.cofre)
+
+    def test_cifrar_pasta_em_lote(self):
+        self.criar_pasta("Pai")
+        self.digitar('1')
+        self.criar_nota("A", "aaa")
+        self.criar_pasta("Sub")
+        self.digitar('1')
+        self.criar_nota("B", "bbb")
+        self.digitar('M')
+        self.digitar('K1')
+        self.digitar('1')          # cifrar as notas em claro
+        self.assertNaTela("Cifrar 2 notas")
+        self.digitar('S')
+        self.criar_senha()
+        if self.nome_tela() == 'ConfirmScreen':
+            self.digitar('S')
+        from keybase import cripto
+        self.assertEqual(len(cripto.notas_cifradas(self.app.raiz)), 2)
+
+    def test_ligar_nasce_cifrada_em_pasta_existente(self):
+        self.criar_pasta("Pai")
+        self.digitar('K1')
+        self.digitar('2')
+        self.criar_senha()
+        self.assertTrue(self.app.raiz.filhos[0].nasce_cifrada)
+        self.digitar('K1')
+        self.digitar('2')
+        self.assertFalse(self.app.raiz.filhos[0].nasce_cifrada)
+
+    def test_prompt_de_alvo_lista_os_itens_com_numero_e_marca(self):
+        self.nota_cifrada("Banco")
+        self.criar_nota("Lista", "livre")
+        self.digitar('K')
+        self.assertEqual(self.nome_tela(), 'PromptScreen')
+        self.assertLinhaComFim("1 - Banco", "[cifrada]")
+        self.assertIn("2 - Lista", self.tela())
+
+
+class TestDivisaoDoDividido(BaseUI):
+    def test_alca_do_dividido_desenha_a_linha_de_divisao(self):
+        from keybase.qt.painel_nota import LARGURA_ALCA
+        from keybase.qt.theme import cores_interface
+        splitter = self.view.painel.splitter
+        self.assertEqual(splitter.handleWidth(), LARGURA_ALCA)
+        self.assertIn(cores_interface(self.config['theme'])['separador'],
+                      splitter.styleSheet())
+
+    def test_menu_do_editor_tem_ctrl_0_a_3_a_esquerda_e_divisoria_abaixo(self):
+        self.criar_nota("Nota", "x")
+        self.digitar('E1')
+        self.assertFalse(self.view.ajuda_divisoria.isVisibleTo(self.janela))
+        self.digitar('?')
+        linhas = self.view.ajuda.text().splitlines()
+        esquerdas = [linha.split(' - ')[0].strip() for linha in linhas]
+        self.assertEqual(esquerdas, ['Ctrl+0', 'Ctrl+1', 'Ctrl+2', 'Ctrl+3'])
+        for linha, direita in zip(linhas, ('Ctrl+S', 'Esc', 'Ctrl+E', '??')):
+            self.assertIn(f"{direita} - ", linha)
+        self.assertTrue(self.view.ajuda_divisoria.isVisibleTo(self.janela))
+        self.digitar('?')
+        self.assertFalse(self.view.ajuda_divisoria.isVisibleTo(self.janela))
+
+    def test_opcoes_da_pasta_ficam_em_linhas_separadas(self):
+        self.criar_pasta("Pai")
+        self.digitar('K1')
+        linhas = self.tela().splitlines()
+        self.assertTrue(any(l.startswith(" 1 - Cifrar as 0 notas") for l in linhas))
+        self.assertTrue(any(l.startswith(" 2 - Notas novas nascem cifradas") for l in linhas))
+
+
+class TestPastaCifrada(CofreMixin, BaseUI):
+
+    def pasta_com_nota(self):
+        self.criar_pasta("Pessoal")
+        self.digitar('1')
+        self.criar_nota("Banco", "pin sigiloso-kappa")
+        self.digitar('M')
+
+    def cifrar_pasta_1(self):
+        self.digitar('K1')
+        self.assertIn(" 3 - Cifrar a pasta inteira", self.tela())
+        self.digitar('3')
+        self.digitar('S')
+        self.criar_senha()
+        if self.nome_tela() == 'ConfirmScreen':   # backups
+            self.assertNaTela("desta pasta")
+            self.digitar('S')
+
+    def test_cifrar_pasta_inteira(self):
+        self.pasta_com_nota()
+        self.cifrar_pasta_1()
+        self.assertTrue(self.app.raiz.filhos[0].cifrada)
+        self.assertLinhaComFim("Pessoal/", "[cifrada]:[1]:[1]")
+        texto = self.arquivo.read_text(encoding='utf-8')
+        self.assertNotIn("Banco", texto)
+        self.assertNotIn("sigiloso-kappa", texto)
+        for _, arquivo in storage.backups_disponiveis(self.arquivo):
+            self.assertNotIn("Banco", arquivo.read_text(encoding='utf-8'))
+
+    def test_trancada_some_a_contagem_e_entrar_pede_senha(self):
+        self.pasta_com_nota()
+        self.cifrar_pasta_1()
+        self.digitar('T')
+        self.assertLinhaComFim("Pessoal/", "[cifrada]")
+        self.assertNaoNaTela("[1]:[1]")
+        self.digitar('1')
+        self.assertTrue(self.app.atual.ENTRADA_SENHA)
+        self.digitar(self.SENHA)
+        self.assertEqual(self.nome_tela(), 'BrowserScreen')
+        self.assertIn("Banco", self.tela())
+        self.digitar('1')                     # a nota de dentro nao pede de novo
+        self.assertEqual(self.nome_tela(), 'ViewerScreen')
+        self.assertNaTela("sigiloso-kappa")
+
+    def test_trancar_dentro_da_pasta_volta_para_fora(self):
+        self.pasta_com_nota()
+        self.cifrar_pasta_1()
+        self.digitar('1')
+        self.assertIn("Banco", self.tela())
+        self.digitar('T')
+        self.assertEqual(self.nome_tela(), 'BrowserScreen')
+        self.assertNaoNaTela("Banco")
+        self.assertTrue(self.app.raiz.filhos[0].trancada)
+
+    def test_mudanca_dentro_da_pasta_e_gravada_cifrada(self):
+        self.pasta_com_nota()
+        self.cifrar_pasta_1()
+        self.digitar('1')
+        self.criar_nota("Cartao", "cvv sigiloso-sigma")
+        self.assertNotIn("sigiloso-sigma", self.arquivo.read_text(encoding='utf-8'))
+        recarregado = storage.carregar(self.arquivo)
+        from keybase import cripto
+        c = cripto.Cofre.from_dict(recarregado.cofre)
+        c.destravar(self.SENHA)
+        cripto.destravar_arvore(recarregado.raiz, c)
+        nomes = [f.nome for f in recarregado.raiz.filhos[0].filhos]
+        self.assertIn("Cartao", nomes)
+
+    def test_dentro_da_pasta_cifrada_nada_se_cifra_de_novo(self):
+        self.pasta_com_nota()
+        self.cifrar_pasta_1()
+        self.digitar('1')
+        self.digitar('K1')
+        self.assertNaTela("já é protegido pela pasta cifrada")
+        self.digitar('P')
+        self.digitar('Sub')          # sem a pergunta "nascem cifradas?"
+        self.assertEqual(self.nome_tela(), 'BrowserScreen')
+        self.assertIn("Sub/", self.tela())
+
+    def test_decifrar_pasta(self):
+        self.pasta_com_nota()
+        self.cifrar_pasta_1()
+        self.digitar('K1')
+        self.assertIn(" 1 - Decifrar a pasta", self.tela())
+        self.digitar('1')
+        self.digitar('S')
+        self.assertFalse(self.app.raiz.filhos[0].cifrada)
+        self.assertIn("Banco", self.arquivo.read_text(encoding='utf-8'))
+
+    def test_marcas_das_duas_pastas_sao_diferentes(self):
+        self.criar_pasta("Projetos", cifrada=True)
+        self.criar_senha()
+        self.assertLinhaComFim("Projetos/", "[novas cifradas]")
+        self.digitar('1')
+        self.criar_nota("A", "x")
+        self.digitar('V')
+        self.assertLinhaComFim("Projetos/", "[novas cifradas]:[1]:[1]")
+
+    def test_t_trancado_pede_a_senha_e_destranca(self):
+        self.pasta_com_nota()
+        self.cifrar_pasta_1()
+        self.digitar('T')
+        self.assertFalse(self.app.cofre_destravado)
+        self.digitar('T')
+        self.assertTrue(self.app.atual.ENTRADA_SENHA)
+        self.digitar(self.SENHA)
+        self.assertTrue(self.app.cofre_destravado)
+        self.assertEqual(self.nome_tela(), 'BrowserScreen')
+        self.assertNaTela("destrancados")
+        self.assertLinhaComFim("Pessoal/", "[cifrada]:[1]:[1]")
+
+    def test_t_sem_nada_cifrado_avisa_e_fica_fora_do_menu(self):
+        self.digitar('T')
+        self.assertNaTela("Ainda não há nada cifrado")
+        self.digitar('?')
+        self.assertNaoNaTela("Trancar/destrancar")
+
+
+class TestConfiguracao(BaseUI):
+    def abrir_config(self):
+        from keybase import config
+        self.arquivo_config.write_text(config.modelo_toml(), encoding='utf-8')
+        self.digitar('C')
+        self.assertEqual(self.nome_tela(), 'ConfigScreen')
+
+    def test_p_cria_pasta_e_c_abre_a_configuracao(self):
+        self.digitar('?')
+        self.assertNaTela("P - Nova pasta")
+        self.assertNaTela("C - Configuração")
+        self.abrir_config()
+        self.assertIn('tema = "dark"', self.editor().toPlainText())
+        self.assertIn("[CONFIGURAÇÃO]", self.view.edicao_modos.text())
+        self.assertIn("keybase_config.toml", self.view.edicao_caminho.text())
+
+    def test_salvar_com_erro_nao_grava_nem_sai(self):
+        self.abrir_config()
+        original = self.arquivo_config.read_text(encoding='utf-8')
+        self.digitar_no_editor('tema = "azul"\n')
+        self.app.save()
+        self.assertEqual(self.nome_tela(), 'ConfigScreen')
+        self.assertTrue(self.view.edicao_erro.isVisibleTo(self.janela))
+        self.assertIn('tema deveria ser', self.view.edicao_erro.text())
+        self.assertEqual(self.arquivo_config.read_text(encoding='utf-8'), original)
+
+    def test_salvar_valido_grava_volta_e_troca_o_tema_na_hora(self):
+        from keybase.qt.theme import cores_interface
+        self.abrir_config()
+        texto = self.editor().toPlainText().replace('tema = "dark"', 'tema = "light"')
+        texto = texto.replace('trancar_apos_min = 10', 'trancar_apos_min = 2')
+        self.config['theme'] = 'dark'
+        self.janela.aplicar_tema('dark')
+        self.digitar_no_editor(texto)
+        self.app.save()
+        self.assertEqual(self.nome_tela(), 'BrowserScreen')
+        self.assertNaTela("Configuração salva.")
+        self.assertEqual(self.arquivo_config.read_text(encoding='utf-8'), texto)
+        self.assertEqual(self.config['theme'], 'light')
+        self.assertIn(cores_interface('light')['fundo'], self.janela.styleSheet())
+        self.assertEqual(self.config['cofre']['auto_lock_min'], 2)
+
+    def test_mudar_fonte_avisa_que_vale_ao_reabrir(self):
+        self.abrir_config()
+        texto = self.editor().toPlainText().replace('tamanho_saida = 14',
+                                                    'tamanho_saida = 16')
+        self.digitar_no_editor(texto)
+        self.app.save()
+        self.assertNaTela("Fontes mudam ao reabrir")
+
+    def test_comentario_nao_ganha_estilo_de_titulo(self):
+        self.abrir_config()
+        self.assertIsNone(self.editor().realce.document())
+
+    def test_nota_depois_da_config_volta_a_ter_realce(self):
+        self.abrir_config()
+        self.digitar('')          # Enter vazio: volta ao texto
+        self.esc_no_editor()      # sem alteracao: sai direto
+        self.criar_nota("Nota", "# titulo")
+        self.digitar('1'); self.digitar('E')
+        self.assertIs(self.editor().realce.document(), self.editor().document())
+
+    def test_atalhos_de_modo_sao_inertes_na_config(self):
+        self.abrir_config()
+        self.app.modo('dividido')
+        self.assertEqual(self.view.modo_edicao_atual(), 'editar')
+        self.digitar('?')
+        self.assertNotIn("Dividido", self.view.ajuda.text())
+        self.assertIn("Validar, salvar e aplicar", self.view.ajuda.text())
+
+    def test_esc_com_alteracao_pergunta_antes_de_descartar(self):
+        self.abrir_config()
+        self.anexar_no_editor("\n# mudei")
+        self.esc_no_editor()
+        self.assertEqual(self.nome_tela(), 'ConfirmScreen')
+        self.assertNaTela("keybase_config.toml")
+
+
+class TestAvisoNoLugarDoCaminho(BaseUI):
+    def primeiras_linhas(self):
+        return [l for l in self.tela().splitlines() if l.strip()][:3]
+
+    def test_aviso_ocupa_a_linha_do_caminho_sem_bloco_extra(self):
+        self.digitar('V')   # na raiz: "Voce ja esta na raiz..."
+        linhas = self.primeiras_linhas()
+        self.assertIn("Você já está na raiz", linhas[1])
+        self.assertNotIn("~", linhas[1])
+        self.assertTrue(set(linhas[2].strip()) == {'='})   # logo a barra: sem bloco a mais
+        self.assertEqual(sum(1 for l in self.tela().splitlines() if l.startswith("==")), 3)
+
+    def test_caminho_volta_sozinho_depois_do_tempo(self):
+        from PySide6.QtTest import QTest
+        self.config['interface']['flash_ms'] = 30
+        self.digitar('V')
+        self.assertNaTela("Você já está na raiz")
+        QTest.qWait(150)
+        self.assertNaoNaTela("Você já está na raiz")
+        self.assertEqual(self.primeiras_linhas()[1].strip(), "~")
+
+    def test_aviso_no_viewer_tambem_troca_o_caminho(self):
+        self.criar_nota("Nota", "x")
+        self.digitar('1')
+        self.digitar('R')
+        self.digitar('Outra')
+        linhas = self.primeiras_linhas()
+        self.assertIn("Renomeado", linhas[1])
+        self.app._fim_do_flash()
+        self.assertIn("~ / Outra", self.primeiras_linhas()[1])
+
+    def test_fim_do_aviso_em_outra_tela_nao_repinta(self):
+        self.digitar('V')
+        self.digitar('P')   # prompt de nova pasta por cima
+        self.view.entrada.setText("digitando")
+        self.app._fim_do_flash()
+        self.assertEqual(self.nome_tela(), 'PromptScreen')
+        self.assertEqual(self.view.entrada.text(), "digitando")
+
+    def test_tempo_do_aviso_vem_da_configuracao(self):
+        from keybase import config
+        texto = config.modelo_toml().replace('tempo_aviso_ms = 2500', 'tempo_aviso_ms = 800')
+        usuario, erros = config.validar_texto(texto)
+        self.assertEqual(erros, [])
+        self.app.aplicar_config(usuario)
+        self.assertEqual(self.app.duracao_flash_ms(), 800)
+
+
+class TestConfiguracaoAntiga(BaseUI):
+    def test_opcoes_novas_aparecem_no_editor_mas_so_gravam_com_ctrl_s(self):
+        from keybase import config
+        antigo = TestConfigTextos.sem_aviso(config.modelo_toml())
+        self.arquivo_config.write_text(antigo, encoding='utf-8')
+        self.digitar('C')
+        self.assertIn("tempo_aviso_ms = 2500", self.editor().toPlainText())
+        self.assertTrue(self.view.edicao_aviso.isVisibleTo(self.janela))
+        self.assertIn("interface.tempo_aviso_ms", self.view.edicao_aviso.text())
+        self.assertEqual(self.arquivo_config.read_text(encoding='utf-8'), antigo)
+        self.app.save()
+        self.assertIn("tempo_aviso_ms = 2500",
+                      self.arquivo_config.read_text(encoding='utf-8'))
+
+
+class TestConfigTextos:
+    @staticmethod
+    def sem_aviso(texto):
+        return texto.replace(
+            '# Quanto tempo um aviso ("Pasta criada.", "Itens cifrados trancados.") fica no\n'
+            '# lugar do caminho antes de sumir, em milissegundos (2500 = 2,5 s). Aplica na hora.\n'
+            'tempo_aviso_ms = 2500\n', '')

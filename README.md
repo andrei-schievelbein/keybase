@@ -6,7 +6,7 @@
 
 Suas notas em Markdown, organizadas em pastas — na profundidade que você quiser.
 
-![Python](https://img.shields.io/badge/Python-3.x-blue.svg)
+![Python](https://img.shields.io/badge/Python-3.11%2B-blue.svg)
 ![PySide6](https://img.shields.io/badge/PySide6-6.x-orange.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
@@ -49,7 +49,7 @@ Não há tipos fixos de conteúdo. Um "snippet" é só uma nota com um bloco de 
 - 📝 **Markdown completo** — cabeçalhos com tamanhos reais, tabelas, listas de tarefa, riscado, notas de rodapé, citações e links
 - 🎨 **Syntax highlighting** em blocos de código (qualquer linguagem suportada pelo Pygments)
 - ✂️ **Editar, preview ou tela dividida** ao escrever uma nota — `Ctrl+1`/`Ctrl+2`/`Ctrl+3`, ou `Ctrl+E` para alternar
-- ✏️ **Editor dedicado** com realce de sintaxe — Ctrl+S salva, Esc cancela
+- ✏️ **Editor dedicado** com realce de sintaxe — Ctrl+S salva, Esc vai para a barra (e, de novo, cancela)
 - 💾 **Gravação atômica** com backup automático e snapshot diário
 - 🌓 Temas claro e escuro
 - 🪟 Memoriza posição e tamanho da janela
@@ -85,11 +85,12 @@ logo abaixo do campo de comando; `?` de novo e ele some:
 
 ```
 ==============================================================
-   C - Nova pasta        D - Deletar
-   N - Nova nota         B - Buscar
-   E - Editar nota       V - Voltar
-   R - Renomear          M - Ir para a raiz
-  ?? - Ajuda completa  sair - Encerrar
+   P - Nova pasta        B - Buscar
+   N - Nova nota         V - Voltar
+   E - Editar nota       M - Ir para a raiz
+   R - Renomear          C - Configuração
+   D - Deletar          ?? - Ajuda completa
+                      sair - Encerrar
 ==============================================================
  ~ / Python / Pandas
 ==============================================================
@@ -117,7 +118,7 @@ Como as letras de comando continuam valendo, use a barra para filtrar por um ter
 | Comando | O que faz |
 |---------|-----------|
 | `1` `2` `3` … | Abre o item pelo número da lista |
-| `C` | Cria uma pasta na pasta atual |
+| `P` | Cria uma pasta na pasta atual |
 | `N` | Cria uma nota na pasta atual (e já abre o editor) |
 | `E` ou `E3` | Edita o conteúdo de uma nota |
 | `R` ou `R3` | Renomeia um item |
@@ -125,6 +126,9 @@ Como as letras de comando continuam valendo, use a barra para filtrar por um ter
 | `V` | Volta um nível (ou limpa o filtro) |
 | `M` | Vai direto para a raiz |
 | `B` | Busca em toda a base |
+| `C` | Abre a configuração no editor (veja [Configuração](#configuração)) |
+| `K` ou `K3` | Cifra ou decifra uma nota; numa pasta, cifra todas as notas dela |
+| `T` | Tranca os itens cifrados; se já estiverem trancados, pede a senha e destranca |
 | `texto` | Filtra a pasta atual pelo nome — é só digitar e dar Enter |
 | `/texto` | O mesmo, para termos que colidem com um comando (`/b`, `/c`, `/sair`) |
 | `?` | Mostra ou esconde o menu de comandos (o mesmo que `Ctrl+0`) |
@@ -133,12 +137,43 @@ Como as letras de comando continuam valendo, use a barra para filtrar por um ter
 
 Comandos que agem sobre um item aceitam o número junto (`D3` apaga o item 3) ou sozinho (`D` pergunta qual).
 
+### Notas e pastas cifradas
+
+Você escolhe o que cifrar. Tudo fica no mesmo `keybase_data.json`, protegido por uma **senha mestra** única (AES-256-GCM, com a chave derivada da senha por scrypt). Há três níveis:
+
+| Marca na lista | O que é | O que fica visível no arquivo |
+|---|---|---|
+| `Senhas  [cifrada]` | Nota cifrada | O nome da nota |
+| `Projetos/  [novas cifradas]:[2]:[5]` | Pasta cujas notas **novas** nascem cifradas | Nomes de tudo; o conteúdo das notas antigas |
+| `Pessoal/  [cifrada]` | Pasta inteira cifrada | Só o nome da pasta |
+
+As marcas ficam no fim da linha, emendadas na contagem `[a]:[b]`. Uma pasta cifrada trancada não mostra a contagem.
+
+- `K3` cifra a nota 3. Na primeira vez, o KeyBase pede para você criar a senha mestra.
+- `K` sobre uma nota cifrada decifra a nota, com confirmação.
+- `K` sobre uma pasta oferece três opções:
+  1. cifrar todas as notas dela, inclusive as das sub-pastas;
+  2. ligar ou desligar "notas novas nascem cifradas";
+  3. cifrar a pasta inteira, incluindo nomes, sub-pastas, notas e a descrição.
+- Entrar numa pasta cifrada pede a senha se os itens cifrados estiverem trancados. Com a senha dada, nada lá dentro pede de novo, e a pasta funciona normalmente.
+- Dentro de uma pasta cifrada tudo já é protegido: o `K` não cifra nada de novo e a criação de pasta não pergunta sobre notas cifradas.
+- `K` sobre uma pasta cifrada decifra a pasta, com confirmação.
+- Ao criar uma pasta com `P`, o KeyBase pergunta se as notas dela nascem cifradas. Enter vazio responde não.
+- A senha é pedida uma vez por sessão, no primeiro item cifrado que você abrir. Os itens trancam de novo com `T` ou sozinhos depois de 10 minutos sem uso. Esse tempo é configurável com `C`, em `trancar_apos_min`.
+- Com os itens trancados, a busca encontra notas cifradas só pelo nome e não enxerga nada dentro de pastas cifradas.
+- Ao cifrar, os backups e snapshots ainda guardam a versão em claro. O KeyBase oferece cifrar essas cópias também, preservando o histórico.
+
+> ⚠️ **Não existe recuperação de senha.** Sem a senha mestra, as notas e pastas cifradas ficam ilegíveis para sempre.
+
 ### No editor
 
 | Tecla | Ação |
 |-------|------|
 | `Ctrl+S` | Salva e volta |
-| `Esc` | Cancela (pergunta antes de descartar) |
+| `Esc` | Leva o cursor para a barra de cima; `Esc` de novo cancela (pergunta antes de descartar) |
+| `Enter` na barra | Volta o cursor para o texto |
+| `?` na barra | Mostra ou esconde os atalhos de edição (o mesmo que `Ctrl+0`) |
+| `??` na barra | Ajuda completa, sem perder o texto não salvo |
 | `Ctrl+1` | Só o editor |
 | `Ctrl+2` | Só o preview (do texto **ainda não salvo**) |
 | `Ctrl+3` | Tela dividida: editor à esquerda, preview à direita |
@@ -155,6 +190,28 @@ Para um bloco de código com destaque de sintaxe, use as cercas do Markdown:
 df = pd.read_csv("dados.csv")
 ```
 ````
+
+### Configuração
+
+`C` abre o `keybase_config.toml` no próprio editor, como uma nota. O arquivo é criado na primeira vez que o KeyBase abre, com os valores padrão e um comentário explicando cada opção:
+
+```toml
+# Tema: "dark" (escuro) ou "light" (claro). Aplica na hora.
+tema = "dark"
+
+[fontes]
+familia = "Consolas"
+tamanho_saida = 14
+
+[cofre]
+# Minutos sem uso até os itens cifrados trancarem sozinhos (0 desliga).
+trancar_apos_min = 10
+```
+
+- `Ctrl+S` **valida** antes de gravar. Com erro de digitação, chave desconhecida ou valor fora da faixa, nada é gravado e o erro aparece em vermelho no topo do editor.
+- Tema, altura da barra de ajuda, tempo para trancar e tempo dos avisos (`tempo_aviso_ms`, quanto tempo um aviso como "Pasta criada." fica no lugar do caminho) valem na hora. Fontes valem ao reabrir o KeyBase.
+- O KeyBase nunca reescreve esse arquivo sozinho: seus comentários e a formatação ficam como você deixou.
+- Se o arquivo estiver inválido ao abrir o app, o KeyBase usa os padrões, avisa, e não mexe no arquivo. Use `C` para corrigir.
 
 ## 🛠️ Instalação
 
@@ -189,7 +246,9 @@ O KeyBase é portátil: os dados ficam **ao lado do executável**, então dá pa
 | **keybase_data.json** | ⚠️ Recomendado | Suas pastas e notas. Sem ele, você começa do zero |
 | **keybase_data.bak.json** | ❌ Automático | Cópia da versão anterior, gravada antes de cada alteração |
 | **keybase_data.snapshot-*.json** | ❌ Automático | Uma cópia por dia, guardando os últimos 7 dias |
-| **window_config.json** | ❌ Opcional | Tamanho, posição, tema e fontes. Recriado se faltar |
+| **keybase_config.toml** | ❌ Opcional | Suas preferências (tema, fontes, tempo para trancar). Editável com `C`. Recriado se faltar |
+| **keybase_estado.json** | ❌ Automático | Tamanho e posição da janela e último modo do editor |
+| **window_config.json** | ❌ Antigo | Configuração das versões anteriores. Na primeira vez, os valores dele são copiados para o `keybase_config.toml`; depois não é mais usado |
 
 ### Se o arquivo de dados for corrompido
 
@@ -201,13 +260,14 @@ O KeyBase **não sobrescreve** um arquivo que não conseguiu ler. Ele abre em mo
 - [PySide6](https://doc.qt.io/qtforpython/) — interface (Qt)
 - [Markdown](https://python-markdown.github.io/) + [PyMdown Extensions](https://facelessuser.github.io/pymdown-extensions/) — renderização
 - [Pygments](https://pygments.org/) — syntax highlighting
+- [cryptography](https://cryptography.io/) — AES-GCM das notas cifradas
 - [PyInstaller](https://www.pyinstaller.org/) — executável
 
 ## 📝 Estrutura de Dados
 
 ```json
 {
-    "schema_version": 2,
+    "schema_version": 4,
     "app_version": "2.0.0",
     "atualizado_em": "2026-09-13T16:22:04+00:00",
     "raiz": {
@@ -241,7 +301,7 @@ O KeyBase **não sobrescreve** um arquivo que não conseguiu ler. Ele abre em mo
 }
 ```
 
-Um `folder` tem `filhos`; um `file` tem `conteudo`. A ordem de exibição é derivada (pastas antes de notas, alfabético), não armazenada — reordenar o arquivo à mão não muda nada nem quebra referências.
+Um `folder` tem `filhos`; um `file` tem `conteudo`. Uma nota cifrada troca `conteudo` por `"cifrado": true` e `"conteudo_cifrado": {"nonce", "ct"}`. Nesse caso, o arquivo ganha no topo um bloco `"cofre"` com os parâmetros do scrypt e a chave das notas, cifrada pela senha. Uma pasta cujas notas nascem cifradas tem `"nasce_cifrada": true`. Uma pasta inteira cifrada troca `descricao` e `filhos` por `"cifrada": true` e `"filhos_cifrados": {"nonce", "ct"}`. A ordem de exibição é derivada (pastas antes de notas, alfabético), não armazenada — reordenar o arquivo à mão não muda nada nem quebra referências.
 
 > **Formato anterior (v1):** versões até a 1.0.2 usavam `data.json`, com `programas` contendo listas separadas de `atalhos`, `notas` e `snippets`. Esse arquivo não é lido nem modificado pela versão atual. O script `importar_legado.py` converte esse conteúdo para o formato novo, se você quiser aproveitá-lo.
 

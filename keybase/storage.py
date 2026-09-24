@@ -17,10 +17,15 @@ import time
 from datetime import date
 from pathlib import Path
 
-from . import model
+from . import cripto, model
 from .model import EsquemaInvalidoError, Folder, node_from_dict, nova_raiz
 
-SCHEMA_VERSION = 2  # 1 = formato legado plano (programas/atalhos/notas/snippets)
+# 1 = formato legado plano (programas/atalhos/notas/snippets)
+# 3 = notas cifradas. O salto e o que protege os dados: uma build de schema 2
+#     ignoraria 'conteudo_cifrado', leria a nota como vazia e gravaria por cima.
+# 4 = pastas inteiramente cifradas. Mesmo motivo: uma build de schema 3 leria
+#     a pasta sem 'filhos' como vazia e gravaria o vazio por cima.
+SCHEMA_VERSION = 4
 APP_VERSION = "2.0.0"
 
 MAX_SNAPSHOTS = 7
@@ -54,9 +59,19 @@ class StorageBloqueadoError(StorageError):
     """Tentativa de escrever em modo recuperacao (somente leitura)."""
 
 
+def _migrar_2_para_3(bruto):
+    """Schema 3 so acrescenta campos opcionais: nada a converter."""
+    return bruto
+
+
+def _migrar_3_para_4(bruto):
+    """Schema 4 so acrescenta campos opcionais: nada a converter."""
+    return bruto
+
+
 # Migracoes registradas num dict literal, com import estatico - carga dinamica
 # quebraria a analise do PyInstaller.
-MIGRACOES = {}
+MIGRACOES = {2: _migrar_2_para_3, 3: _migrar_3_para_4}
 
 
 def _hash(payload):
@@ -66,8 +81,10 @@ def _hash(payload):
 class Documento:
     """A arvore carregada, mais o estado de persistencia."""
 
-    def __init__(self, raiz, somente_leitura=False, avisos=None):
+    def __init__(self, raiz, somente_leitura=False, avisos=None, cofre=None):
         self.raiz = raiz
+        #: cabecalho do cofre (dict) ou None se nenhuma nota foi cifrada ainda
+        self.cofre = cofre
         self.somente_leitura = somente_leitura
         self.avisos = avisos or []
         self.sujo = False
@@ -79,12 +96,23 @@ class Documento:
         return cls(nova_raiz())
 
     def to_dict(self):
-        return {
+        d = {
             "schema_version": SCHEMA_VERSION,
             "app_version": APP_VERSION,
             "atualizado_em": model.agora_iso(),
-            "raiz": self.raiz.to_dict(),
         }
+        if self.cofre is not None:
+            d["cofre"] = self.cofre
+        d["raiz"] = self.raiz.to_dict()
+        return d
+
+    def assinatura(self):
+        """Hash do que importa, sem o atualizado_em do cabecalho."""
+        return _hash(json.dumps(
+            {"schema_version": SCHEMA_VERSION, "cofre": self.cofre,
+             "raiz": self.raiz.to_dict()},
+            indent=4, ensure_ascii=False,
+        ))
 
     def marcar_sujo(self):
         self.sujo = True
@@ -130,13 +158,19 @@ def carregar(caminho):
     if "raiz" not in bruto:
         raise EsquemaInvalidoError("arquivo sem a chave 'raiz'")
 
+    cofre = bruto.get("cofre")
+    if cofre is not None and not cripto.validar_meta(cofre):
+        raise EsquemaInvalidoError("cabecalho 'cofre' invalido")
+
     reparos = []
     raiz = node_from_dict(bruto["raiz"], reparos)
     if not isinstance(raiz, Folder):
         raise EsquemaInvalidoError("a raiz precisa ser um folder")
+    if cofre is None and cripto.tem_cifra(raiz):
+        raise EsquemaInvalidoError("ha itens cifrados, mas o arquivo nao tem 'cofre'")
 
-    doc = Documento(raiz, avisos=reparos)
-    doc._hash_persistido = _hash(json.dumps(doc.to_dict(), indent=4, ensure_ascii=False))
+    doc = Documento(raiz, avisos=reparos, cofre=cofre)
+    doc._hash_persistido = doc.assinatura()
     if reparos:
         doc.sujo = True
         doc._hash_persistido = None  # forca gravar os reparos
@@ -173,10 +207,7 @@ def salvar(doc, caminho):
     payload = json.dumps(doc.to_dict(), indent=4, ensure_ascii=False)
 
     # O hash ignora o campo atualizado_em do cabecalho, que muda a cada chamada.
-    assinatura = _hash(json.dumps(
-        {"schema_version": SCHEMA_VERSION, "raiz": doc.raiz.to_dict()},
-        indent=4, ensure_ascii=False,
-    ))
+    assinatura = doc.assinatura()
     if assinatura == doc._hash_persistido:
         doc.sujo = False
         return False
@@ -300,3 +331,97 @@ def restaurar(origem, destino):
     tmp = destino.with_name(destino.name + '.tmp')
     tmp.write_bytes(origem.read_bytes())
     _replace_com_retry(tmp, destino)
+
+
+# --- backups com texto claro -----------------------------------------------
+
+def _arquivos_de_backup(caminho):
+    return [arquivo for _, arquivo in backups_disponiveis(caminho)]
+
+
+def _nos_claros(no_bruto, ids, achados):
+    """Dicts de nota ou pasta, num JSON bruto, com esses ids e ainda em claro.
+
+    Uma pasta achada nao e percorrida: ela sera cifrada inteira, com tudo dentro.
+    """
+    if not isinstance(no_bruto, dict):
+        return achados
+    em_alvo = no_bruto.get("id") in ids
+    if no_bruto.get("tipo") == "file":
+        if (em_alvo and not no_bruto.get("cifrado")
+                and isinstance(no_bruto.get("conteudo"), str)):
+            achados.append(no_bruto)
+        return achados
+    filhos = no_bruto.get("filhos")
+    if em_alvo and not no_bruto.get("cifrada") and isinstance(filhos, list):
+        achados.append(no_bruto)
+        return achados
+    for filho in filhos or []:
+        _nos_claros(filho, ids, achados)
+    return achados
+
+
+def _cifrar_no_bruto(no, cofre):
+    """Troca, no proprio dict, o texto claro pelo blob - nota ou pasta."""
+    if no.get("tipo") == "file":
+        no["conteudo_cifrado"] = cofre.cifrar(no.pop("conteudo"), no["id"])
+        no["cifrado"] = True
+        return
+    payload = model.payload_pasta(no.pop("descricao", ""), no.pop("filhos"))
+    no.pop("nasce_cifrada", None)
+    no["filhos_cifrados"] = cofre.cifrar(payload, no["id"])
+    no["cifrada"] = True
+
+
+def _ler_backup(arquivo):
+    """JSON bruto de um backup, ou None se ilegivel - backup ruim nao trava nada."""
+    try:
+        bruto = json.loads(Path(arquivo).read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return None
+    return bruto if isinstance(bruto, dict) and isinstance(bruto.get("raiz"), dict) else None
+
+
+def backups_com_texto_claro(caminho, ids):
+    """Backups (.bak e snapshots) que ainda guardam alguma dessas notas ou
+    pastas em claro."""
+    ids = set(ids)
+    achados = []
+    for arquivo in _arquivos_de_backup(caminho):
+        bruto = _ler_backup(arquivo)
+        if bruto is not None and _nos_claros(bruto["raiz"], ids, []):
+            achados.append(arquivo)
+    return achados
+
+
+def sanear_backups(caminho, cofre, ids):
+    """Cifra, dentro dos backups, as notas e pastas desses ids ainda em claro.
+
+    Cada uma e cifrada com o PROPRIO conteudo antigo, entao o historico dos
+    snapshots continua valendo - so deixa de estar legivel sem a senha. O
+    backup passa ao schema atual e ganha o cabecalho do cofre, como o arquivo
+    atual. Devolve quantos arquivos foram regravados.
+    """
+    ids = set(ids)
+    regravados = 0
+    for arquivo in _arquivos_de_backup(caminho):
+        bruto = _ler_backup(arquivo)
+        if bruto is None:
+            continue
+        nos = _nos_claros(bruto["raiz"], ids, [])
+        if not nos:
+            continue
+        for no in nos:
+            _cifrar_no_bruto(no, cofre)
+        bruto["schema_version"] = SCHEMA_VERSION
+        bruto["cofre"] = cofre.to_dict()
+
+        arquivo = Path(arquivo)
+        tmp = arquivo.with_name(arquivo.name + '.tmp')
+        with open(tmp, 'w', encoding='utf-8', newline='\n') as f:
+            f.write(json.dumps(bruto, indent=4, ensure_ascii=False))
+            f.flush()
+            os.fsync(f.fileno())
+        _replace_com_retry(tmp, arquivo)
+        regravados += 1
+    return regravados

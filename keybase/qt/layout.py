@@ -6,7 +6,15 @@ fontes monoespacadas comuns nao garantem glifo para emoji num widget Text, que
 acabaria desenhando caixas.
 
 Pasta = nome com '/' no fim e o par '[diretas]:[total]' de contagem de NOTAS
-(soltas aqui : em toda a hierarquia); nota = nome puro.
+(soltas aqui : em toda a hierarquia); nota = nome puro. As marcas ficam
+sempre no fim da linha, alinhadas a direita e emendadas na contagem:
+
+    Projetos/                     [novas cifradas]:[2]:[5]
+    Pessoal/                                     [cifrada]       (trancada)
+    Pessoal/                             [cifrada]:[1]:[3]       (aberta)
+    Senhas                                       [cifrada]       (nota)
+
+Texto, nao cadeado, pela mesma razao do ASCII acima.
 
 Toda largura vem de TerminalView.colunas(), calculada da largura real do widget
 e da largura de um caractere na fonte - nao de uma constante. Alinhar por
@@ -22,6 +30,8 @@ MARCA_RAIZ = "~"
 CARACTERE_BARRA = "="
 LARGURA_NUMERO = 2
 LARGURA_LETRA = 4  # cabe 'sair' alinhado com as letras isoladas
+MARCA_CIFRADA = "[cifrada]"
+MARCA_NOVAS_CIFRADAS = "[novas cifradas]"
 
 
 def barra(largura=LARGURA_PADRAO):
@@ -60,22 +70,36 @@ def linha_item(numero, no, largura=LARGURA_PADRAO):
     partes = [(prefixo, 'numero')]
 
     if isinstance(no, Folder):
-        if no.filhos:
-            diretas, total = contar_notas(no)
-            contador = f"[{diretas}]:[{total}]"
-        else:
-            contador = ""   # pasta vazia nao ganha contador nenhum
-        espaco_nome = largura - len(prefixo) - len(contador) - 2
-        nome = truncar(no.nome + "/", espaco_nome)
-        partes.append((nome, 'pasta'))
-        if contador:
-            preenchimento = largura - len(prefixo) - len(nome) - len(contador)
-            partes.append((" " * max(2, preenchimento), None))
-            partes.append((contador, 'contador'))
+        sufixo = ":".join(_sufixo_pasta(no))
+        rotulo, tag = no.nome + "/", 'pasta'
     else:
-        partes.append((truncar(no.nome, largura - len(prefixo)), 'nota'))
+        sufixo = MARCA_CIFRADA if no.cifrado else ""
+        rotulo, tag = no.nome, 'nota'
 
+    if not sufixo:
+        partes.append((truncar(rotulo, largura - len(prefixo)), tag))
+        return partes
+
+    nome = truncar(rotulo, largura - len(prefixo) - len(sufixo) - 2)
+    partes.append((nome, tag))
+    preenchimento = largura - len(prefixo) - len(nome) - len(sufixo)
+    partes.append((" " * max(2, preenchimento), None))
+    partes.append((sufixo, 'contador'))
     return partes
+
+
+def _sufixo_pasta(pasta):
+    """Pedacos do fim da linha de uma pasta: marca e contagem, nessa ordem."""
+    pedacos = []
+    if pasta.cifrada:
+        pedacos.append(MARCA_CIFRADA)
+    elif pasta.nasce_cifrada:
+        pedacos.append(MARCA_NOVAS_CIFRADAS)
+    # trancada nao tem contagem (o conteudo nao esta na memoria); vazia tambem nao
+    if not pasta.trancada and pasta.filhos:
+        diretas, total = contar_notas(pasta)
+        pedacos.append(f"[{diretas}]:[{total}]")
+    return pedacos
 
 
 def linha_resultado(numero, resultado, largura=LARGURA_PADRAO):

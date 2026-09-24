@@ -40,8 +40,9 @@ def variantes(sequencia):
 
 
 def rotulo(sequencia):
-    """Como mostrar o atalho ao usuario, na convencao da plataforma.
+    """Como mostrar o atalho ao usuario: 'Ctrl+S', 'Esc'.
 
-    No macOS devolve os simbolos (⌘S), que e o que o usuario reconhece.
+    Texto portavel em todas as plataformas, inclusive no macOS: o Ctrl fisico
+    funciona la (ver variantes), e e ele que o rotulo descreve - nao o ⌘.
     """
-    return QKeySequence(sequencia).toString(QKeySequence.SequenceFormat.NativeText)
+    return QKeySequence(sequencia).toString(QKeySequence.SequenceFormat.PortableText)

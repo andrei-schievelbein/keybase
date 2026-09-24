@@ -16,8 +16,10 @@ class SearchResultsScreen(Screen):
         'B': 'cmd_nova_busca',
         'V': 'cmd_voltar',
         'M': 'cmd_raiz',
+        'C': 'cmd_config',
     }
-    ROTULOS = {'B': 'Nova busca', 'V': 'Voltar', 'M': 'Ir para a raiz'}
+    ROTULOS = {'B': 'Nova busca', 'V': 'Voltar', 'M': 'Ir para a raiz',
+               'C': 'Configuração'}
 
     def __init__(self, app, termo):
         super().__init__(app)
@@ -89,6 +91,10 @@ class SearchResultsScreen(Screen):
         else:
             pilha.append(ViewerScreen(self.app, resultado.no.id))
 
+        if getattr(resultado.no, 'conteudo', "") is None:
+            # nota cifrada e trancada: pede a senha antes de abrir
+            self.app.exigir_cofre(lambda: self.app.reset(pilha))
+            return
         self.app.reset(pilha)
 
     def cmd_nova_busca(self, alvo=None):

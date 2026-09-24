@@ -2,7 +2,7 @@
 
 from ... import tree
 from ...model import File
-from ..layout import montar_breadcrumb
+from ..layout import MARCA_CIFRADA, montar_breadcrumb
 from .base import Screen
 from .prompt import ConfirmScreen, PromptScreen
 
@@ -12,12 +12,17 @@ class ViewerScreen(Screen):
         'E': 'cmd_editar',
         'R': 'cmd_renomear',
         'D': 'cmd_deletar',
+        'A': 'cmd_abrir',
+        'K': 'cmd_cifrar',
+        'T': 'cmd_trancar',
         'V': 'cmd_voltar',
         'M': 'cmd_raiz',
+        'C': 'cmd_config',
     }
     ROTULOS = {
         'E': 'Editar nota', 'R': 'Renomear', 'D': 'Deletar',
-        'V': 'Voltar', 'M': 'Ir para a raiz',
+        'A': 'Abrir (senha)', 'K': 'Cifrar/decifrar', 'T': 'Trancar/destrancar',
+        'V': 'Voltar', 'M': 'Ir para a raiz', 'C': 'Configuração',
     }
 
     def __init__(self, app, file_id):
@@ -39,17 +44,23 @@ class ViewerScreen(Screen):
         view = self.app.view
         cadeia = self.app.caminho_de(self.file_id)
 
-        view.cabecalho(montar_breadcrumb(cadeia, view.colunas() - 2))
-
+        cifrada = self.file is not None and self.file.cifrado
+        marca = " " + MARCA_CIFRADA if cifrada else ""
+        # o aviso ocupa a linha do caminho por alguns segundos (ver App.flash)
         msg, erro = self.app.consumir_flash()
         if msg:
-            view.linha(" " + msg, 'erro' if erro else 'flash')
-            view.barra()
+            view.cabecalho(msg, 'erro' if erro else 'flash')
+        else:
+            view.cabecalho(montar_breadcrumb(cadeia, view.colunas() - 2 - len(marca))
+                           + marca)
 
         # O cabecalho vai ANTES do markdown. Na versao anterior ele era inserido
         # em "1.0" depois da renderizacao, deslocando as tags ja posicionadas.
         if self.file is not None:
-            if self.file.conteudo.strip():
+            if self.file.conteudo is None:
+                view.linha(" Nota cifrada e trancada. Use A para digitar a senha.",
+                           'vazio')
+            elif self.file.conteudo.strip():
                 view.markdown(self.file.conteudo)
             else:
                 view.linha(" Nota vazia. Use E para escrever o conteúdo.", 'vazio')
@@ -59,6 +70,14 @@ class ViewerScreen(Screen):
     def help_text(self):
         return None
 
+    def comandos_disponiveis(self):
+        ativos = set(self.COMANDOS)
+        if self.file is None or self.file.conteudo is not None:
+            ativos.discard('A')
+        if self.app.cofre is None:
+            ativos.discard('T')  # nada cifrado ainda: nada a trancar nem destrancar
+        return ativos
+
     def selecionar(self, indice):
         self.app.flash("Esta tela não tem lista. Use E para editar.", erro=True)
         self.app.rerender()
@@ -67,7 +86,25 @@ class ViewerScreen(Screen):
 
     def cmd_editar(self, alvo=None):
         from .editor import EditorScreen
+        if self.file is not None and self.file.conteudo is None:
+            self.app.exigir_cofre(
+                lambda: self.app.push(EditorScreen(self.app, self.file_id)))
+            return
         self.app.push(EditorScreen(self.app, self.file_id))
+
+    def cmd_abrir(self, alvo=None):
+        if self.file is None or self.file.conteudo is not None:
+            self.app.rerender()
+            return
+        self.app.exigir_cofre(self.app.rerender)
+
+    def cmd_cifrar(self, alvo=None):
+        if self.file is not None:
+            from .browser import alternar_cifra_nota
+            alternar_cifra_nota(self.app, self.file)
+
+    def cmd_trancar(self, alvo=None):
+        self.app.alternar_tranca()
 
     def cmd_voltar(self, alvo=None):
         self.app.pop()

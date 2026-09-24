@@ -32,6 +32,7 @@ class EditorMarkdown(QPlainTextEdit):
         self.setUndoRedoEnabled(True)
         self.document().setDocumentMargin(8)
         self.realce = RealceMarkdown(self.document(), tema, fonte.family())
+        self._texto_puro = False
 
     def texto(self):
         """Conteudo cru, sem nenhum tratamento. Ver docstring do modulo."""
@@ -44,6 +45,12 @@ class EditorMarkdown(QPlainTextEdit):
 
     def recarregar_cores(self, tema):
         self.realce.recarregar_cores(tema)
+
+    def texto_puro(self, ativo):
+        """Sem realce de Markdown nem continuacao de lista (ex.: o TOML da
+        configuracao, onde '# comentario' nao e titulo e '- ' nao e lista)."""
+        self._texto_puro = bool(ativo)
+        self.realce.setDocument(None if ativo else self.document())
 
     # --- comportamentos de edicao -----------------------------------------
 
@@ -63,7 +70,8 @@ class EditorMarkdown(QPlainTextEdit):
             self._indentar(-1)
             return
 
-        if tecla in (Qt.Key.Key_Return, Qt.Key.Key_Enter) and not evento.modifiers():
+        if (tecla in (Qt.Key.Key_Return, Qt.Key.Key_Enter) and not evento.modifiers()
+                and not self._texto_puro):
             if self._continuar_lista():
                 return
 
