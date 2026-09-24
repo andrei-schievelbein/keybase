@@ -123,7 +123,7 @@ Como as letras de comando continuam valendo, use a barra para filtrar por um ter
 | `E` ou `E3` | Edita o conteúdo de uma nota |
 | `R` ou `R3` | Renomeia um item |
 | `D` ou `D3` | Apaga um item |
-| `X` ou `X3` | Move um item: você navega até a pasta de destino e confirma com `C` (`ENTER` sobe um nível, `R` vai à raiz, `ESC` cancela) |
+| `X` ou `X3` | Move um item: você navega até a pasta de destino e confirma com `C` (`ENTER` sobe um nível, `M` vai à raiz, `ESC` cancela) |
 | `Z` ou `Z3` | Duplica um item, como "Nome (cópia)" |
 | `Y` ou `Y3` | Copia um item (nota ou pasta) para outra pasta: como o mover, mas o original fica |
 | `Y` (na nota) | Área de transferência: `Y2` copia o 2º bloco de código; `Y` sozinho lista os blocos (e `0` copia a nota inteira) |
