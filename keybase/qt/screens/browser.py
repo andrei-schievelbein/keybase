@@ -37,6 +37,10 @@ class BrowserScreen(Screen):
         'B': 'cmd_buscar',
         'K': 'cmd_cifrar',
         'T': 'cmd_trancar',
+        'Y': 'cmd_copiar',
+        'X': 'cmd_mover',
+        'Z': 'cmd_duplicar',
+        'S': 'cmd_senha',
         'V': 'cmd_voltar',
         'M': 'cmd_raiz',
         'C': 'cmd_config',
@@ -45,7 +49,8 @@ class BrowserScreen(Screen):
         'P': 'Nova pasta', 'N': 'Nova nota', 'E': 'Editar nota',
         'C': 'Configuração',
         'R': 'Renomear', 'D': 'Deletar', 'B': 'Buscar',
-        'K': 'Cifrar/decifrar', 'T': 'Trancar/destrancar',
+        'K': 'Cifrar/decifrar', 'T': 'Trancar/destrancar', 'Y': 'Copiar nota',
+        'X': 'Mover', 'Z': 'Duplicar', 'S': 'Trocar senha',
         'V': 'Voltar', 'M': 'Ir para a raiz',
     }
 
@@ -144,8 +149,13 @@ class BrowserScreen(Screen):
             ativos.discard('D')
             ativos.discard('E')
             ativos.discard('K')
+            ativos.discard('X')
+            ativos.discard('Z')
+        if not any(isinstance(n, File) for n in self.itens):
+            ativos.discard('Y')
         if self.app.cofre is None:
-            ativos.discard('T')  # nada cifrado ainda: nada a trancar nem destrancar
+            ativos.discard('T')
+            ativos.discard('S')  # nada cifrado ainda: nada a trancar nem destrancar
         return ativos
 
     # --- navegacao ---------------------------------------------------------
@@ -475,6 +485,32 @@ class BrowserScreen(Screen):
 
     def cmd_trancar(self, alvo=None):
         self.app.alternar_tranca()
+
+    def cmd_mover(self, alvo=None):
+        def mover(no):
+            from .destino import DestinoScreen
+            self.app.push(DestinoScreen(self.app, no.id, self.node_id))
+
+        self._com_alvo(alvo, "Mover qual item? (número)", mover)
+
+    def cmd_senha(self, alvo=None):
+        self.app.trocar_senha()
+
+    def cmd_duplicar(self, alvo=None):
+        self._com_alvo(alvo, "Duplicar qual item? (número)",
+                       lambda no: self.app.duplicar(no, self.folder))
+
+    def cmd_copiar(self, alvo=None):
+        """Y3: copia a nota 3 inteira (os blocos, um a um, sao com Y no viewer)."""
+        def copiar(no):
+            if not isinstance(no, File):
+                self.app.flash("Só dá para copiar uma nota.", erro=True)
+                self.app.rerender()
+                return
+            from .viewer import copiar_da_nota
+            self._com_texto(no, lambda: copiar_da_nota(self.app, no, alvo=-1))
+
+        self._com_alvo(alvo, "Copiar qual nota? (número)", copiar)
 
 
 def alternar_cifra_nota(app, nota):

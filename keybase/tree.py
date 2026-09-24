@@ -69,6 +69,31 @@ def definir_conteudo(file, markdown):
     file.touch()
 
 
+def copia_profunda(no):
+    """Copia com ids e datas novos; blobs NAO sao copiados.
+
+    Um blob cifrado leva o id do dono como AAD: copiado para o id novo, nao
+    decifraria. Quem duplica algo cifrado recifra a copia (cripto.selar_copia).
+    Pasta cifrada trancada nao tem o conteudo na memoria: recusada.
+    """
+    if isinstance(no, File):
+        return File(nome=no.nome, conteudo=no.conteudo, cifrado=no.cifrado)
+    if no.trancada:
+        raise ValueError(f"a pasta cifrada {no.nome!r} precisa estar aberta")
+    return Folder(nome=no.nome, descricao=no.descricao, nasce_cifrada=no.nasce_cifrada,
+                  cifrada=no.cifrada, filhos=[copia_profunda(f) for f in no.filhos])
+
+
+def nome_de_copia(pai, nome):
+    """'X (cópia)', depois 'X (cópia 2)', 'X (cópia 3)'... o primeiro livre."""
+    candidato = f"{nome} (cópia)"
+    n = 2
+    while not nome_disponivel(pai, candidato):
+        candidato = f"{nome} (cópia {n})"
+        n += 1
+    return candidato
+
+
 def mover(no, origem, destino):
     """Reparenta um no. Disponivel na API, fora da UI no v1."""
     if no is destino or _contem(no, destino):

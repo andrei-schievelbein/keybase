@@ -15,7 +15,7 @@ filtro que ele tinha, que vive na instancia da tela.
 
 import time
 
-from .. import cripto, storage
+from .. import cripto, storage, tree
 from ..model import ID_RAIZ
 from ..tree import construir_indice
 
@@ -43,6 +43,7 @@ class App:
         #: onde a tela de configuracao le e grava; None = o padrao de paths.py
         self.caminho_config = None
         self._tela_do_flash = None
+        self._copia_sensivel = None
 
     # --- arvore ------------------------------------------------------------
 
@@ -194,6 +195,48 @@ class App:
             self, "Criar a senha mestra das notas e pastas cifradas?", pedir_senha,
             detalhe="Não existe recuperação: sem a senha, as notas cifradas "
                     "ficam ilegíveis para sempre."))
+
+    def trocar_senha(self):
+        """S: senha atual -> nova -> repetir. So o envelope da chave muda."""
+        from .screens.prompt import PromptScreen
+        if self.cofre is None:
+            self.flash("Ainda não há senha mestra. Use K para cifrar uma nota ou pasta.")
+            self.rerender()
+            return
+
+        def conferir_atual(senha):
+            return None if self.cofre.conferir(senha) else "Senha incorreta."
+
+        def pedir_nova(atual):
+            def validar(nova):
+                if len(nova) < SENHA_MINIMA:
+                    return f"A senha precisa de pelo menos {SENHA_MINIMA} caracteres."
+                if nova == atual:
+                    return "A senha nova é igual à atual."
+                return None
+
+            def repetir(nova):
+                def aplicar(_outra):
+                    self.cofre.trocar_senha(atual, nova)
+                    self.doc.cofre = self.cofre.to_dict()
+                    if self.persistir():
+                        self.flash("Senha mestra trocada.")
+                    self.rerender()
+
+                self.push(PromptScreen(
+                    self, "Repita a senha nova:", aplicar, senha=True,
+                    contexto=TITULO_SENHA,
+                    validar=lambda outra: None if outra == nova
+                    else "As senhas não conferem."))
+
+            self.push(PromptScreen(
+                self, f"Senha nova (mínimo {SENHA_MINIMA} caracteres):", repetir,
+                validar=validar, senha=True, contexto=TITULO_SENHA,
+                detalhe="Os backups antigos continuam abrindo com a senha antiga."))
+
+        self.push(PromptScreen(self, "Senha atual:", pedir_nova, validar=conferir_atual,
+                               senha=True, contexto=TITULO_SENHA,
+                               detalhe="Para trocar a senha mestra."))
 
     def trancar(self, automatico=False):
         """Tranca o cofre e esquece o texto claro. False se nao pode agora."""
@@ -436,6 +479,50 @@ class App:
         if self.atual:
             self.atual.on_ciclar_modo()
 
+    def duplicar(self, no, pai):
+        """Copia um item na mesma pasta, como 'Nome (cópia)'."""
+        def aplicar():
+            copia = tree.copia_profunda(no)
+            copia.nome = tree.nome_de_copia(pai, no.nome)
+            if self.cofre is not None and self.cofre.destravado:
+                cripto.selar_copia(self.cofre, copia)
+            tree.adicionar(pai, copia)
+            self.persistir()
+            self.flash(f"{no.nome!r} duplicado como {copia.nome!r}.")
+            self.rerender()
+
+        if cripto.precisa_do_cofre(no):
+            self.exigir_cofre(aplicar)  # destravar tambem abre a pasta cifrada
+        else:
+            aplicar()
+
+    # --- copiar -------------------------------------------------------------
+
+    def item_sensivel(self, no):
+        """Cifrado por si ou por uma pasta cifrada acima: copia com limpeza."""
+        return bool(getattr(no, 'cifrado', False) or self.pasta_protetora(no.id))
+
+    def copiar(self, texto, descricao, sensivel=False):
+        """Copia para a area de transferencia e avisa. Sensivel = limpa depois.
+
+        A limpeza so apaga se a area ainda tiver o que foi copiado: se o
+        usuario copiou outra coisa no meio tempo, ela e dele.
+        """
+        self.view.copiar(texto)
+        self._copia_sensivel = texto if sensivel else None
+        segundos = self.config.get('cofre', {}).get('clip_seg', 20)
+        aviso = f"Copiado: {descricao}."
+        if sensivel and segundos:
+            aviso = f"Copiado: {descricao} (limpa em {segundos} s)."
+            self.janela.agendar_limpeza_copia(segundos * 1000, self.limpar_copia_sensivel)
+        self.flash(aviso)
+        self.rerender()
+
+    def limpar_copia_sensivel(self):
+        if self._copia_sensivel is not None and self.view.texto_copiado() == self._copia_sensivel:
+            self.view.limpar_copia()
+        self._copia_sensivel = None
+
     def aplicar_config(self, usuario):
         """Aplica na hora o que a configuracao salva mudou. Devolve o que mudou.
 
@@ -463,6 +550,7 @@ class App:
         except cripto.CriptoError:
             pass  # salvar_se_sujo nunca levanta; o arquivo fica como estava
         storage.salvar_se_sujo(self.doc, self.caminho_dados)
+        self.limpar_copia_sensivel()  # nada cifrado fica na area ao fechar
         salvar_estado(self.config, self.janela.geometria_texto())
         self.janela.encerrar()
 
