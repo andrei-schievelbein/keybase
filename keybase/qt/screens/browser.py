@@ -41,6 +41,8 @@ class BrowserScreen(Screen):
         'X': 'cmd_mover',
         'Z': 'cmd_duplicar',
         'S': 'cmd_senha',
+        'U': 'cmd_desfazer',
+        'W': 'cmd_exportar',
         'V': 'cmd_voltar',
         'M': 'cmd_raiz',
         'C': 'cmd_config',
@@ -50,7 +52,8 @@ class BrowserScreen(Screen):
         'C': 'Configuração',
         'R': 'Renomear', 'D': 'Deletar', 'B': 'Buscar',
         'K': 'Cifrar/decifrar', 'T': 'Trancar/destrancar', 'Y': 'Copiar nota',
-        'X': 'Mover', 'Z': 'Duplicar', 'S': 'Trocar senha',
+        'X': 'Mover', 'Z': 'Duplicar', 'S': 'Trocar senha', 'U': 'Desfazer',
+        'W': 'Exportar .md',
         'V': 'Voltar', 'M': 'Ir para a raiz',
     }
 
@@ -155,7 +158,9 @@ class BrowserScreen(Screen):
             ativos.discard('Y')
         if self.app.cofre is None:
             ativos.discard('T')
-            ativos.discard('S')  # nada cifrado ainda: nada a trancar nem destrancar
+            ativos.discard('S')
+        if not self.app.pode_desfazer:
+            ativos.discard('U')  # nada cifrado ainda: nada a trancar nem destrancar
         return ativos
 
     # --- navegacao ---------------------------------------------------------
@@ -354,6 +359,7 @@ class BrowserScreen(Screen):
     def cmd_renomear(self, alvo=None):
         def renomear(no):
             def aplicar(nome):
+                self.app.registrar_desfazer(f"renomear {no.nome!r}")
                 tree.renomear(no, nome)
                 self.app.persistir()
                 self.app.flash(f"Renomeado para {nome!r}.")
@@ -372,6 +378,7 @@ class BrowserScreen(Screen):
         def deletar(no):
             def aplicar():
                 self.app.snapshot()  # o backup e o 'undo' real
+                self.app.registrar_desfazer(f"apagar {no.nome!r}")
                 tree.remover(self.folder, no)
                 self.app.persistir()
                 self.app.flash(f"{no.nome!r} foi removido.")
@@ -493,6 +500,23 @@ class BrowserScreen(Screen):
 
         self._com_alvo(alvo, "Mover qual item? (número)", mover)
 
+    def cmd_exportar(self, alvo=None):
+        """W exporta a pasta atual; W3 exporta o item 3."""
+        if alvo is None:
+            self.app.exportar(self.folder)
+            return
+        no = self._item(alvo)
+        if no is None:
+            return
+        if isinstance(no, File):
+            self.app.flash("W exporta pastas. Para uma nota, use Y (copiar).", erro=True)
+            self.app.rerender()
+            return
+        self.app.exportar(no)
+
+    def cmd_desfazer(self, alvo=None):
+        self.app.desfazer()
+
     def cmd_senha(self, alvo=None):
         self.app.trocar_senha()
 
@@ -528,6 +552,7 @@ def alternar_cifra_nota(app, nota):
         return
 
     def decifrar():
+        app.registrar_desfazer(f"decifrar {nota.nome!r}")
         cripto.decifrar_nota(app.cofre, nota)
         app.persistir()
         app.flash(f"Nota {nota.nome!r} decifrada.")

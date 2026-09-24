@@ -129,11 +129,13 @@ class DestinoScreen(Screen):
 
         def aplicar():
             self.app.snapshot()
+            self.app.registrar_desfazer(f"mover {no.nome!r}")
             if protege_destino is not None:
                 cripto.absorver_em_pasta_cifrada(self.app.cofre, no)
             try:
                 tree.mover(no, origem, destino)
             except tree.CicloError as e:
+                self.app.cancelar_desfazer()
                 self.app.flash(str(e), erro=True)
                 self.app.rerender()
                 return

@@ -105,5 +105,7 @@ class ConfigScreen(EditorScreen):
         aviso = "Configuração salva."
         if 'fonts' in mudou:
             aviso += " Fontes mudam ao reabrir o KeyBase."
+        if 'dados' in mudou:
+            aviso += " A pasta de dados muda ao reabrir o KeyBase."
         self.app.flash(aviso)
         self.app.pop()

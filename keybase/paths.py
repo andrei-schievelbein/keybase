@@ -69,9 +69,37 @@ def dir_dados():
     return alternativo
 
 
+NOME_DADOS = 'keybase_data.json'
+
+
 def arquivo_dados():
-    """Caminho do arquivo de dados da arvore."""
-    return dir_dados() / 'keybase_data.json'
+    """Caminho do arquivo de dados da arvore, no lugar padrao."""
+    return dir_dados() / NOME_DADOS
+
+
+def resolver_arquivo_dados(pasta_configurada, padrao=None):
+    """(caminho, aviso, erro) para a pasta de dados da configuracao.
+
+    - vazio: o lugar padrao;
+    - pasta que existe: ela. Se ainda nao tem dados e o padrao tem, COPIA o
+      arquivo do padrao para la (primeira vez apontando para a nuvem) - nunca
+      move: o original fica como estava, por seguranca;
+    - pasta que nao existe: o padrao, com erro. Criar uma base vazia num
+      caminho digitado errado faria os dados parecerem perdidos.
+    """
+    import shutil
+    padrao = Path(padrao or arquivo_dados())
+    if not pasta_configurada:
+        return padrao, None, None
+    pasta = Path(pasta_configurada).expanduser()
+    if not pasta.is_dir():
+        return padrao, None, (f"a pasta de dados {str(pasta)!r} não existe; "
+                              f"usando a padrão")
+    caminho = pasta / NOME_DADOS
+    if not caminho.exists() and padrao.exists() and padrao != caminho:
+        shutil.copy2(padrao, caminho)
+        return caminho, f"Seus dados foram copiados para {pasta}.", None
+    return caminho, None, None
 
 
 def arquivo_config():

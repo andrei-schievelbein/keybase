@@ -59,6 +59,19 @@ class StorageBloqueadoError(StorageError):
     """Tentativa de escrever em modo recuperacao (somente leitura)."""
 
 
+class ConflitoError(StorageError):
+    """O arquivo em disco mudou por fora desde a ultima leitura ou gravacao.
+
+    O caso realista: a pasta de dados sincronizada (iCloud, Dropbox, Drive) e
+    outro computador gravou. Sobrescrever apagaria o trabalho de la em
+    silencio; quem chama decide (recarregar, ou salvar com forcar=True).
+    """
+
+    def __init__(self, caminho):
+        self.caminho = caminho
+        super().__init__(f"{Path(caminho).name} foi alterado fora deste KeyBase")
+
+
 def _migrar_2_para_3(bruto):
     """Schema 3 so acrescenta campos opcionais: nada a converter."""
     return bruto
@@ -90,6 +103,8 @@ class Documento:
         self.sujo = False
         self._hash_persistido = None
         self._em_transacao = False
+        #: sha256 do arquivo como lido/gravado por nos; None = ainda nao existia
+        self._disco = None
 
     @classmethod
     def novo(cls):
@@ -144,7 +159,8 @@ def carregar(caminho):
     if not caminho.exists():
         return Documento.novo()  # primeira execucao: unico caso de criar vazio
 
-    texto = caminho.read_text(encoding='utf-8')
+    conteudo = caminho.read_bytes()
+    texto = conteudo.decode('utf-8')
     try:
         bruto = json.loads(texto)
     except json.JSONDecodeError as e:
@@ -170,6 +186,7 @@ def carregar(caminho):
         raise EsquemaInvalidoError("ha itens cifrados, mas o arquivo nao tem 'cofre'")
 
     doc = Documento(raiz, avisos=reparos, cofre=cofre)
+    doc._disco = hashlib.sha256(conteudo).hexdigest()
     doc._hash_persistido = doc.assinatura()
     if reparos:
         doc.sujo = True
@@ -196,8 +213,19 @@ def _migrar(bruto):
 
 # --- gravacao --------------------------------------------------------------
 
-def salvar(doc, caminho):
-    """Grava a arvore de forma atomica. No-op quando nada mudou."""
+def _impressao_do_disco(caminho):
+    try:
+        return hashlib.sha256(Path(caminho).read_bytes()).hexdigest()
+    except FileNotFoundError:
+        return None
+
+
+def salvar(doc, caminho, forcar=False):
+    """Grava a arvore de forma atomica. No-op quando nada mudou.
+
+    Levanta ConflitoError se o arquivo mudou por fora desde que o lemos (ou
+    gravamos), a menos que forcar=True. O .bak ainda guarda a versao de fora.
+    """
     if doc.somente_leitura:
         raise StorageBloqueadoError(
             "o documento esta em modo recuperacao; nenhuma escrita e permitida"
@@ -212,6 +240,9 @@ def salvar(doc, caminho):
         doc.sujo = False
         return False
 
+    if not forcar and _impressao_do_disco(caminho) != doc._disco:
+        raise ConflitoError(caminho)
+
     tmp = caminho.with_name(caminho.name + '.tmp')
     caminho.parent.mkdir(parents=True, exist_ok=True)
 
@@ -225,15 +256,43 @@ def salvar(doc, caminho):
     _replace_com_retry(tmp, caminho)
 
     doc._hash_persistido = assinatura
+    doc._disco = hashlib.sha256(payload.encode('utf-8')).hexdigest()
     doc.sujo = False
     return True
 
 
+def salvar_copia_de_conflito(doc, caminho):
+    """Grava a versao da memoria ao lado, sem tocar o arquivo principal.
+
+    Num conflito, e o que garante que escolher 'recarregar o do disco' nao
+    perde nada: as mudancas daqui ficam num arquivo que carregar() le.
+    """
+    from datetime import datetime
+    caminho = Path(caminho)
+    quando = datetime.now().strftime('%Y-%m-%d-%H%M%S')
+    copia = caminho.with_name(f'{caminho.stem}.conflito-{quando}{caminho.suffix}')
+    tmp = copia.with_name(copia.name + '.tmp')
+    with open(tmp, 'w', encoding='utf-8', newline='\n') as f:
+        f.write(json.dumps(doc.to_dict(), indent=4, ensure_ascii=False))
+        f.flush()
+        os.fsync(f.fileno())
+    _replace_com_retry(tmp, copia)
+    return copia
+
+
 def salvar_se_sujo(doc, caminho):
-    """Usado no handler de fechamento da janela. Nunca levanta."""
+    """Usado no handler de fechamento da janela. Nunca levanta.
+
+    Num conflito, as mudancas vao para a copia de conflito em vez de sumir.
+    """
     try:
         if doc.sujo and not doc.somente_leitura:
             salvar(doc, caminho)
+    except ConflitoError:
+        try:
+            salvar_copia_de_conflito(doc, caminho)
+        except (StorageError, OSError):
+            pass
     except (StorageError, OSError):
         pass
 

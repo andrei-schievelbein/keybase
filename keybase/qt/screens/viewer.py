@@ -16,6 +16,7 @@ class ViewerScreen(Screen):
         'K': 'cmd_cifrar',
         'T': 'cmd_trancar',
         'Y': 'cmd_copiar',
+        'U': 'cmd_desfazer',
         'V': 'cmd_voltar',
         'M': 'cmd_raiz',
         'C': 'cmd_config',
@@ -23,7 +24,7 @@ class ViewerScreen(Screen):
     ROTULOS = {
         'E': 'Editar nota', 'R': 'Renomear', 'D': 'Deletar',
         'A': 'Abrir (senha)', 'K': 'Cifrar/decifrar', 'T': 'Trancar/destrancar',
-        'Y': 'Copiar',
+        'Y': 'Copiar', 'U': 'Desfazer',
         'V': 'Voltar', 'M': 'Ir para a raiz', 'C': 'Configuração',
     }
 
@@ -77,7 +78,9 @@ class ViewerScreen(Screen):
         if self.file is None or self.file.conteudo is not None:
             ativos.discard('A')
         if self.app.cofre is None:
-            ativos.discard('T')  # nada cifrado ainda: nada a trancar nem destrancar
+            ativos.discard('T')
+        if not self.app.pode_desfazer:
+            ativos.discard('U')  # nada cifrado ainda: nada a trancar nem destrancar
         return ativos
 
     def selecionar(self, indice):
@@ -114,6 +117,9 @@ class ViewerScreen(Screen):
             return
         copiar_da_nota(self.app, self.file, alvo)
 
+    def cmd_desfazer(self, alvo=None):
+        self.app.desfazer()
+
     def cmd_trancar(self, alvo=None):
         self.app.alternar_tranca()
 
@@ -136,6 +142,7 @@ class ViewerScreen(Screen):
             return None
 
         def aplicar(nome):
+            self.app.registrar_desfazer(f"renomear {self.file.nome!r}")
             tree.renomear(self.file, nome)
             self.app.persistir()
             self.app.flash(f"Renomeado para {nome!r}.")
@@ -155,6 +162,7 @@ class ViewerScreen(Screen):
 
         def aplicar():
             self.app.snapshot()
+            self.app.registrar_desfazer(f"apagar {nome!r}")
             tree.remover(pai, self.file)
             self.app.persistir()
             self.app.pop()  # sai do viewer: o no nao existe mais
