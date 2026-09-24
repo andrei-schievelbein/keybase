@@ -68,6 +68,7 @@ class Folder(Node):
     #: de tratar a pasta como vazia e gravar o vazio por cima.
     cifrada: bool = False
     blob: dict = None
+    favorito: bool = False
     #: payload do ultimo selamento - compara para so recifrar quando mudou
     selado: str = field(default=None, repr=False, compare=False)
 
@@ -90,6 +91,8 @@ class Folder(Node):
                     f"pasta cifrada {self.nome!r} mudou e nao foi recifrada")
             d["cifrada"] = True
             d["filhos_cifrados"] = dict(self.blob)
+            if self.favorito:
+                d["favorito"] = True
             d["criado_em"] = self.criado_em
             d["atualizado_em"] = self.atualizado_em
             return d
@@ -98,6 +101,8 @@ class Folder(Node):
         d["atualizado_em"] = self.atualizado_em
         if self.nasce_cifrada:  # so quando true: o arquivo comum nao muda
             d["nasce_cifrada"] = True
+        if self.favorito:
+            d["favorito"] = True
         d["filhos"] = [f.to_dict() for f in self.filhos]
         return d
 
@@ -109,6 +114,7 @@ class File(Node):
     cifrado: bool = False
     #: {"nonce", "ct"} - a verdade em disco de uma nota cifrada
     blob: dict = None
+    favorito: bool = False
 
     def to_dict(self):
         d = {
@@ -122,6 +128,8 @@ class File(Node):
             d["conteudo_cifrado"] = dict(self.blob)
         else:
             d["conteudo"] = self.conteudo
+        if self.favorito:
+            d["favorito"] = True
         d["criado_em"] = self.criado_em
         d["atualizado_em"] = self.atualizado_em
         return d
@@ -181,6 +189,7 @@ def node_from_dict(bruto, reparos=None):
     criado = _texto(bruto, "criado_em", contexto) or agora_iso()
     atualizado = _texto(bruto, "atualizado_em", contexto) or criado
 
+    favorito = _bool(bruto, "favorito", contexto)
     if tipo == "file":
         cifrado = _bool(bruto, "cifrado", contexto)
         if cifrado:
@@ -189,7 +198,7 @@ def node_from_dict(bruto, reparos=None):
                 raise EsquemaInvalidoError(
                     f"{contexto}: nota cifrada sem 'conteudo_cifrado' valido")
             return File(id=id_, nome=nome, criado_em=criado, atualizado_em=atualizado,
-                        conteudo=None, cifrado=True,
+                        conteudo=None, cifrado=True, favorito=favorito,
                         blob={"nonce": blob["nonce"], "ct": blob["ct"]})
         return File(
             id=id_,
@@ -197,6 +206,7 @@ def node_from_dict(bruto, reparos=None):
             criado_em=criado,
             atualizado_em=atualizado,
             conteudo=_texto(bruto, "conteudo", contexto),
+            favorito=favorito,
         )
 
     if _bool(bruto, "cifrada", contexto):
@@ -205,7 +215,7 @@ def node_from_dict(bruto, reparos=None):
             raise EsquemaInvalidoError(
                 f"{contexto}: pasta cifrada sem 'filhos_cifrados' valido")
         return Folder(id=id_, nome=nome, criado_em=criado, atualizado_em=atualizado,
-                      cifrada=True, filhos=None,
+                      cifrada=True, filhos=None, favorito=favorito,
                       blob={"nonce": blob["nonce"], "ct": blob["ct"]})
 
     filhos_brutos = bruto.get("filhos", [])
@@ -219,6 +229,7 @@ def node_from_dict(bruto, reparos=None):
         atualizado_em=atualizado,
         descricao=_texto(bruto, "descricao", contexto),
         nasce_cifrada=_bool(bruto, "nasce_cifrada", contexto),
+        favorito=favorito,
         filhos=[node_from_dict(f, reparos) for f in filhos_brutos],
     )
 

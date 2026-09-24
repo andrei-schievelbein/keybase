@@ -17,9 +17,10 @@ class SearchResultsScreen(Screen):
         'V': 'cmd_voltar',
         'M': 'cmd_raiz',
         'C': 'cmd_config',
+        'L': 'cmd_favoritos',
     }
     ROTULOS = {'B': 'Nova busca', 'V': 'Voltar', 'M': 'Ir para a raiz',
-               'C': 'Configuração'}
+               'C': 'Configuração', 'L': 'Favoritos e recentes'}
 
     def __init__(self, app, termo):
         super().__init__(app)
@@ -27,6 +28,7 @@ class SearchResultsScreen(Screen):
         self.resultados = []
         self.total = 0
         self.erro = None
+        self.destaque = -1   # indice escolhido pelas setas; -1 = nenhum
 
     def on_enter(self):
         try:
@@ -59,10 +61,12 @@ class SearchResultsScreen(Screen):
                        'contador')
         else:
             view.linha(f" {self.total} {plural}", 'contador')
+        view.linha(" Número abre · setas escolhem e ENTER abre o escolhido", 'dica')
         view.linha()
 
         for i, resultado in enumerate(self.resultados, start=1):
-            for partes in linha_resultado(i, resultado, view.colunas()):
+            for partes in linha_resultado(i, resultado, view.colunas(),
+                                          destacado=(i - 1 == self.destaque)):
                 view.trechos(partes)
             view.linha()
 
@@ -70,6 +74,23 @@ class SearchResultsScreen(Screen):
 
     def comandos_disponiveis(self):
         return set(self.COMANDOS)
+
+    def on_seta(self, delta):
+        if not self.resultados:
+            return
+        if self.destaque < 0:
+            self.destaque = 0 if delta > 0 else len(self.resultados) - 1
+        else:
+            self.destaque = max(0, min(len(self.resultados) - 1, self.destaque + delta))
+        self.app.rerender()
+        # o rerender volta ao topo; o destaque pode estar la embaixo
+        self.app.view.rolar_ate_texto(f"{self.destaque + 1:>2} - [")
+
+    def on_back(self):
+        """Enter vazio: abre o destacado; sem destaque, volta."""
+        if self.destaque >= 0:
+            return self.selecionar(self.destaque)
+        self.app.pop()
 
     def selecionar(self, indice):
         if not (0 <= indice < len(self.resultados)):

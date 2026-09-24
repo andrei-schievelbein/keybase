@@ -61,6 +61,44 @@ def trecho(conteudo, pos, tam, contexto=CONTEXTO_TRECHO):
     return recorte
 
 
+def distancia(a, b):
+    """Levenshtein com transposicao (Damerau restrito): 'cotnrol' ~ 'control'."""
+    anterior2 = None
+    anterior = list(range(len(b) + 1))
+    for i, ca in enumerate(a, start=1):
+        atual = [i] + [0] * len(b)
+        for j, cb in enumerate(b, start=1):
+            custo = 0 if ca == cb else 1
+            atual[j] = min(anterior[j] + 1, atual[j - 1] + 1, anterior[j - 1] + custo)
+            if (i > 1 and j > 1 and ca == b[j - 2] and a[i - 2] == cb
+                    and anterior2 is not None):
+                atual[j] = min(atual[j], anterior2[j - 2] + 1)
+        anterior2, anterior = anterior, atual
+    return anterior[-1]
+
+
+def _tolerancia(termo):
+    """Erros de digitacao aceitos: nenhum em termo curto, onde tudo casaria."""
+    if len(termo) < 4:
+        return 0
+    return 1 if len(termo) <= 6 else 2
+
+
+def parecido(termo_norm, nome_norm):
+    """O nome casa com o termo por erro de digitacao, palavra a palavra."""
+    limite = _tolerancia(termo_norm)
+    if not limite:
+        return False
+    palavras = nome_norm.split() + [nome_norm]
+    for palavra in palavras:
+        # compara tambem com o comeco da palavra: 'vscdoe' ~ 'vscode-insiders'
+        for alvo in (palavra, palavra[:len(termo_norm)]):
+            if abs(len(alvo) - len(termo_norm)) <= limite and \
+                    distancia(termo_norm, alvo) <= limite:
+                return True
+    return False
+
+
 def _avaliar(no, termo_norm):
     """Melhor pontuacao do no e o campo que casou. Um hit por no."""
     nome_norm = normalizar(no.nome)
@@ -75,10 +113,13 @@ def _avaliar(no, termo_norm):
     if isinstance(no, Folder):
         if termo_norm in normalizar(no.descricao):
             return 40, "descricao", ""
+        if parecido(termo_norm, nome_norm):
+            return 10, "aproximado", ""
         return 0, "", ""
 
     if no.conteudo is None:
-        return 0, "", ""  # nota cifrada com o cofre trancado: so o nome conta
+        # nota cifrada com o cofre trancado: so o nome conta
+        return (10, "aproximado", "") if parecido(termo_norm, nome_norm) else (0, "", "")
 
     conteudo_norm = normalizar(no.conteudo)
     if termo_norm in conteudo_norm:
@@ -87,6 +128,9 @@ def _avaliar(no, termo_norm):
         return (20 + min(ocorrencias, 5), "conteudo",
                 trecho(no.conteudo, pos, len(termo_norm)))
 
+    # abaixo de qualquer acerto exato: erro de digitacao no nome
+    if parecido(termo_norm, nome_norm):
+        return 10, "aproximado", ""
     return 0, "", ""
 
 

@@ -43,6 +43,8 @@ class BrowserScreen(Screen):
         'S': 'cmd_senha',
         'U': 'cmd_desfazer',
         'W': 'cmd_exportar',
+        'F': 'cmd_favorito',
+        'L': 'cmd_favoritos',
         'V': 'cmd_voltar',
         'M': 'cmd_raiz',
         'C': 'cmd_config',
@@ -53,7 +55,7 @@ class BrowserScreen(Screen):
         'R': 'Renomear', 'D': 'Deletar', 'B': 'Buscar',
         'K': 'Cifrar/decifrar', 'T': 'Trancar/destrancar', 'Y': 'Copiar nota',
         'X': 'Mover', 'Z': 'Duplicar', 'S': 'Trocar senha', 'U': 'Desfazer',
-        'W': 'Exportar .md',
+        'W': 'Exportar .md', 'F': 'Favoritar', 'L': 'Favoritos e recentes',
         'V': 'Voltar', 'M': 'Ir para a raiz',
     }
 
@@ -154,6 +156,7 @@ class BrowserScreen(Screen):
             ativos.discard('K')
             ativos.discard('X')
             ativos.discard('Z')
+            ativos.discard('F')
         if not any(isinstance(n, File) for n in self.itens):
             ativos.discard('Y')
         if self.app.cofre is None:
@@ -499,6 +502,9 @@ class BrowserScreen(Screen):
             self.app.push(DestinoScreen(self.app, no.id, self.node_id))
 
         self._com_alvo(alvo, "Mover qual item? (número)", mover)
+
+    def cmd_favorito(self, alvo=None):
+        self._com_alvo(alvo, "Favoritar qual item? (número)", self.app.alternar_favorito)
 
     def cmd_exportar(self, alvo=None):
         """W exporta a pasta atual; W3 exporta o item 3."""

@@ -2226,3 +2226,115 @@ class TestFase2(CofreMixin, BaseUI):
         saida = next(self.dir.glob('KeyBase-export-*'))
         self.assertEqual(sorted(p.name for p in saida.iterdir()), ["Livre.md"])
         self.assertNaTela("1 cifradas puladas")
+
+
+class TestFase3(CofreMixin, BaseUI):
+    # --- favoritos e recentes -----------------------------------------------
+
+    def test_favoritar_marca_na_lista_e_aparece_no_l(self):
+        self.criar_pasta("Vscode")
+        self.digitar('1')
+        self.criar_nota("Ctrl + P", "abre")
+        self.digitar('F1')
+        self.assertLinhaComFim("Ctrl + P", "[favorito]")
+        self.digitar('L')
+        self.assertEqual(self.nome_tela(), 'FavoritosScreen')
+        linhas = [l.strip() for l in self.tela().splitlines()]
+        self.assertIn("1 - Ctrl + P", linhas)
+        self.assertIn("Vscode", linhas)                  # o caminho embaixo
+
+    def test_abrir_do_l_monta_a_pilha_do_caminho(self):
+        self.criar_pasta("Vscode")
+        self.digitar('1')
+        self.criar_nota("Ctrl + P", "abre")
+        self.digitar('F1')
+        self.digitar('M')
+        self.digitar('L')
+        self.digitar('1')
+        self.assertEqual(self.nome_tela(), 'ViewerScreen')
+        self.digitar('V')
+        self.assertIn("~ / Vscode", self.tela())         # voltar percorre a arvore
+
+    def test_recentes_sao_as_notas_abertas(self):
+        self.criar_nota("A", "x")
+        self.criar_nota("B", "y")
+        self.digitar('1')
+        self.digitar('V')
+        self.digitar('2')
+        self.digitar('V')
+        self.assertEqual([self.app.no(i).nome for i in self.app.recentes()], ["B", "A"])
+        self.digitar('L')
+        self.assertLess(self.tela().index("1 - B"), self.tela().index("2 - A"))
+
+    def test_marca_de_favorito_com_cifrada(self):
+        self.nota_cifrada("Banco", "x")
+        self.digitar('F1')
+        self.assertLinhaComFim("Banco", "[favorito]:[cifrada]")
+
+    # --- links ---------------------------------------------------------------
+
+    def test_clicar_no_link_abre_a_nota(self):
+        self.criar_pasta("Vscode")
+        self.digitar('1')
+        self.criar_nota("Ctrl + P", "abre o seletor")
+        self.digitar('M')
+        self.criar_nota("Indice", "veja [[Vscode/Ctrl + P]]")
+        self.digitar('2')
+        self.app.abrir_link("kb:Vscode/Ctrl%20%2B%20P")
+        self.assertEqual(self.nome_tela(), 'ViewerScreen')
+        self.assertNaTela("abre o seletor")
+
+    def test_link_ambiguo_pergunta_um_por_linha(self):
+        for pasta in ("A", "B"):
+            self.criar_pasta(pasta)
+            self.digitar('1' if pasta == "A" else '2')
+            self.criar_nota("Mesmo", pasta)
+            self.digitar('M')
+        self.app.abrir_link("kb:Mesmo")
+        linhas = [l.strip() for l in self.tela().splitlines()]
+        self.assertIn("1 - A / Mesmo", linhas)
+        self.assertIn("2 - B / Mesmo", linhas)
+        self.digitar('2')
+        self.assertNaTela("B")
+
+    def test_link_quebrado_avisa(self):
+        self.app.abrir_link("kb:Nada")
+        self.assertNaTela("Link quebrado")
+
+    # --- setas na busca -----------------------------------------------------
+
+    def test_setas_escolhem_e_enter_abre(self):
+        self.criar_nota("Alfa", "comum")
+        self.criar_nota("Beta", "comum")
+        self.digitar('B')
+        self.digitar('comum')
+        self.app.seta(1)
+        self.app.seta(1)
+        self.assertEqual(self.app.atual.destaque, 1)
+        self.digitar('')
+        self.assertEqual(self.nome_tela(), 'ViewerScreen')
+        self.assertIn("Beta", self.tela())
+
+    def test_sem_destaque_enter_volta(self):
+        self.criar_nota("Alfa", "comum")
+        self.digitar('B')
+        self.digitar('comum')
+        self.digitar('')
+        self.assertEqual(self.nome_tela(), 'BrowserScreen')
+
+    def test_seta_pela_tecla_na_barra(self):
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+        self.criar_nota("Alfa", "comum")
+        self.digitar('B')
+        self.digitar('comum')
+        self.view.entrada.setFocus()
+        QTest.keyClick(self.view.entrada, Qt.Key.Key_Down)
+        _app_qt().processEvents()
+        self.assertEqual(self.app.atual.destaque, 0)
+
+    def test_busca_aproximada_na_tela(self):
+        self.criar_nota("Pandas", "x")
+        self.digitar('B')
+        self.digitar('pnadas')
+        self.assertIn("Pandas", self.tela())

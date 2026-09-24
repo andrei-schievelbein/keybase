@@ -32,6 +32,7 @@ LARGURA_NUMERO = 2
 LARGURA_LETRA = 4  # cabe 'sair' alinhado com as letras isoladas
 MARCA_CIFRADA = "[cifrada]"
 MARCA_NOVAS_CIFRADAS = "[novas cifradas]"
+MARCA_FAVORITO = "[favorito]"
 
 
 def barra(largura=LARGURA_PADRAO):
@@ -73,7 +74,10 @@ def linha_item(numero, no, largura=LARGURA_PADRAO):
         sufixo = ":".join(_sufixo_pasta(no))
         rotulo, tag = no.nome + "/", 'pasta'
     else:
-        sufixo = MARCA_CIFRADA if no.cifrado else ""
+        pedacos = [MARCA_FAVORITO] if no.favorito else []
+        if no.cifrado:
+            pedacos.append(MARCA_CIFRADA)
+        sufixo = ":".join(pedacos)
         rotulo, tag = no.nome, 'nota'
 
     if not sufixo:
@@ -90,7 +94,7 @@ def linha_item(numero, no, largura=LARGURA_PADRAO):
 
 def _sufixo_pasta(pasta):
     """Pedacos do fim da linha de uma pasta: marca e contagem, nessa ordem."""
-    pedacos = []
+    pedacos = [MARCA_FAVORITO] if pasta.favorito else []
     if pasta.cifrada:
         pedacos.append(MARCA_CIFRADA)
     elif pasta.nasce_cifrada:
@@ -102,17 +106,20 @@ def _sufixo_pasta(pasta):
     return pedacos
 
 
-def linha_resultado(numero, resultado, largura=LARGURA_PADRAO):
-    """Duas ou tres linhas por hit de busca: rotulo+nome, caminho e trecho."""
+def linha_resultado(numero, resultado, largura=LARGURA_PADRAO, destacado=False):
+    """Duas ou tres linhas por hit de busca: rotulo+nome, caminho e trecho.
+
+    `destacado` (escolhido pelas setas) pinta a primeira linha na cor de aviso.
+    """
     prefixo = f"{numero:>{LARGURA_NUMERO}} - "
     rotulo = f"[{resultado.rotulo_tipo}] "
     recuo = " " * (len(prefixo) + len(rotulo))
 
     linhas = [[
-        (prefixo, 'numero'),
-        (rotulo, 'contador'),
+        (prefixo, 'flash' if destacado else 'numero'),
+        (rotulo, 'flash' if destacado else 'contador'),
         (truncar(resultado.no.nome, largura - len(prefixo) - len(rotulo)),
-         'pasta' if resultado.e_pasta else 'nota'),
+         'flash' if destacado else ('pasta' if resultado.e_pasta else 'nota')),
     ]]
     linhas.append([(recuo, None),
                    (truncar(resultado.caminho, largura - len(recuo)), 'contador')])

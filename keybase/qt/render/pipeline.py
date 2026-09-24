@@ -8,8 +8,13 @@ reconstruido como tags de um tk.Text por um parser de 165 linhas. Aqui ele e o
 produto final.
 """
 
-import markdown
+import xml.etree.ElementTree as etree
+from urllib.parse import quote
 
+import markdown
+from markdown.inlinepatterns import InlineProcessor
+
+from ... import links
 from ..theme import cores_markdown
 from .estilo import folha_de_estilo
 from .pos_html import AjustesFinais, AjustesParaQt
@@ -54,6 +59,36 @@ CONFIG_EXTENSOES = {
 # codehilite superada por pymdownx.highlight.
 
 
+#: esquema dos links entre notas; a tela resolve o alvo ao clicar
+ESQUEMA_LINK = 'kb:'
+
+
+class LinkEntreNotas(InlineProcessor):
+    """[[alvo]] e [[alvo|texto]] -> <a href="kb:alvo">texto</a>.
+
+    Com `existe` definido (o viewer sabe a arvore), um alvo que nao resolve
+    sai riscado e sem link: clicar num link quebrado nao levaria a lugar nenhum.
+    Prioridade 175: depois do `codigo` (190), para [[x]] dentro de crases ficar
+    como texto, e antes das referencias (170), que leriam [[x]] como [x].
+    """
+
+    def __init__(self, cores):
+        super().__init__(links.RE_LINK.pattern)
+        self.cores = cores
+        self.existe = None
+
+    def handleMatch(self, m, data):
+        alvo, texto = links.separar(m.group(1) + (f"|{m.group(2)}" if m.group(2) else ""))
+        if self.existe is not None and not self.existe(alvo):
+            el = etree.Element('span')
+            el.set('style', f"color:{self.cores['quote']}; text-decoration: line-through")
+        else:
+            el = etree.Element('a')
+            el.set('href', ESQUEMA_LINK + quote(alvo))
+        el.text = texto
+        return el, m.start(0), m.end(0)
+
+
 class RenderizadorMarkdown:
     """Converte Markdown em HTML para o Qt.
 
@@ -79,6 +114,8 @@ class RenderizadorMarkdown:
         md.treeprocessors.register(
             AjustesParaQt(md, self.tema, self.cores), 'ajustes_qt', 1
         )
+        self._links = LinkEntreNotas(self.cores)
+        md.inlinePatterns.register(self._links, 'link_entre_notas', 175)
         # prioridade 15: depois de raw_html (30) e amp_substitute (20), para ver
         # o HTML ja resolvido do htmlStash e nao ter o resultado reprocessado
         md.postprocessors.register(
@@ -86,8 +123,12 @@ class RenderizadorMarkdown:
         )
         return md
 
-    def html(self, texto):
-        """Markdown -> HTML. Nunca levanta: degrada para texto pre-formatado."""
+    def html(self, texto, existe=None):
+        """Markdown -> HTML. Nunca levanta: degrada para texto pre-formatado.
+
+        `existe(alvo) -> bool`, opcional, marca os links [[...]] quebrados.
+        """
+        self._links.existe = existe
         try:
             self._md.reset()
             return self._md.convert(texto or '')
