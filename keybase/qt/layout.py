@@ -161,6 +161,22 @@ def montar_menu(comandos, rotulos, disponiveis, largura=LARGURA_PADRAO, extras=(
     return linhas
 
 
+def montar_menu_fixo(pares, largura=LARGURA_PADRAO):
+    """Menu em duas colunas, no visual do menu dinamico, para teclas que nao
+    sao uma letra so ('ENTER', 'ESC'): a coluna da tecla se ajusta a maior."""
+    if not pares:
+        return []
+    largura_tecla = max(LARGURA_LETRA, max(len(tecla) for tecla, _ in pares))
+    # um espaco de margem: 'ENTER' nao encosta na borda, como o resto da tela
+    celulas = [f" {tecla:>{largura_tecla}} - {rotulo}" for tecla, rotulo in pares]
+    metade = (len(celulas) + 1) // 2
+    esquerda, direita = celulas[:metade], celulas[metade:]
+    coluna = max(len(c) for c in esquerda) + 4
+    return [truncar((e.ljust(coluna) + (direita[i] if i < len(direita) else "")).rstrip(),
+                    largura)
+            for i, e in enumerate(esquerda)]
+
+
 def truncar(texto, largura):
     if largura < 4:
         return texto[:max(0, largura)]

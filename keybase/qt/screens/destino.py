@@ -1,7 +1,9 @@
 """DestinoScreen: escolher a pasta para onde mover (X) ou copiar (Y) um item.
 
 Uma tela so, que navega por dentro: o numero entra numa sub-pasta, Enter
-vazio sobe, M vai a raiz e C confirma (move ou copia) para a pasta mostrada. Empilhar uma tela
+vazio sobe, R vai a raiz e C confirma (move ou copia) para a pasta mostrada.
+O menu aqui e FIXO, sempre visivel, no visual do menu dinamico: sao poucos
+comandos e nenhum deles e obvio sem ver. Empilhar uma tela
 por nivel, como o browser faz, obrigaria o cancelamento a desempilhar N telas.
 
 So pastas aparecem, e nunca o proprio item movido: entrar nele seria o unico
@@ -16,9 +18,8 @@ from .prompt import ConfirmScreen
 
 
 class DestinoScreen(Screen):
-    COMANDOS = {'C': 'cmd_confirmar', 'V': 'cmd_voltar', 'M': 'cmd_raiz'}
-    ROTULOS = {'C': 'Confirmar', 'V': 'Subir um nível', 'M': 'Ir para a raiz'}
-    MOSTRA_MENU = False  # as instrucoes ja estao na tela
+    COMANDOS = {'C': 'cmd_confirmar', 'R': 'cmd_raiz', 'V': 'cmd_voltar'}
+    MOSTRA_MENU = False  # o menu e fixo (desenhar_menu): '?' e o botao nao o escondem
 
     def __init__(self, app, no_id, pasta_id, copiar=False):
         super().__init__(app)
@@ -45,6 +46,16 @@ class DestinoScreen(Screen):
         self.itens = [f for f in tree.filhos_ordenados(pasta)
                       if isinstance(f, Folder) and f is not self.no]
 
+    def desenhar_menu(self):
+        from ..layout import montar_menu_fixo
+        view = self.app.view
+        verbo = "Copiar" if self.copiar else "Mover"
+        pares = [("C", f"{verbo} para cá"), ("ENTER", "Subir nível"),
+                 ("R", "Raiz"), ("ESC", "Cancelar")]
+        view.barra()
+        for linha in montar_menu_fixo(pares, view.colunas()):
+            view.linha(linha, 'dica')
+
     def render(self):
         view = self.app.view
         largura = view.colunas()
@@ -59,17 +70,11 @@ class DestinoScreen(Screen):
         else:
             view.linha(" " + caminho, 'breadcrumb')
         view.barra()
-        view.trechos([(" C - ", 'numero'), (f"{verbo} para esta pasta", 'nota')])
-        view.barra()
         if self.itens:
             for i, pasta in enumerate(self.itens, start=1):
                 view.trechos(linha_item(i, pasta, largura))
         else:
             view.linha(" Nenhuma sub-pasta aqui.", 'vazio')
-        view.barra()
-        acao = "copia" if self.copiar else "move"
-        view.linha(f" Número entra na pasta | C {acao} para cá | ENTER sobe | "
-                   "M raiz | ESC cancela", 'dica')
         view.barra()
 
     # --- navegacao ---------------------------------------------------------
