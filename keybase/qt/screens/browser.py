@@ -10,27 +10,42 @@ digitado - a ordem exibida e derivada e difere da ordem de insercao. Foi esse
 descasamento que fez a versao anterior abrir o item errado depois de uma busca.
 """
 
-from ... import search, tree
+from ... import cripto, search, tree
 from ...model import File, Folder
 from ..layout import montar_breadcrumb, truncar
 from .base import Screen
 from .prompt import ConfirmScreen, PromptScreen
 
 
+RESPOSTAS_SIM = ('s', 'sim', 'y', 'yes')
+RESPOSTAS_NAO = ('', 'n', 'nao', 'não', 'no')
+
+
+def _validar_sim_nao(texto):
+    if texto.lower() in RESPOSTAS_SIM + RESPOSTAS_NAO:
+        return None
+    return "Responda s (sim) ou n (não)."
+
+
 class BrowserScreen(Screen):
     COMANDOS = {
-        'C': 'cmd_nova_pasta',
+        'P': 'cmd_nova_pasta',
         'N': 'cmd_nova_nota',
         'E': 'cmd_editar',
         'R': 'cmd_renomear',
         'D': 'cmd_deletar',
         'B': 'cmd_buscar',
+        'K': 'cmd_cifrar',
+        'T': 'cmd_trancar',
         'V': 'cmd_voltar',
         'M': 'cmd_raiz',
+        'C': 'cmd_config',
     }
     ROTULOS = {
-        'C': 'Nova pasta', 'N': 'Nova nota', 'E': 'Editar nota',
+        'P': 'Nova pasta', 'N': 'Nova nota', 'E': 'Editar nota',
+        'C': 'Configuração',
         'R': 'Renomear', 'D': 'Deletar', 'B': 'Buscar',
+        'K': 'Cifrar/decifrar', 'T': 'Trancar/destrancar',
         'V': 'Voltar', 'M': 'Ir para a raiz',
     }
 
@@ -46,7 +61,9 @@ class BrowserScreen(Screen):
 
     def on_enter(self):
         no = self.app.no(self.node_id)
-        if no is None or not isinstance(no, Folder):
+        # pasta cifrada trancada (por T ou por inatividade) com a tela aberta
+        # dentro dela: a tela se descarta, como se o no tivesse sumido
+        if no is None or not isinstance(no, Folder) or no.trancada:
             self.descartada = True
             self.folder = None
             self.itens = []
@@ -74,8 +91,12 @@ class BrowserScreen(Screen):
         largura = view.colunas()
         breadcrumb = montar_breadcrumb(cadeia, largura - 2)
 
+        # o aviso ocupa a linha do caminho por alguns segundos (ver App.flash)
+        msg, erro = self.app.consumir_flash()
         view.barra()
-        if self.filtro:
+        if msg:
+            view.linha(" " + msg, 'erro' if erro else 'flash')
+        elif self.filtro:
             view.trechos([
                 (" " + breadcrumb, 'breadcrumb'),
                 ("   filtro: ", 'contador'),
@@ -83,14 +104,9 @@ class BrowserScreen(Screen):
             ])
         else:
             view.linha(" " + breadcrumb, 'breadcrumb')
-            if self.folder is not None and self.folder.descricao:
-                view.linha(" " + truncar(self.folder.descricao, largura - 2), 'contador')
+        if not self.filtro and self.folder is not None and self.folder.descricao:
+            view.linha(" " + truncar(self.folder.descricao, largura - 2), 'contador')
         view.barra()
-
-        msg, erro = self.app.consumir_flash()
-        if msg:
-            view.linha(" " + msg, 'erro' if erro else 'flash')
-            view.barra()
 
         if not self.itens:
             self._render_vazio()
@@ -111,7 +127,7 @@ class BrowserScreen(Screen):
             view.linha(" Nenhum item corresponde ao filtro.", 'vazio')
             return
         view.linha(" Pasta vazia.", 'vazio')
-        view.linha(" Use C para criar uma sub-pasta ou N para criar uma nota.", 'dica')
+        view.linha(" Use P para criar uma sub-pasta ou N para criar uma nota.", 'dica')
 
     def help_text(self):
         return None
@@ -127,6 +143,9 @@ class BrowserScreen(Screen):
             ativos.discard('R')
             ativos.discard('D')
             ativos.discard('E')
+            ativos.discard('K')
+        if self.app.cofre is None:
+            ativos.discard('T')  # nada cifrado ainda: nada a trancar nem destrancar
         return ativos
 
     # --- navegacao ---------------------------------------------------------
@@ -136,10 +155,22 @@ class BrowserScreen(Screen):
         if no is None:
             return
         if isinstance(no, Folder):
-            self.app.push(BrowserScreen(self.app, no.id))
+            def entrar():
+                self.app.push(BrowserScreen(self.app, no.id))
+            if no.trancada:
+                self.app.exigir_cofre(entrar)  # destravar abre a pasta
+            else:
+                entrar()
         else:
             from .viewer import ViewerScreen
-            self.app.push(ViewerScreen(self.app, no.id))
+            self._com_texto(no, lambda: self.app.push(ViewerScreen(self.app, no.id)))
+
+    def _com_texto(self, nota, acao):
+        """Nota cifrada e trancada pede a senha antes; o resto vai direto."""
+        if nota.conteudo is None:
+            self.app.exigir_cofre(acao)
+        else:
+            acao()
 
     def _item(self, indice):
         """Resolve um numero contra a lista EXIBIDA. Ver invariante no topo."""
@@ -199,24 +230,54 @@ class BrowserScreen(Screen):
         return validar
 
     def cmd_nova_pasta(self, alvo=None):
-        def criar(nome):
+        def criar(nome, cifrada):
             novo = tree.novo_folder(nome)
+            novo.nasce_cifrada = cifrada
             tree.adicionar(self.folder, novo)
             self.app.persistir()
-            self.app.flash(f"Pasta {nome!r} criada.")
+            self.app.flash(f"Pasta {nome!r} criada"
+                           + (" - notas novas nascem cifradas." if cifrada else "."))
             self.app.rerender()
 
+        def perguntar_cifra(nome):
+            if self.app.pasta_protetora(self.node_id) is not None:
+                # dentro de uma pasta cifrada tudo ja e protegido: nem pergunta
+                criar(nome, False)
+                return
+
+            def responder(texto):
+                if texto.lower() in RESPOSTAS_SIM:
+                    self.app.garantir_cofre(lambda: criar(nome, True))
+                else:
+                    criar(nome, False)
+
+            self.app.push(PromptScreen(
+                self.app, f"Notas de {nome!r} nascem cifradas? (s/N)", responder,
+                validar=_validar_sim_nao, permitir_vazio=True,
+                detalhe="ENTER vazio = não. ESC cancela a criação da pasta.",
+                contexto=montar_breadcrumb(self.app.caminho_de(self.node_id)),
+            ))
+
         self.app.push(PromptScreen(
-            self.app, "Nome da nova pasta:", criar,
+            self.app, "Nome da nova pasta:", perguntar_cifra,
             validar=self._validador_nome(),
             contexto=montar_breadcrumb(self.app.caminho_de(self.node_id)),
         ))
 
     def cmd_nova_nota(self, alvo=None):
         def criar(nome):
+            if (cripto.pasta_nasce_cifrada(self.folder)
+                    and self.app.pasta_protetora(self.node_id) is None):
+                self.app.exigir_cofre(lambda: abrir(nome, cifrada=True))
+            else:
+                abrir(nome, cifrada=False)
+
+        def abrir(nome, cifrada):
             from .editor import EditorScreen
             from .viewer import ViewerScreen
             nova = tree.novo_file(nome)
+            if cifrada:
+                cripto.cifrar_nota(self.app.cofre, nova)
             tree.adicionar(self.folder, nova)
             self.app.persistir()
             # cai direto no editor, com o viewer embaixo: sair do editor sempre
@@ -260,6 +321,7 @@ class BrowserScreen(Screen):
         self.app.push(PromptScreen(
             self.app, pergunta, escolher,
             contexto=montar_breadcrumb(self.app.caminho_de(self.node_id)),
+            itens=list(self.itens),
         ))
 
     def cmd_editar(self, alvo=None):
@@ -270,8 +332,12 @@ class BrowserScreen(Screen):
                 return
             from .editor import EditorScreen
             from .viewer import ViewerScreen
-            self.app.stack.append(ViewerScreen(self.app, no.id))
-            self.app.push(EditorScreen(self.app, no.id))
+
+            def editar():
+                self.app.stack.append(ViewerScreen(self.app, no.id))
+                self.app.push(EditorScreen(self.app, no.id))
+
+            self._com_texto(no, editar)
 
         self._com_alvo(alvo, "Editar qual nota? (número)", abrir)
 
@@ -311,3 +377,127 @@ class BrowserScreen(Screen):
             ))
 
         self._com_alvo(alvo, "Deletar qual item? (número)", deletar)
+
+    # --- notas cifradas ----------------------------------------------------
+
+    def cmd_cifrar(self, alvo=None):
+        protetora = self.app.pasta_protetora(self.node_id)
+        if protetora is not None:
+            self.app.flash(f"Tudo aqui já é protegido pela pasta cifrada "
+                           f"{protetora.nome!r}.")
+            self.app.rerender()
+            return
+
+        def alternar(no):
+            if isinstance(no, Folder):
+                self._cifrar_pasta(no)
+            else:
+                alternar_cifra_nota(self.app, no)
+
+        self._com_alvo(alvo, "Cifrar ou decifrar qual item? (número)", alternar)
+
+    def _cifrar_pasta(self, pasta):
+        if pasta.cifrada:
+            self._decifrar_pasta(pasta)
+            return
+        claras = cripto.notas_em_claro(pasta)
+        estado = "sim" if pasta.nasce_cifrada else "não"
+
+        def escolher(texto):
+            if texto == '1':
+                if not claras:
+                    self.app.flash(f"Todas as notas de {pasta.nome!r} já estão cifradas.")
+                    self.app.rerender()
+                    return
+                n = len(claras)
+                self.app.push(ConfirmScreen(
+                    self.app,
+                    f"Cifrar {n} nota{'s' if n != 1 else ''} de {pasta.nome!r}?",
+                    lambda: self.app.exigir_cofre(lambda: self.app.cifrar_notas(claras)),
+                    detalhe="Inclui as notas das sub-pastas.",
+                ))
+            elif texto == '2':
+                self._alternar_nasce_cifrada(pasta)
+            else:
+                self.app.push(ConfirmScreen(
+                    self.app, f"Cifrar a pasta {pasta.nome!r} inteira?",
+                    lambda: self.app.exigir_cofre(
+                        lambda: self.app.cifrar_pasta_inteira(pasta)),
+                    detalhe="Nomes, sub-pastas e notas passam a exigir a senha; "
+                            "só o nome da pasta fica visível.",
+                ))
+
+        self.app.push(PromptScreen(
+            self.app, f"Pasta {pasta.nome!r}: o que fazer?", escolher,
+            validar=lambda t: None if t in ('1', '2', '3') else "Digite 1, 2 ou 3.",
+            opcoes=[
+                (1, ("Cifrar a nota em claro (inclui sub-pastas)" if len(claras) == 1
+                     else f"Cifrar as {len(claras)} notas em claro (inclui sub-pastas)")),
+                (2, f"Notas novas nascem cifradas: {estado} -> "
+                    f"{'não' if pasta.nasce_cifrada else 'sim'}"),
+                (3, "Cifrar a pasta inteira (nomes e sub-pastas incluídos)"),
+            ],
+            contexto=montar_breadcrumb(self.app.caminho_de(self.node_id)),
+        ))
+
+    def _decifrar_pasta(self, pasta):
+        def escolher(_texto):
+            def confirmar():
+                self.app.push(ConfirmScreen(
+                    self.app, f"Decifrar a pasta {pasta.nome!r}?",
+                    lambda: self.app.decifrar_pasta(pasta),
+                    detalhe="Nomes e conteúdo voltam a ficar em claro no arquivo de dados.",
+                ))
+            self.app.exigir_cofre(confirmar)
+
+        self.app.push(PromptScreen(
+            self.app, f"Pasta cifrada {pasta.nome!r}: o que fazer?", escolher,
+            validar=lambda t: None if t == '1' else "Digite 1.",
+            opcoes=[(1, "Decifrar a pasta (volta a ser uma pasta comum)")],
+            contexto=montar_breadcrumb(self.app.caminho_de(self.node_id)),
+        ))
+
+    def _alternar_nasce_cifrada(self, pasta):
+        def aplicar():
+            pasta.nasce_cifrada = not pasta.nasce_cifrada
+            pasta.touch()
+            self.app.persistir()
+            if pasta.nasce_cifrada:
+                self.app.flash(f"Notas novas em {pasta.nome!r} nascem cifradas.")
+            else:
+                self.app.flash(f"Notas novas em {pasta.nome!r} nascem em claro.")
+            self.app.rerender()
+
+        if pasta.nasce_cifrada:
+            aplicar()
+        else:
+            self.app.garantir_cofre(aplicar)
+
+    def cmd_trancar(self, alvo=None):
+        self.app.alternar_tranca()
+
+
+def alternar_cifra_nota(app, nota):
+    """K sobre uma nota: cifra se esta em claro, decifra (com confirmacao) se nao.
+
+    Compartilhado entre a listagem e o viewer.
+    """
+    protetora = app.pasta_protetora(nota.id)
+    if protetora is not None:
+        app.flash(f"Esta nota já é protegida pela pasta cifrada {protetora.nome!r}.")
+        app.rerender()
+        return
+    if not nota.cifrado:
+        app.exigir_cofre(lambda: app.cifrar_notas([nota]))
+        return
+
+    def decifrar():
+        cripto.decifrar_nota(app.cofre, nota)
+        app.persistir()
+        app.flash(f"Nota {nota.nome!r} decifrada.")
+        app.rerender()
+
+    app.exigir_cofre(lambda: app.push(ConfirmScreen(
+        app, f"Decifrar a nota {nota.nome!r}?", decifrar,
+        detalhe="O conteúdo volta a ficar em claro no arquivo de dados.",
+    )))

@@ -32,6 +32,8 @@ keybase_data.snapshot-*.json
 keybase_data.pre-migracao-*.json
 *.json.tmp
 window_config.json
+keybase_config.toml
+keybase_estado.json
 
 # Workflows (arquivos de configuração local do agente)
 .agent/

@@ -77,6 +77,9 @@ def _avaliar(no, termo_norm):
             return 40, "descricao", ""
         return 0, "", ""
 
+    if no.conteudo is None:
+        return 0, "", ""  # nota cifrada com o cofre trancado: so o nome conta
+
     conteudo_norm = normalizar(no.conteudo)
     if termo_norm in conteudo_norm:
         ocorrencias = conteudo_norm.count(termo_norm)

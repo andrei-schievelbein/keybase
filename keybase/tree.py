@@ -79,10 +79,19 @@ def mover(no, origem, destino):
     destino.touch()
 
 
+def _visiveis(folder):
+    """Filhos da pasta; nenhum se ela e uma pasta cifrada trancada.
+
+    Toda caminhada pela arvore passa por aqui: o conteudo de uma pasta
+    trancada nao existe na memoria, e nada deve fingir que ela esta vazia.
+    """
+    return folder.filhos if folder.filhos is not None else ()
+
+
 def _contem(possivel_ancestral, no):
     if not isinstance(possivel_ancestral, Folder):
         return False
-    for filho in possivel_ancestral.filhos:
+    for filho in _visiveis(possivel_ancestral):
         if filho is no or _contem(filho, no):
             return True
     return False
@@ -99,7 +108,7 @@ def filhos_ordenados(folder):
 
     Unica fonte de numeracao das telas (ver docstring do modulo).
     """
-    return sorted(folder.filhos, key=chave_ordenacao)
+    return sorted(_visiveis(folder), key=chave_ordenacao)
 
 
 def construir_indice(raiz):
@@ -113,7 +122,7 @@ def construir_indice(raiz):
     def visitar(no, pai):
         indice[no.id] = (no, pai)
         if isinstance(no, Folder):
-            for filho in no.filhos:
+            for filho in _visiveis(no):
                 visitar(filho, no)
 
     visitar(raiz, None)
@@ -139,7 +148,7 @@ def breadcrumb(cadeia, sep=" / "):
 
 def contar_itens(folder):
     """Filhos diretos - o '[N]' da listagem."""
-    return len(folder.filhos)
+    return len(_visiveis(folder))
 
 
 def contar_notas(folder):
@@ -148,14 +157,14 @@ def contar_notas(folder):
     So notas: sub-pasta nao entra em nenhuma das duas metades. A segunda reusa
     contar_recursivo, que ja fazia essa caminhada para o resumo de delecao.
     """
-    diretas = sum(1 for filho in folder.filhos if isinstance(filho, File))
+    diretas = sum(1 for filho in _visiveis(folder) if isinstance(filho, File))
     return diretas, contar_recursivo(folder)[1]
 
 
 def contar_recursivo(folder):
     """(n_folders, n_files) em toda a subarvore, sem contar o proprio folder."""
     pastas = notas = 0
-    for filho in folder.filhos:
+    for filho in _visiveis(folder):
         if isinstance(filho, Folder):
             pastas += 1
             sub_p, sub_n = contar_recursivo(filho)
@@ -184,7 +193,7 @@ def percorrer(raiz):
 def nome_disponivel(pai, nome, ignorar=None):
     """False se ja existe um irmao com esse nome (ignorando caixa e acento)."""
     alvo = normalizar(nome)
-    for filho in pai.filhos:
+    for filho in _visiveis(pai):
         if filho is ignorar:
             continue
         if normalizar(filho.nome) == alvo:
@@ -196,6 +205,8 @@ def resumo_delecao(no):
     """Frase descrevendo o que sera apagado, para a confirmacao."""
     if isinstance(no, File):
         return f"a nota {no.nome!r}"
+    if no.trancada:
+        return f"a pasta cifrada {no.nome!r} e TUDO dentro"
     pastas, notas = contar_recursivo(no)
     if pastas == 0 and notas == 0:
         return f"a pasta vazia {no.nome!r}"
@@ -208,13 +219,16 @@ def resumo_delecao(no):
 
 
 def precisa_confirmacao_forte(no):
-    """Folder nao vazio exige digitar DELETAR; o resto aceita s/n."""
-    return isinstance(no, Folder) and bool(no.filhos)
+    """Folder nao vazio exige digitar DELETAR; o resto aceita s/n.
+
+    Pasta cifrada trancada conta como nao vazia: nao da para saber o que tem.
+    """
+    return isinstance(no, Folder) and (no.trancada or bool(no.filhos))
 
 
 def preview_conteudo(file, limite=70):
     """Primeira linha util do markdown, para listagens."""
-    for linha in file.conteudo.splitlines():
+    for linha in (file.conteudo or "").splitlines():
         limpa = linha.strip().lstrip('#').strip()
         if limpa:
             return limpa[:limite] + ('...' if len(limpa) > limite else '')

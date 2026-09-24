@@ -22,8 +22,17 @@ class PromptScreen(Screen):
     MOSTRA_MENU = False
 
     def __init__(self, app, pergunta, on_submit, valor_inicial="",
-                 validar=None, permitir_vazio=False, contexto=""):
+                 validar=None, permitir_vazio=False, contexto="", senha=False,
+                 detalhe="", itens=None, opcoes=None):
         super().__init__(app)
+        #: escolhas numeradas [(numero, rotulo)], uma por linha no formato
+        #: 'N - Rotulo' do resto do app - nunca espremidas numa linha so
+        self.opcoes = opcoes or []
+        #: nos listados sob a pergunta, numerados como na tela de baixo - quem
+        #: pergunta "qual item?" nao obriga a voltar para descobrir o numero
+        self.itens = itens or []
+        self.ENTRADA_SENHA = senha
+        self.detalhe = detalhe
         self.pergunta = pergunta
         self.on_submit = on_submit
         self.valor_inicial = valor_inicial
@@ -44,9 +53,21 @@ class PromptScreen(Screen):
         else:
             view.barra()
         view.linha(" " + truncar(self.pergunta, largura - 2), 'nota')
+        if self.detalhe:
+            view.linha(" " + truncar(self.detalhe, largura - 2), 'dica')
         if self._erro:
             view.linha(" " + truncar(self._erro, largura - 2), 'erro')
         view.barra()
+        if self.opcoes:
+            for numero, rotulo in self.opcoes:
+                view.trechos([(f"{numero:>2} - ", 'numero'),
+                              (truncar(rotulo, largura - 5), 'nota')])
+            view.barra()
+        if self.itens:
+            from ..layout import linha_item
+            for i, no in enumerate(self.itens, start=1):
+                view.trechos(linha_item(i, no, largura))
+            view.barra()
         view.linha(" ENTER confirma - ESC cancela", 'dica')
         view.barra()
 
@@ -70,9 +91,11 @@ class PromptScreen(Screen):
             erro = self.validar(texto)
             if erro:
                 self._erro = erro
-                # mantem o que foi digitado, para corrigir em vez de recomecar
-                self.valor_inicial = texto
-                self._preenchido = False
+                # mantem o que foi digitado, para corrigir em vez de recomecar -
+                # menos senha: senha errada se redigita do zero
+                if not self.ENTRADA_SENHA:
+                    self.valor_inicial = texto
+                    self._preenchido = False
                 self.app.rerender()
                 return
 

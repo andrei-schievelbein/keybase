@@ -18,6 +18,7 @@ from .theme import cores_interface
 from .view import TerminalView
 
 ATRASO_RESIZE_MS = 120
+INTERVALO_COFRE_MS = 30_000
 TAMANHO_MINIMO = (400, 300)
 
 PADRAO_GEOMETRIA = re.compile(
@@ -99,6 +100,12 @@ class JanelaPrincipal(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.view)
 
+        # um timer so, reiniciado a cada aviso: o mais novo manda
+        self._timer_flash = QTimer(self)
+        self._timer_flash.setSingleShot(True)
+        self._fim_do_flash = None
+        self._timer_flash.timeout.connect(self._ao_fim_do_flash)
+
         self._timer_resize = QTimer(self)
         self._timer_resize.setSingleShot(True)
         self._timer_resize.timeout.connect(self._ao_reajustar)
@@ -138,6 +145,23 @@ class JanelaPrincipal(QWidget):
             color: {c['help_fg']};
             padding: 6px;
         }}
+        QWidget#cabecalho_edicao, QWidget#cabecalho_edicao QLabel {{
+            background-color: {c['help_bg']};
+            color: {c['help_fg']};
+        }}
+        QWidget#cabecalho_edicao QLabel#edicao_divisoria {{
+            color: {c['separador']};
+        }}
+        QWidget#cabecalho_edicao QLabel#edicao_aviso {{
+            color: {c['flash']};
+        }}
+        QWidget#cabecalho_edicao QLabel#edicao_erro {{
+            color: {c['erro']};
+        }}
+        /* Sem o fundo do menu: e so a linha entre o menu e o texto. */
+        QLabel#ajuda_divisoria {{
+            color: {c['separador']};
+        }}
         QTextBrowser, QPlainTextEdit {{
             background-color: {c['fundo']};
             color: {c['texto']};
@@ -165,6 +189,25 @@ class JanelaPrincipal(QWidget):
 
     # --- ligacao com o App -------------------------------------------------
 
+    def agendar_fim_do_flash(self, ms, callback):
+        self._fim_do_flash = callback
+        self._timer_flash.start(ms)
+
+    def _ao_fim_do_flash(self):
+        if self._fim_do_flash is not None and not self._encerrando:
+            self._fim_do_flash()
+
+    def aplicar_tema(self, tema):
+        """Troca o tema com o app aberto: paleta, folha da janela e a view."""
+        from PySide6.QtWidgets import QApplication
+
+        from .estilo import aplicar_tema
+        qapp = QApplication.instance()
+        if qapp is not None:
+            aplicar_tema(qapp, tema)
+        self.setStyleSheet(self._folha())  # _folha le self.config['theme']
+        self.view.aplicar_tema(tema)
+
     def ligar(self, app):
         self.app = app
         self.view.entrada.returnPressed.connect(app.submit)
@@ -172,6 +215,11 @@ class JanelaPrincipal(QWidget):
         # Ctrl+0 e o clique alternam exatamente a mesma coisa
         self.view.botao_ajuda.clicked.connect(app.alternar_menu)
         self._atalhos(app)
+        # auto-trancar do cofre: o App decide, o timer so pergunta de tempos em tempos
+        self._timer_cofre = QTimer(self)
+        self._timer_cofre.setInterval(INTERVALO_COFRE_MS)
+        self._timer_cofre.timeout.connect(app.verificar_auto_trancar)
+        self._timer_cofre.start()
 
     def _atalhos(self, app):
         self._registrados = []

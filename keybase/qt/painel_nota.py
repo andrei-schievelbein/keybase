@@ -30,6 +30,9 @@ DEBOUNCE_MS = 250
 DEBOUNCE_TEXTO_GRANDE_MS = 800
 LIMITE_TEXTO_GRANDE = 200_000
 LARGURA_MINIMA_PAINEL = 120
+# A alca do splitter e mais larga que a linha desenhada nela: a linha fina
+# marca a divisao, e a margem transparente em volta e a area de arrastar.
+LARGURA_ALCA = 9
 
 
 class PainelNota(QWidget):
@@ -49,6 +52,7 @@ class PainelNota(QWidget):
 
         self.splitter = QSplitter(Qt.Orientation.Horizontal)
         self.splitter.setChildrenCollapsible(False)
+        self.splitter.setHandleWidth(LARGURA_ALCA)
         self.splitter.addWidget(self.editor)
         self.splitter.addWidget(self.preview)
         self.editor.setMinimumWidth(LARGURA_MINIMA_PAINEL)
@@ -70,7 +74,21 @@ class PainelNota(QWidget):
         self.editor.verticalScrollBar().valueChanged.connect(self._sincronizar)
         self.splitter.splitterMoved.connect(self._guardar_proporcao)
 
+        self._estilizar_divisao()
         self.definir_modo(EDITAR)
+
+    def _estilizar_divisao(self):
+        """Linha vertical de 1px no meio da alca, na cor das barras '='."""
+        cor = cores_interface(self.tema)['separador']
+        meio_ini = (LARGURA_ALCA // 2) / LARGURA_ALCA
+        meio_fim = (LARGURA_ALCA // 2 + 1) / LARGURA_ALCA
+        self.splitter.setStyleSheet(
+            "QSplitter::handle:horizontal { background: qlineargradient("
+            "x1:0, y1:0, x2:1, y2:0, "
+            f"stop:0 transparent, stop:{meio_ini:.3f} transparent, "
+            f"stop:{meio_ini:.3f} {cor}, stop:{meio_fim:.3f} {cor}, "
+            f"stop:{meio_fim:.3f} transparent, stop:1 transparent); }}"
+        )
 
     def _preparar_preview(self, fonte):
         self.preview.setFont(fonte)
@@ -207,5 +225,6 @@ class PainelNota(QWidget):
         self._render = RenderizadorMarkdown(tema, fontes)
         self.editor.recarregar_cores(tema)
         self._preparar_preview(self.editor.font())
+        self._estilizar_divisao()
         if self.preview.isVisible():
             self.forcar_render()

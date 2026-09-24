@@ -27,6 +27,9 @@ class Screen:
     #: garante que o atalho seja inerte exatamente onde o menu nao aparece, em
     #: vez de alternar em silencio um menu que esta fora da tela.
     MOSTRA_MENU = True
+    #: True mascara o campo de entrada (prompt de senha). Lido a cada render,
+    #: entao nenhuma tela precisa lembrar de desligar a mascara ao sair.
+    ENTRADA_SENHA = False
 
     def __init__(self, app):
         self.app = app
@@ -129,6 +132,11 @@ class Screen:
             return
         self.app.menu_visivel = not self.app.menu_visivel
         self.app.rerender()
+
+    def cmd_config(self, alvo=None):
+        """C: a configuracao aberta no editor, como uma nota."""
+        from .config import ConfigScreen
+        self.app.push(ConfigScreen(self.app, self.app.caminho_config))
 
     def cmd_ajuda_completa(self):
         """'??' na barra: a referencia completa."""

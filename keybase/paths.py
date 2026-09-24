@@ -75,5 +75,15 @@ def arquivo_dados():
 
 
 def arquivo_config():
-    """Caminho do arquivo de configuracao da janela."""
+    """Configuracao do usuario, editavel com C dentro do app."""
+    return dir_dados() / 'keybase_config.toml'
+
+
+def arquivo_estado():
+    """Estado da janela (geometria, ultimo modo do editor), gravado pelo app."""
+    return dir_dados() / 'keybase_estado.json'
+
+
+def arquivo_config_legado():
+    """O window_config.json de antes do TOML: so lido, para migrar os valores."""
     return dir_dados() / 'window_config.json'

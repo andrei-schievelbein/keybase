@@ -29,7 +29,7 @@ def _icone():
 
 
 def main():
-    config = carregar_config()
+    config, erros_config = carregar_config()
 
     qapp = QApplication(sys.argv)
     qapp.setApplicationName("KeyBase")
@@ -64,6 +64,9 @@ def main():
         app.stack = [BrowserScreen(app, ID_RAIZ)]
         if doc.avisos:
             app.flash("Arquivo reparado: " + "; ".join(doc.avisos))
+        elif erros_config:
+            app.flash(f"Configuração inválida ({erros_config[0]}). "
+                      f"Usando os padrões - use C para corrigir.", erro=True)
 
     janela.aplicar_geometria(config['geometry'])
     janela.show()          # antes do rerender: colunas() so e valida depois

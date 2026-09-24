@@ -2,3 +2,4 @@ PySide6-Essentials>=6.5
 markdown
 pymdown-extensions
 pygments
+cryptography
