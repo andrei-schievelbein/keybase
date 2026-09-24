@@ -25,6 +25,8 @@ SECOES = [
         ("F  ou  F3", "marcar ou desmarcar um favorito"),
         ("L", "favoritos e notas abertas recentemente"),
         ("[[Nota]]", "numa nota, vira link; [[Pasta/Nota|texto]] também vale"),
+        ("H na nota", "histórico: versões dos backups; R restaura (U desfaz)"),
+        ("Modelos/", "notas dessa pasta da raiz viram modelos ao criar com N"),
     ]),
     ("Buscar", [
         ("texto", "filtrar a pasta atual pelo nome - basta digitar e dar Enter"),

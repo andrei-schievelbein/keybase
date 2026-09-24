@@ -18,6 +18,7 @@ class ViewerScreen(Screen):
         'Y': 'cmd_copiar',
         'U': 'cmd_desfazer',
         'F': 'cmd_favorito',
+        'H': 'cmd_historico',
         'L': 'cmd_favoritos',
         'V': 'cmd_voltar',
         'M': 'cmd_raiz',
@@ -26,7 +27,7 @@ class ViewerScreen(Screen):
     ROTULOS = {
         'E': 'Editar nota', 'R': 'Renomear', 'D': 'Deletar',
         'A': 'Abrir (senha)', 'K': 'Cifrar/decifrar', 'T': 'Trancar/destrancar',
-        'Y': 'Copiar', 'U': 'Desfazer', 'F': 'Favoritar', 'L': 'Favoritos e recentes',
+        'Y': 'Copiar', 'U': 'Desfazer', 'H': 'Histórico', 'F': 'Favoritar', 'L': 'Favoritos e recentes',
         'V': 'Voltar', 'M': 'Ir para a raiz', 'C': 'Configuração',
     }
 
@@ -124,6 +125,19 @@ class ViewerScreen(Screen):
             self.app.exigir_cofre(lambda: self.cmd_copiar(alvo))
             return
         copiar_da_nota(self.app, self.file, alvo)
+
+    def cmd_historico(self, alvo=None):
+        if self.file is None:
+            return
+        from .historico import HistoricoScreen
+
+        def abrir():
+            self.app.push(HistoricoScreen(self.app, self.file_id))
+
+        if self.file.conteudo is None:
+            self.app.exigir_cofre(abrir)  # versoes cifradas precisam do cofre
+        else:
+            abrir()
 
     def cmd_favorito(self, alvo=None):
         if self.file is not None:

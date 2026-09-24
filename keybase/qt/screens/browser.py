@@ -283,17 +283,41 @@ class BrowserScreen(Screen):
         ))
 
     def cmd_nova_nota(self, alvo=None):
-        def criar(nome):
+        from ... import modelos as mod_modelos
+
+        def escolher_modelo(nome):
+            nome_pasta = self.app.config.get('notas', {}).get('modelos', '')
+            pasta_modelos = mod_modelos.pasta_de_modelos(self.app.raiz, nome_pasta)
+            disponiveis = mod_modelos.modelos(self.app.raiz, nome_pasta)
+            # criando dentro da propria pasta de modelos = criando um modelo novo
+            if not disponiveis or self.folder is pasta_modelos:
+                return criar(nome, "")
+
+            def escolher(texto):
+                numero = int(texto)
+                modelo = disponiveis[numero - 2].conteudo if numero > 1 else ""
+                criar(nome, mod_modelos.preencher(modelo, nome))
+
+            self.app.push(PromptScreen(
+                self.app, f"Modelo para {nome!r}:", escolher,
+                validar=lambda t: None if t.isdigit() and 1 <= int(t) <= len(disponiveis) + 1
+                else f"Digite um número de 1 a {len(disponiveis) + 1}.",
+                opcoes=[(1, "Em branco")] + [(i, m.nome) for i, m
+                                             in enumerate(disponiveis, start=2)],
+                contexto=montar_breadcrumb(self.app.caminho_de(self.node_id)),
+            ))
+
+        def criar(nome, conteudo):
             if (cripto.pasta_nasce_cifrada(self.folder)
                     and self.app.pasta_protetora(self.node_id) is None):
-                self.app.exigir_cofre(lambda: abrir(nome, cifrada=True))
+                self.app.exigir_cofre(lambda: abrir(nome, conteudo, cifrada=True))
             else:
-                abrir(nome, cifrada=False)
+                abrir(nome, conteudo, cifrada=False)
 
-        def abrir(nome, cifrada):
+        def abrir(nome, conteudo, cifrada):
             from .editor import EditorScreen
             from .viewer import ViewerScreen
-            nova = tree.novo_file(nome)
+            nova = tree.novo_file(nome, conteudo)
             if cifrada:
                 cripto.cifrar_nota(self.app.cofre, nova)
             tree.adicionar(self.folder, nova)
@@ -304,7 +328,7 @@ class BrowserScreen(Screen):
             self.app.push(EditorScreen(self.app, nova.id))
 
         self.app.push(PromptScreen(
-            self.app, "Nome da nova nota:", criar,
+            self.app, "Nome da nova nota:", escolher_modelo,
             validar=self._validador_nome(),
             contexto=montar_breadcrumb(self.app.caminho_de(self.node_id)),
         ))
