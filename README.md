@@ -125,8 +125,8 @@ Como as letras de comando continuam valendo, use a barra para filtrar por um ter
 | `D` ou `D3` | Apaga um item |
 | `X` ou `X3` | Move um item: você navega até a pasta de destino e digita `.` |
 | `Z` ou `Z3` | Duplica um item, como "Nome (cópia)" |
-| `Y` ou `Y3` | Copia uma nota para a área de transferência |
-| `Y2` (na nota) | Copia o 2º bloco de código da nota; `Y` sozinho lista os blocos |
+| `Y` ou `Y3` | Copia um item (nota ou pasta) para outra pasta: como o mover, mas o original fica |
+| `Y` (na nota) | Área de transferência: `Y2` copia o 2º bloco de código; `Y` sozinho lista os blocos (e `0` copia a nota inteira) |
 | `U` | Desfaz a última ação: apagar, mover, renomear, duplicar ou decifrar. Várias em sequência, enquanto nada mais tiver sido alterado depois |
 | `H` (na nota) | Histórico: as versões da nota guardadas nos backups e snapshots. Abra uma e `R` restaura (e `U` desfaz a restauração) |
 | `F` ou `F3` | Marca ou desmarca um favorito (`[favorito]` no fim da linha) |
@@ -174,7 +174,7 @@ As marcas ficam no fim da linha, emendadas na contagem `[a]:[b]`. Uma pasta cifr
 - Ao cifrar, os backups e snapshots ainda guardam a versão em claro. O KeyBase oferece cifrar essas cópias também, preservando o histórico.
 
 - `S` troca a senha mestra sem recifrar nada: só a chave das notas é reenvelopada. Backups antigos continuam abrindo com a senha antiga.
-- Copiar (`Y`) algo cifrado limpa a área de transferência depois de `limpar_copia_seg` segundos (padrão 20), se ela ainda tiver o que foi copiado.
+- Copiar algo cifrado para a área de transferência (`Y` dentro da nota) limpa a área de transferência depois de `limpar_copia_seg` segundos (padrão 20), se ela ainda tiver o que foi copiado.
 - Mover para dentro de uma pasta cifrada deixa o item sob a proteção dela; mover para fora pede confirmação, porque o item passa a ficar em claro.
 
 > ⚠️ **Não existe recuperação de senha.** Sem a senha mestra, as notas e pastas cifradas ficam ilegíveis para sempre.

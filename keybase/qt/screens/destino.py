@@ -1,4 +1,4 @@
-"""DestinoScreen: escolher a pasta para onde mover um item (X).
+"""DestinoScreen: escolher a pasta para onde mover (X) ou copiar (Y) um item.
 
 Uma tela so, que navega por dentro: o numero entra numa sub-pasta, Enter
 vazio sobe, M vai a raiz e '.' move para a pasta mostrada. Empilhar uma tela
@@ -20,8 +20,10 @@ class DestinoScreen(Screen):
     ROTULOS = {'V': 'Subir um nível', 'M': 'Ir para a raiz'}
     MOSTRA_MENU = False  # as instrucoes ja estao na tela
 
-    def __init__(self, app, no_id, pasta_id):
+    def __init__(self, app, no_id, pasta_id, copiar=False):
         super().__init__(app)
+        #: copiar = mover sem tirar da origem (Y na lista)
+        self.copiar = copiar
         self.no_id = no_id
         self.pasta_id = pasta_id
         self.no = None
@@ -49,14 +51,15 @@ class DestinoScreen(Screen):
         caminho = montar_breadcrumb(self.app.caminho_de(self.pasta_id), largura - 2)
 
         view.barra()
-        view.linha(" " + truncar(f"Mover {self.no.nome!r} para:", largura - 2), 'nota')
+        verbo = "Copiar" if self.copiar else "Mover"
+        view.linha(" " + truncar(f"{verbo} {self.no.nome!r} para:", largura - 2), 'nota')
         msg, erro = self.app.consumir_flash()
         if msg:
             view.linha(" " + msg, 'erro' if erro else 'flash')
         else:
             view.linha(" " + caminho, 'breadcrumb')
         view.barra()
-        view.trechos([(" . - ", 'numero'), ("Mover para esta pasta", 'nota')])
+        view.trechos([(" . - ", 'numero'), (f"{verbo} para esta pasta", 'nota')])
         view.barra()
         if self.itens:
             for i, pasta in enumerate(self.itens, start=1):
@@ -64,7 +67,8 @@ class DestinoScreen(Screen):
         else:
             view.linha(" Nenhuma sub-pasta aqui.", 'vazio')
         view.barra()
-        view.linha(" Número entra na pasta · . move para cá · ENTER sobe · "
+        acao = "copia" if self.copiar else "move"
+        view.linha(f" Número entra na pasta · . {acao} para cá · ENTER sobe · "
                    "M raiz · ESC cancela", 'dica')
         view.barra()
 
@@ -112,6 +116,8 @@ class DestinoScreen(Screen):
     # --- mover ---------------------------------------------------------------
 
     def confirmar(self):
+        if self.copiar:
+            return self._confirmar_copia()
         no, destino = self.no, self.pasta
         origem = self.app.pai_de(no.id)
         if destino is origem:
@@ -151,5 +157,27 @@ class DestinoScreen(Screen):
                 self.app, f"{no.nome!r} sai da pasta cifrada {protege_origem.nome!r}. Mover?",
                 aplicar,
                 detalhe="Fora dela, o conteúdo fica em claro no arquivo de dados."))
+            return
+        aplicar()
+
+    def _confirmar_copia(self):
+        no, destino = self.no, self.pasta
+        protege_origem = self.app.pasta_protetora(no.id)
+        protege_destino = self.app.pasta_protetora(destino.id)
+
+        def fechar():
+            if self.app.atual is self:
+                self.app.pop()
+
+        def aplicar():
+            self.app.copiar_para(no, destino, depois=fechar)
+
+        if protege_origem is not None and protege_destino is None:
+            # a copia fora da pasta cifrada fica em claro no arquivo
+            self.app.push(ConfirmScreen(
+                self.app, f"A cópia de {no.nome!r} fica fora da pasta cifrada "
+                          f"{protege_origem.nome!r}. Copiar?",
+                aplicar,
+                detalhe="Fora dela, o conteúdo da cópia fica em claro no arquivo de dados."))
             return
         aplicar()
