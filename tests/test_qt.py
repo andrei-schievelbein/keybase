@@ -1966,7 +1966,7 @@ class TestFase1(CofreMixin, BaseUI):
         self.criar_nota("Cmd", self.NOTA)
         self.digitar('Y2')
         self.assertEqual(self.nome_tela(), 'DestinoScreen')
-        self.assertIn(" C - Copiar para esta pasta", self.tela())
+        self.assertIn("   C - Copiar para cá", self.tela())
         self.digitar('1'); self.digitar('C')
         self.assertEqual(self.nome_tela(), 'BrowserScreen')
         self.assertNaTela("copiado para ~ / Destino")
@@ -2021,7 +2021,7 @@ class TestFase1(CofreMixin, BaseUI):
         if self.nome_tela() == 'ConfirmScreen':
             self.digitar('S')
         self.digitar('1')
-        self.digitar('Y1'); self.digitar('M'); self.digitar('C')
+        self.digitar('Y1'); self.digitar('R'); self.digitar('C')
         self.assertEqual(self.nome_tela(), 'ConfirmScreen')
         self.assertNaTela("fica fora da pasta cifrada")
 
@@ -2064,7 +2064,7 @@ class TestFase1(CofreMixin, BaseUI):
         self.criar_nota("Nota", "x")
         self.digitar('X2')
         self.assertEqual(self.nome_tela(), 'DestinoScreen')
-        self.assertIn(" C - Mover para esta pasta", self.tela())
+        self.assertIn("   C - Mover para cá", self.tela())
         self.digitar('1')          # entra em Destino
         self.digitar('C')
         self.assertEqual(self.nome_tela(), 'BrowserScreen')
@@ -2132,7 +2132,7 @@ class TestFase1(CofreMixin, BaseUI):
         if self.nome_tela() == 'ConfirmScreen':
             self.digitar('S')
         self.digitar('1')
-        self.digitar('X1'); self.digitar('M'); self.digitar('C')
+        self.digitar('X1'); self.digitar('R'); self.digitar('C')
         self.assertEqual(self.nome_tela(), 'ConfirmScreen')
         self.assertNaTela("sai da pasta cifrada")
 
@@ -2466,3 +2466,26 @@ class TestFase4(CofreMixin, BaseUI):
         self.digitar('1')
         self.digitar('H')
         self.assertNaTela("Nenhuma versão diferente")
+
+
+class TestMenuDoDestino(BaseUI):
+    def test_menu_fixo_no_visual_do_dinamico(self):
+        self.criar_pasta("Destino")
+        self.criar_nota("Nota", "x")
+        self.digitar('X2')
+        linhas = self.tela().splitlines()
+        self.assertTrue(set(linhas[0]) == {'='})                 # o menu abre a tela
+        self.assertTrue(linhas[1].strip().startswith("C - Mover para cá"))
+        self.assertIn("R - Raiz", linhas[1])
+        self.assertIn("ENTER - Subir nível", linhas[2])
+        self.assertIn("ESC - Cancelar", linhas[2])
+        self.app.alternar_menu()                                  # '?' nao o esconde
+        self.assertIn("C - Mover para cá", self.tela())
+
+    def test_r_vai_para_a_raiz(self):
+        self.criar_pasta("A")
+        self.digitar('1')
+        self.criar_nota("Nota", "x")
+        self.digitar('X1')
+        self.digitar('R')
+        self.assertIn(" ~\n", self.tela())
