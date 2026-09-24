@@ -20,6 +20,8 @@ SECOES = [
         ("Z  ou  Z3", "duplicar um item (\"Nome (cópia)\")"),
         ("Y  ou  Y3", "copiar uma nota para a área de transferência"),
         ("Y2 na nota", "copiar o 2º bloco de código; Y lista os blocos"),
+        ("U", "desfazer a última ação (apagar, mover, renomear, duplicar, decifrar)"),
+        ("W  ou  W3", "exportar a pasta (ou a pasta 3) como arquivos .md"),
     ]),
     ("Buscar", [
         ("texto", "filtrar a pasta atual pelo nome - basta digitar e dar Enter"),

@@ -127,6 +127,8 @@ Como as letras de comando continuam valendo, use a barra para filtrar por um ter
 | `Z` ou `Z3` | Duplica um item, como "Nome (cópia)" |
 | `Y` ou `Y3` | Copia uma nota para a área de transferência |
 | `Y2` (na nota) | Copia o 2º bloco de código da nota; `Y` sozinho lista os blocos |
+| `U` | Desfaz a última ação: apagar, mover, renomear, duplicar ou decifrar. Várias em sequência, enquanto nada mais tiver sido alterado depois |
+| `W` ou `W3` | Exporta a pasta atual (ou a pasta 3) como arquivos `.md` numa pasta em Downloads |
 | `V` | Volta um nível (ou limpa o filtro) |
 | `M` | Vai direto para a raiz |
 | `B` | Busca em toda a base |
@@ -220,6 +222,7 @@ trancar_apos_min = 10
 - `Ctrl+S` **valida** antes de gravar. Com erro de digitação, chave desconhecida ou valor fora da faixa, nada é gravado e o erro aparece em vermelho no topo do editor.
 - Tema, altura da barra de ajuda, tempo para trancar e tempo dos avisos (`tempo_aviso_ms`, quanto tempo um aviso como "Pasta criada." fica no lugar do caminho) valem na hora. Fontes valem ao reabrir o KeyBase.
 - O KeyBase nunca reescreve esse arquivo sozinho: seus comentários e a formatação ficam como você deixou.
+- `[dados] pasta` aponta para onde ficam os dados, por exemplo uma pasta do iCloud, Dropbox ou Google Drive, para usar os mesmos dados em vários computadores. Na primeira vez, os dados atuais são **copiados** para lá. Se outro computador tiver gravado o arquivo enquanto este estava aberto, o KeyBase não sobrescreve: guarda as suas mudanças numa cópia `keybase_data.conflito-….json` e pergunta se recarrega o do disco ou grava o daqui por cima.
 - Se o arquivo estiver inválido ao abrir o app, o KeyBase usa os padrões, avisa, e não mexe no arquivo. Use `C` para corrigir.
 
 ## 🛠️ Instalação
@@ -256,6 +259,7 @@ O KeyBase é portátil: os dados ficam **ao lado do executável**, então dá pa
 | **keybase_data.bak.json** | ❌ Automático | Cópia da versão anterior, gravada antes de cada alteração |
 | **keybase_data.snapshot-*.json** | ❌ Automático | Uma cópia por dia, guardando os últimos 7 dias |
 | **keybase_config.toml** | ❌ Opcional | Suas preferências (tema, fontes, tempo para trancar). Editável com `C`. Recriado se faltar |
+| **keybase_data.conflito-*.json** | ❌ Automático | Suas mudanças guardadas quando outro computador gravou os dados ao mesmo tempo |
 | **keybase_estado.json** | ❌ Automático | Tamanho e posição da janela e último modo do editor |
 | **window_config.json** | ❌ Antigo | Configuração das versões anteriores. Na primeira vez, os valores dele são copiados para o `keybase_config.toml`; depois não é mais usado |
 

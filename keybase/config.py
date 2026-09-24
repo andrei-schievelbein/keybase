@@ -60,6 +60,14 @@ def _inteiro(minimo, maximo=None):
     return validar
 
 
+def _pasta(valor):
+    if not isinstance(valor, str):
+        return 'deveria ser um texto entre aspas ("" para a pasta padrão)'
+    if valor and not Path(valor).expanduser().is_dir():
+        return "deveria ser uma pasta que existe"
+    return None
+
+
 def _tema(valor):
     if valor not in TEMAS:
         return 'deveria ser "dark" ou "light"'
@@ -79,6 +87,7 @@ ESQUEMA = (
           _inteiro(500, 30000)),
     Campo('cofre', 'trancar_apos_min', ('cofre', 'auto_lock_min'), 10, _inteiro(0)),
     Campo('cofre', 'limpar_copia_seg', ('cofre', 'clip_seg'), 20, _inteiro(0, 3600)),
+    Campo('dados', 'pasta', ('dados', 'pasta'), '', _pasta),
 )
 
 #: o que o app regrava sozinho, fora do TOML
@@ -161,6 +170,13 @@ trancar_apos_min = {v('cofre', 'auto_lock_min')}
 # Ao copiar (Y) algo cifrado, segundos até a área de transferência ser limpa
 # (0 não limpa). Só limpa se ela ainda tiver o que foi copiado. Aplica na hora.
 limpar_copia_seg = {v('cofre', 'clip_seg')}
+
+[dados]
+# Pasta onde ficam keybase_data.json e os backups. "" = ao lado do programa.
+# Aponte para uma pasta do iCloud, Dropbox ou Google Drive para usar os mesmos
+# dados em vários computadores. Vale ao reabrir; na primeira vez os dados
+# atuais são COPIADOS para lá. No Windows use / nas pastas: "C:/Users/voce/Dropbox"
+pasta = {v('dados', 'pasta')}
 '''
 
 

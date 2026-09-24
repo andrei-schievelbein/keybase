@@ -43,7 +43,8 @@ def main():
     if icone is not None:
         janela.setWindowIcon(icone)
 
-    caminho = paths.arquivo_dados()
+    caminho, aviso_dados, erro_dados = paths.resolver_arquivo_dados(
+        config['dados']['pasta'])
 
     erro_carga = None
     try:
@@ -64,6 +65,10 @@ def main():
         app.stack = [BrowserScreen(app, ID_RAIZ)]
         if doc.avisos:
             app.flash("Arquivo reparado: " + "; ".join(doc.avisos))
+        elif erro_dados:
+            app.flash(f"Atenção: {erro_dados}. Corrija com C.", erro=True)
+        elif aviso_dados:
+            app.flash(aviso_dados)
         elif erros_config:
             app.flash(f"Configuração inválida ({erros_config[0]}). "
                       f"Usando os padrões - use C para corrigir.", erro=True)

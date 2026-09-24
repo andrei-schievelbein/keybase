@@ -20,6 +20,8 @@ from ..model import ID_RAIZ
 from ..tree import construir_indice
 
 SENHA_MINIMA = 6
+#: quantas acoes o U consegue desfazer em sequencia
+LIMITE_DESFAZER = 20
 #: titulo dos prompts de senha: diz de cara do que se trata
 TITULO_SENHA = "SENHA MESTRA - NOTAS E PASTAS CIFRADAS"
 
@@ -44,6 +46,12 @@ class App:
         self.caminho_config = None
         self._tela_do_flash = None
         self._copia_sensivel = None
+        #: [(descricao, raiz.to_dict() de antes da acao)] - ver registrar_desfazer
+        self._desfazer = []
+        self._acao_desfazivel = False
+        #: conflito de arquivo esperando a tela de escolha; copia das mudancas
+        self._conflito_pendente = False
+        self._copia_conflito = None
 
     # --- arvore ------------------------------------------------------------
 
@@ -72,13 +80,120 @@ class App:
         """Grava a arvore. Reporta falha na tela, nunca explode em silencio."""
         self.reindexar()
         self._selar_pastas()
+        desfazivel, self._acao_desfazivel = self._acao_desfazivel, False
         try:
-            storage.salvar(self.doc, self.caminho_dados)
+            gravou = storage.salvar(self.doc, self.caminho_dados)
+        except storage.ConflitoError:
+            self._registrar_conflito()
+            return False
         except storage.StorageError as e:
             self.flash(f"Não foi possível salvar: {e}", erro=True)
             self.doc.marcar_sujo()
             return False
+        if gravou and not desfazivel:
+            # algo mudou fora da pilha (edicao, cifra, criacao): desfazer agora
+            # restauraria um estado velho por cima dessa mudanca, em silencio
+            self._desfazer.clear()
         return True
+
+    # --- conflito com outro computador ---------------------------------------
+
+    def _registrar_conflito(self):
+        """O arquivo mudou por fora. Guarda o daqui ao lado e agenda a escolha.
+
+        A tela nao e empilhada aqui: persistir() e chamado no meio de fluxos
+        que ainda vao dar pop (o editor, ao salvar). O proximo rerender a poe
+        no topo, depois de tudo assentar.
+        """
+        self.doc.marcar_sujo()
+        if self._copia_conflito is None:
+            try:
+                self._copia_conflito = storage.salvar_copia_de_conflito(
+                    self.doc, self.caminho_dados)
+            except (storage.StorageError, OSError):
+                self._copia_conflito = None
+        self._conflito_pendente = True
+
+    def _tela_de_conflito(self):
+        from .screens.prompt import PromptScreen
+        copia = self._copia_conflito
+        tela = PromptScreen(
+            self, "O arquivo de dados foi alterado fora deste KeyBase.",
+            lambda t: self._recarregar_do_disco() if t == '1' else self._gravar_por_cima(),
+            validar=lambda t: None if t in ('1', '2') else "Digite 1 ou 2.",
+            contexto="CONFLITO - OUTRO COMPUTADOR GRAVOU OS DADOS",
+            detalhe=(f"Suas mudanças daqui estão guardadas em {copia.name}." if copia
+                     else "Provavelmente outro computador, via pasta sincronizada."),
+            opcoes=[(1, "Recarregar o do disco (as mudanças daqui ficam só na cópia)"),
+                    (2, "Gravar o daqui por cima (o de lá fica no backup .bak)")],
+        )
+        tela.conflito = True
+        return tela
+
+    def _recarregar_do_disco(self):
+        try:
+            doc = storage.carregar(self.caminho_dados)
+        except storage.StorageError as e:
+            self.flash(f"Não foi possível recarregar: {e}", erro=True)
+            self.rerender()
+            return
+        self.doc = doc  # o cofre, amarrado ao documento, recomeca trancado
+        self._desfazer.clear()
+        self._copia_conflito = None
+        self.reindexar()
+        self.flash("Recarregado do disco.")
+        self.rerender()
+
+    def _gravar_por_cima(self):
+        self._selar_pastas()
+        try:
+            storage.salvar(self.doc, self.caminho_dados, forcar=True)
+        except storage.StorageError as e:
+            self.flash(f"Não foi possível gravar: {e}", erro=True)
+        else:
+            self._copia_conflito = None
+            self.flash("Gravado por cima. A versão de lá ficou no backup.")
+        self.rerender()
+
+    # --- desfazer -----------------------------------------------------------
+
+    def registrar_desfazer(self, descricao):
+        """Chamada logo ANTES de uma acao desfazivel (apagar, mover, renomear,
+        duplicar, decifrar). Guarda a arvore como estava.
+
+        Guarda o to_dict, que numa nota ou pasta cifrada so tem o blob: a pilha
+        nao junta texto claro na memoria. O proximo persistir() e o da acao.
+        """
+        self._selar_pastas()
+        self._desfazer.append((descricao, self.raiz.to_dict()))
+        del self._desfazer[:-LIMITE_DESFAZER]
+        self._acao_desfazivel = True
+
+    def cancelar_desfazer(self):
+        """A acao registrada nao aconteceu (falhou): tira o registro da pilha."""
+        if self._acao_desfazivel and self._desfazer:
+            self._desfazer.pop()
+        self._acao_desfazivel = False
+
+    @property
+    def pode_desfazer(self):
+        return bool(self._desfazer)
+
+    def desfazer(self):
+        from ..model import node_from_dict
+        if not self._desfazer:
+            self.flash("Nada para desfazer.")
+            self.rerender()
+            return
+        descricao, raiz = self._desfazer.pop()
+        self.snapshot()
+        self.doc.raiz = node_from_dict(raiz)
+        if self.cofre_destravado:
+            cripto.destravar_arvore(self.raiz, self.cofre)  # o blob volta aberto
+        self._acao_desfazivel = True  # restaurar nao zera o resto da pilha
+        self.persistir()
+        self.flash(f"Desfeito: {descricao}.")
+        self.rerender()
 
     def snapshot(self):
         """Forca backup antes de uma operacao destrutiva."""
@@ -306,6 +421,7 @@ class App:
 
     def decifrar_pasta(self, pasta):
         """Volta uma pasta cifrada (aberta) a ser comum."""
+        self.registrar_desfazer(f"decifrar a pasta {pasta.nome!r}")
         cripto.decifrar_pasta(pasta)
         self.persistir()
         self.flash(f"Pasta {pasta.nome!r} decifrada.")
@@ -428,6 +544,10 @@ class App:
             self.go_root()
             return
 
+        if self._conflito_pendente and not getattr(self.stack[-1], 'conflito', False):
+            self._conflito_pendente = False
+            self.stack.append(self._tela_de_conflito())
+
         tela = self.stack[-1]
         self.view.modo_senha(tela.ENTRADA_SENHA)
         # mesma flag que governa o desenho e o '?'/Ctrl+0: o botao acompanha
@@ -484,6 +604,7 @@ class App:
         def aplicar():
             copia = tree.copia_profunda(no)
             copia.nome = tree.nome_de_copia(pai, no.nome)
+            self.registrar_desfazer(f"duplicar {no.nome!r}")
             if self.cofre is not None and self.cofre.destravado:
                 cripto.selar_copia(self.cofre, copia)
             tree.adicionar(pai, copia)
@@ -495,6 +616,57 @@ class App:
             self.exigir_cofre(aplicar)  # destravar tambem abre a pasta cifrada
         else:
             aplicar()
+
+    # --- exportar -----------------------------------------------------------
+
+    #: onde a exportacao cria a pasta; None = Downloads (ou a pasta do usuario)
+    pasta_exportacao = None
+
+    def _onde_exportar(self):
+        from pathlib import Path
+        if self.pasta_exportacao is not None:
+            return Path(self.pasta_exportacao)
+        downloads = Path.home() / 'Downloads'
+        return downloads if downloads.is_dir() else Path.home()
+
+    def exportar(self, pasta):
+        """W: a pasta (ou a raiz) como arquivos .md. Pergunta sobre os cifrados."""
+        from .screens.prompt import ConfirmScreen, PromptScreen
+
+        def executar(incluir):
+            from .. import exportar as mod_exportar
+            destino = mod_exportar.pasta_de_saida(self._onde_exportar())
+            try:
+                r = mod_exportar.exportar(pasta, destino, incluir_cifrados=incluir)
+            except OSError as e:
+                self.flash(f"Não foi possível exportar: {e}", erro=True)
+                self.rerender()
+                return
+            onde = f"{r.pasta.parent.name}/{r.pasta.name}"
+            puladas = f", {len(r.pulados)} cifradas puladas" if r.pulados else ""
+            aviso = f"{r.notas} notas exportadas{puladas}: {onde}"
+            self.flash(aviso)
+            self.rerender()
+
+        def em_claro():
+            self.exigir_cofre(lambda: executar(True))
+
+        if self.pasta_protetora(pasta.id) is not None:
+            # tudo aqui e cifrado: pular seria exportar nada
+            self.push(ConfirmScreen(
+                self, "Exportar EM CLARO o conteúdo da pasta cifrada?", em_claro,
+                detalhe="Os arquivos .md não têm proteção nenhuma."))
+            return
+        if not (pasta.trancada or cripto.tem_cifra(pasta)):
+            executar(False)
+            return
+        self.push(PromptScreen(
+            self, "Há itens cifrados aqui. O que fazer com eles?",
+            lambda t: executar(False) if t == '1' else em_claro(),
+            validar=lambda t: None if t in ('1', '2') else "Digite 1 ou 2.",
+            opcoes=[(1, "Pular os cifrados"),
+                    (2, "Incluir em claro (pede a senha; os .md não têm proteção)")],
+        ))
 
     # --- copiar -------------------------------------------------------------
 

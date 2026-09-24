@@ -2108,3 +2108,121 @@ class TestFase1(CofreMixin, BaseUI):
     def test_s_sem_senha_fica_fora_do_menu(self):
         self.digitar('?')
         self.assertNaoNaTela("Trocar senha")
+
+
+class TestFase2(CofreMixin, BaseUI):
+    def setUp(self):
+        super().setUp()
+        self.app.pasta_exportacao = self.dir   # nunca exporta para o Downloads real
+
+    # --- desfazer ------------------------------------------------------------
+
+    def test_desfazer_apagar(self):
+        self.criar_nota("Nota", "x")
+        self.digitar('D1'); self.digitar('S')
+        self.assertEqual(self.app.raiz.filhos, [])
+        self.digitar('U')
+        self.assertEqual([f.nome for f in self.app.raiz.filhos], ["Nota"])
+        self.assertNaTela("Desfeito: apagar 'Nota'")
+        self.assertEqual(storage.carregar(self.arquivo).raiz.filhos[0].nome, "Nota")
+
+    def test_desfazer_em_sequencia(self):
+        self.criar_nota("A", "x")
+        self.digitar('R1'); self.digitar('B')
+        self.digitar('Z1')
+        self.digitar('U')
+        self.digitar('U')
+        self.assertEqual([f.nome for f in self.app.raiz.filhos], ["A"])
+
+    def test_editar_depois_zera_o_desfazer(self):
+        """Senao o U restauraria a arvore velha por cima da edicao."""
+        self.criar_nota("A", "x")
+        self.criar_nota("B", "y")
+        self.digitar('D1'); self.digitar('S')
+        self.digitar('E1')
+        self.digitar_no_editor("editado")
+        self.app.save()
+        self.assertFalse(self.app.pode_desfazer)
+        self.digitar('U')
+        self.assertNaTela("Nada para desfazer")
+        self.assertEqual(self.app.raiz.filhos[0].conteudo, "editado")
+
+    def test_u_fica_fora_do_menu_sem_nada_para_desfazer(self):
+        self.digitar('?')
+        self.assertNaoNaTela("U - Desfazer")
+
+    def test_desfazer_decifrar_volta_cifrada_e_aberta(self):
+        self.nota_cifrada("Banco", "pin sigiloso-kappa")
+        self.digitar('K1'); self.digitar('S')
+        self.assertFalse(self.app.raiz.filhos[0].cifrado)
+        self.digitar('U')
+        nota = self.app.raiz.filhos[0]
+        self.assertTrue(nota.cifrado)
+        self.assertEqual(nota.conteudo, "pin sigiloso-kappa")
+        self.assertNotIn("sigiloso-kappa", self.arquivo.read_text(encoding='utf-8'))
+
+    # --- conflito ------------------------------------------------------------
+
+    def gravar_de_fora(self):
+        outro = storage.carregar(self.arquivo)
+        tree.adicionar(outro.raiz, tree.novo_folder("De la"))
+        storage.salvar(outro, self.arquivo)
+
+    def test_conflito_mostra_a_escolha_e_guarda_a_copia(self):
+        self.criar_pasta("Daqui")
+        self.gravar_de_fora()
+        self.criar_pasta("Outra daqui")
+        self.assertTrue(getattr(self.app.atual, 'conflito', False))
+        linhas = [l.strip() for l in self.tela().splitlines()]
+        self.assertTrue(any(l.startswith("1 - Recarregar") for l in linhas))
+        self.assertTrue(any(l.startswith("2 - Gravar") for l in linhas))
+        self.assertEqual(len(list(self.dir.glob('keybase_data.conflito-*.json'))), 1)
+
+    def test_conflito_recarregar(self):
+        self.criar_pasta("Daqui")
+        self.gravar_de_fora()
+        self.criar_pasta("Outra daqui")
+        self.digitar('1')
+        nomes = sorted(f.nome for f in self.app.raiz.filhos)
+        self.assertEqual(nomes, ["Daqui", "De la"])
+
+    def test_conflito_gravar_por_cima(self):
+        self.criar_pasta("Daqui")
+        self.gravar_de_fora()
+        self.criar_pasta("Outra daqui")
+        self.digitar('2')
+        nomes = sorted(f.nome for f in storage.carregar(self.arquivo).raiz.filhos)
+        self.assertEqual(nomes, ["Daqui", "Outra daqui"])
+
+    def test_conflito_ao_salvar_nota_nao_some_com_o_pop(self):
+        self.criar_nota("Nota", "x")
+        self.gravar_de_fora()
+        self.digitar('E1')
+        self.digitar_no_editor("mudei")
+        self.app.save()
+        self.assertTrue(getattr(self.app.atual, 'conflito', False))
+
+    # --- exportar ------------------------------------------------------------
+
+    def test_exportar_a_raiz(self):
+        self.criar_pasta("Vscode")
+        self.digitar('1')
+        self.criar_nota("Ctrl + P", "abre")
+        self.digitar('M')
+        self.digitar('W')
+        self.assertNaTela("1 notas exportadas")
+        saidas = list(self.dir.glob('KeyBase-export-*'))
+        self.assertEqual(len(saidas), 1)
+        self.assertEqual((saidas[0] / 'Vscode' / 'Ctrl + P.md').read_text(encoding='utf-8'),
+                         "abre")
+
+    def test_exportar_com_cifrados_pergunta(self):
+        self.nota_cifrada("Banco", "pin sigiloso-kappa")
+        self.criar_nota("Livre", "x")
+        self.digitar('W')
+        linhas = [l.strip() for l in self.tela().splitlines()]
+        self.assertIn("1 - Pular os cifrados", linhas)
+        self.digitar('1')
+        saida = next(self.dir.glob('KeyBase-export-*'))
+        self.assertEqual(sorted(p.name for p in saida.iterdir()), ["Livre.md"])
+        self.assertNaTela("1 cifradas puladas")
