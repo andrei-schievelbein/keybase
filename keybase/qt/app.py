@@ -599,23 +599,60 @@ class App:
         if self.atual:
             self.atual.on_ciclar_modo()
 
+    def _copiar_para(self, no, destino, nome, descricao):
+        """Poe uma copia de `no` em `destino`, com o nome dado. Desfazivel.
+
+        Destino sob uma pasta cifrada: a copia fica sob a protecao dela (o que
+        era cifrado por si volta a ser comum). Fora de uma: o que era cifrado e
+        recifrado com os ids novos. Quem chama garantiu o cofre aberto quando
+        ha algo cifrado (cripto.precisa_do_cofre).
+        """
+        copia = tree.copia_profunda(no)
+        copia.nome = nome
+        self.registrar_desfazer(descricao)
+        if self.pasta_protetora(destino.id) is not None:
+            cripto.absorver_em_pasta_cifrada(self.cofre, copia)
+        elif self.cofre_destravado:
+            cripto.selar_copia(self.cofre, copia)
+        tree.adicionar(destino, copia)
+        self.persistir()
+        return copia
+
+    def _com_cofre_se_preciso(self, no, acao):
+        if cripto.precisa_do_cofre(no):
+            self.exigir_cofre(acao)  # destravar tambem abre a pasta cifrada
+        else:
+            acao()
+
     def duplicar(self, no, pai):
-        """Copia um item na mesma pasta, como 'Nome (cópia)'."""
+        """Z: copia na mesma pasta, como 'Nome (cópia)'."""
         def aplicar():
-            copia = tree.copia_profunda(no)
-            copia.nome = tree.nome_de_copia(pai, no.nome)
-            self.registrar_desfazer(f"duplicar {no.nome!r}")
-            if self.cofre is not None and self.cofre.destravado:
-                cripto.selar_copia(self.cofre, copia)
-            tree.adicionar(pai, copia)
-            self.persistir()
+            copia = self._copiar_para(no, pai, tree.nome_de_copia(pai, no.nome),
+                                      f"duplicar {no.nome!r}")
             self.flash(f"{no.nome!r} duplicado como {copia.nome!r}.")
             self.rerender()
 
-        if cripto.precisa_do_cofre(no):
-            self.exigir_cofre(aplicar)  # destravar tambem abre a pasta cifrada
-        else:
-            aplicar()
+        self._com_cofre_se_preciso(no, aplicar)
+
+    def copiar_para(self, no, destino, depois=None):
+        """Y na lista: copia para outra pasta, mantendo o original.
+
+        Mesmo nome se estiver livre no destino; senao, 'Nome (cópia)'.
+        """
+        from .layout import montar_breadcrumb
+
+        def aplicar():
+            nome = (no.nome if tree.nome_disponivel(destino, no.nome)
+                    else tree.nome_de_copia(destino, no.nome))
+            copia = self._copiar_para(no, destino, nome, f"copiar {no.nome!r}")
+            if depois is not None:
+                depois()
+            caminho = montar_breadcrumb(self.caminho_de(destino.id))
+            extra = f" como {copia.nome!r}" if copia.nome != no.nome else ""
+            self.flash(f"{no.nome!r} copiado para {caminho}{extra}.")
+            self.rerender()
+
+        self._com_cofre_se_preciso(no, aplicar)
 
     # --- favoritos, recentes e abrir por referencia -------------------------
 

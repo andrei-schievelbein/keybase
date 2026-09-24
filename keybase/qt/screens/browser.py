@@ -53,7 +53,7 @@ class BrowserScreen(Screen):
         'P': 'Nova pasta', 'N': 'Nova nota', 'E': 'Editar nota',
         'C': 'Configuração',
         'R': 'Renomear', 'D': 'Deletar', 'B': 'Buscar',
-        'K': 'Cifrar/decifrar', 'T': 'Trancar/destrancar', 'Y': 'Copiar nota',
+        'K': 'Cifrar/decifrar', 'T': 'Trancar/destrancar', 'Y': 'Copiar para...',
         'X': 'Mover', 'Z': 'Duplicar', 'S': 'Trocar senha', 'U': 'Desfazer',
         'W': 'Exportar .md', 'F': 'Favoritar', 'L': 'Favoritos e recentes',
         'V': 'Voltar', 'M': 'Ir para a raiz',
@@ -157,7 +157,6 @@ class BrowserScreen(Screen):
             ativos.discard('X')
             ativos.discard('Z')
             ativos.discard('F')
-        if not any(isinstance(n, File) for n in self.itens):
             ativos.discard('Y')
         if self.app.cofre is None:
             ativos.discard('T')
@@ -555,16 +554,15 @@ class BrowserScreen(Screen):
                        lambda no: self.app.duplicar(no, self.folder))
 
     def cmd_copiar(self, alvo=None):
-        """Y3: copia a nota 3 inteira (os blocos, um a um, sao com Y no viewer)."""
-        def copiar(no):
-            if not isinstance(no, File):
-                self.app.flash("Só dá para copiar uma nota.", erro=True)
-                self.app.rerender()
-                return
-            from .viewer import copiar_da_nota
-            self._com_texto(no, lambda: copiar_da_nota(self.app, no, alvo=-1))
+        """Y3: copia o item 3 para outra pasta - o mover, sem tirar da origem.
 
-        self._com_alvo(alvo, "Copiar qual nota? (número)", copiar)
+        Para a area de transferencia, e o Y dentro da nota.
+        """
+        def copiar(no):
+            from .destino import DestinoScreen
+            self.app.push(DestinoScreen(self.app, no.id, self.node_id, copiar=True))
+
+        self._com_alvo(alvo, "Copiar qual item? (número)", copiar)
 
 
 def alternar_cifra_nota(app, nota):

@@ -27,7 +27,7 @@ class ViewerScreen(Screen):
     ROTULOS = {
         'E': 'Editar nota', 'R': 'Renomear', 'D': 'Deletar',
         'A': 'Abrir (senha)', 'K': 'Cifrar/decifrar', 'T': 'Trancar/destrancar',
-        'Y': 'Copiar', 'U': 'Desfazer', 'H': 'Histórico', 'F': 'Favoritar', 'L': 'Favoritos e recentes',
+        'Y': 'Área de transferência', 'U': 'Desfazer', 'H': 'Histórico', 'F': 'Favoritar', 'L': 'Favoritos e recentes',
         'V': 'Voltar', 'M': 'Ir para a raiz', 'C': 'Configuração',
     }
 

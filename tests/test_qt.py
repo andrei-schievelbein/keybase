@@ -1961,10 +1961,75 @@ class TestFase1(CofreMixin, BaseUI):
         self.digitar('Y')
         self.assertEqual(self.copiado(), "so texto")
 
-    def test_y_no_browser_copia_a_nota_inteira(self):
+    def test_y_na_lista_copia_para_outra_pasta_e_mantem_o_original(self):
+        self.criar_pasta("Destino")
         self.criar_nota("Cmd", self.NOTA)
+        self.digitar('Y2')
+        self.assertEqual(self.nome_tela(), 'DestinoScreen')
+        self.assertIn(" . - Copiar para esta pasta", self.tela())
+        self.digitar('1'); self.digitar('.')
+        self.assertEqual(self.nome_tela(), 'BrowserScreen')
+        self.assertNaTela("copiado para ~ / Destino")
+        destino = self.app.raiz.filhos[0]
+        self.assertEqual([f.conteudo for f in destino.filhos], [self.NOTA])
+        self.assertIn("Cmd", [f.nome for f in self.app.raiz.filhos])   # original fica
+        self.assertNotEqual(destino.filhos[0].id,
+                            next(f for f in self.app.raiz.filhos if f.nome == "Cmd").id)
+
+    def test_copiar_pasta_para_outra_pasta(self):
+        self.criar_pasta("A")
+        self.digitar('1')
+        self.criar_nota("n", "x")
+        self.digitar('M')
+        self.criar_pasta("B")
         self.digitar('Y1')
-        self.assertEqual(self.copiado(), self.NOTA)
+        self.digitar('1')    # a propria A nao aparece como destino: B e o 1
+        self.digitar('.')
+        b = next(f for f in self.app.raiz.filhos if f.nome == "B")
+        self.assertEqual([f.nome for f in b.filhos], ["A"])
+        self.assertEqual(b.filhos[0].filhos[0].conteudo, "x")
+
+    def test_copiar_na_mesma_pasta_vira_copia(self):
+        self.criar_nota("Cmd", "x")
+        self.digitar('Y1'); self.digitar('.')
+        self.assertEqual(sorted(f.nome for f in self.app.raiz.filhos), ["Cmd", "Cmd (cópia)"])
+
+    def test_copiar_desfaz_com_u(self):
+        self.criar_pasta("Destino")
+        self.criar_nota("Cmd", "x")
+        self.digitar('Y2'); self.digitar('1'); self.digitar('.')
+        self.digitar('U')
+        self.assertEqual(self.app.raiz.filhos[0].filhos, [])
+
+    def test_copiar_nota_cifrada_recifra_a_copia(self):
+        self.nota_cifrada("Banco", "pin sigiloso-kappa")   # K1: a nota e o item 1
+        self.criar_pasta("Destino")
+        self.digitar('Y2'); self.digitar('1'); self.digitar('.')
+        destino = next(f for f in self.app.raiz.filhos if f.nome == "Destino")
+        copia = destino.filhos[0]
+        self.assertTrue(copia.cifrado)
+        self.assertEqual(self.app.cofre.decifrar(copia.blob, copia.id), "pin sigiloso-kappa")
+        self.assertNotIn("sigiloso-kappa", self.arquivo.read_text(encoding='utf-8'))
+
+    def test_copiar_para_fora_da_pasta_cifrada_pede_confirmacao(self):
+        self.criar_pasta("Cofre")
+        self.digitar('1')
+        self.criar_nota("Banco", "x")
+        self.digitar('M')
+        self.digitar('K1'); self.digitar('3'); self.digitar('S')
+        self.criar_senha()
+        if self.nome_tela() == 'ConfirmScreen':
+            self.digitar('S')
+        self.digitar('1')
+        self.digitar('Y1'); self.digitar('M'); self.digitar('.')
+        self.assertEqual(self.nome_tela(), 'ConfirmScreen')
+        self.assertNaTela("fica fora da pasta cifrada")
+
+    def test_rotulo_na_nota_e_area_de_transferencia(self):
+        self.criar_nota("Cmd", "x")
+        self.digitar('1')
+        self.digitar('?')
+        self.assertNaTela("Y - Área de transferência")
 
     def test_bloco_inexistente_avisa(self):
         self.criar_nota("Cmd", self.NOTA)
@@ -1976,7 +2041,8 @@ class TestFase1(CofreMixin, BaseUI):
         from PySide6.QtTest import QTest
         self.config['cofre']['clip_seg'] = 1
         self.nota_cifrada("Banco", "pin sigiloso-kappa")
-        self.digitar('Y1')
+        self.digitar('1')
+        self.digitar('Y')
         self.assertEqual(self.copiado(), "pin sigiloso-kappa")
         self.assertNaTela("(limpa em 1 s)")
         QTest.qWait(1300)
@@ -1984,7 +2050,9 @@ class TestFase1(CofreMixin, BaseUI):
 
     def test_limpeza_nao_apaga_o_que_o_usuario_copiou_depois(self):
         self.nota_cifrada("Banco", "pin sigiloso-kappa")
-        self.digitar('Y1')
+        self.digitar('1')
+        self.digitar('Y')
+        self.assertEqual(self.copiado(), "pin sigiloso-kappa")
         _app_qt().clipboard().setText("outra coisa")
         self.app.limpar_copia_sensivel()
         self.assertEqual(self.copiado(), "outra coisa")
