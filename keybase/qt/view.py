@@ -297,6 +297,17 @@ class TerminalView(QWidget):
         """
         self.out.inserir_html(self._render.html(texto))
 
+    # --- area de transferencia --------------------------------------------
+
+    def copiar(self, texto):
+        QApplication.clipboard().setText(texto)
+
+    def texto_copiado(self):
+        return QApplication.clipboard().text()
+
+    def limpar_copia(self):
+        QApplication.clipboard().clear()
+
     def posicao_rolagem(self):
         return self.out.verticalScrollBar().value()
 

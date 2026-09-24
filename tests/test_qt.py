@@ -1928,3 +1928,183 @@ class TestConfigTextos:
             '# Quanto tempo um aviso ("Pasta criada.", "Itens cifrados trancados.") fica no\n'
             '# lugar do caminho antes de sumir, em milissegundos (2500 = 2,5 s). Aplica na hora.\n'
             'tempo_aviso_ms = 2500\n', '')
+
+
+class TestFase1(CofreMixin, BaseUI):
+    NOTA = "# Comandos\n\n```sh\nls -la\n```\n\n```python\nprint('oi')\n```\n"
+
+    def copiado(self):
+        return _app_qt().clipboard().text()
+
+    # --- copiar --------------------------------------------------------------
+
+    def test_y_numero_copia_o_bloco(self):
+        self.criar_nota("Cmd", self.NOTA)
+        self.digitar('1')
+        self.digitar('Y2')
+        self.assertEqual(self.copiado(), "print('oi')")
+        self.assertNaTela("Copiado: bloco 2")
+
+    def test_y_sem_numero_lista_os_blocos_um_por_linha(self):
+        self.criar_nota("Cmd", self.NOTA)
+        self.digitar('1')
+        self.digitar('Y')
+        linhas = [l.strip() for l in self.tela().splitlines()]
+        self.assertIn("0 - A nota inteira", linhas)
+        self.assertIn("1 - sh (1 linha): ls -la", linhas)
+        self.digitar('0')
+        self.assertEqual(self.copiado(), self.NOTA)
+
+    def test_y_numa_nota_sem_blocos_copia_a_nota(self):
+        self.criar_nota("Simples", "so texto")
+        self.digitar('1')
+        self.digitar('Y')
+        self.assertEqual(self.copiado(), "so texto")
+
+    def test_y_no_browser_copia_a_nota_inteira(self):
+        self.criar_nota("Cmd", self.NOTA)
+        self.digitar('Y1')
+        self.assertEqual(self.copiado(), self.NOTA)
+
+    def test_bloco_inexistente_avisa(self):
+        self.criar_nota("Cmd", self.NOTA)
+        self.digitar('1')
+        self.digitar('Y9')
+        self.assertNaTela("A nota tem 2 blocos de código")
+
+    def test_copia_cifrada_e_limpa_depois(self):
+        from PySide6.QtTest import QTest
+        self.config['cofre']['clip_seg'] = 1
+        self.nota_cifrada("Banco", "pin sigiloso-kappa")
+        self.digitar('Y1')
+        self.assertEqual(self.copiado(), "pin sigiloso-kappa")
+        self.assertNaTela("(limpa em 1 s)")
+        QTest.qWait(1300)
+        self.assertEqual(self.copiado(), "")
+
+    def test_limpeza_nao_apaga_o_que_o_usuario_copiou_depois(self):
+        self.nota_cifrada("Banco", "pin sigiloso-kappa")
+        self.digitar('Y1')
+        _app_qt().clipboard().setText("outra coisa")
+        self.app.limpar_copia_sensivel()
+        self.assertEqual(self.copiado(), "outra coisa")
+
+    # --- mover ---------------------------------------------------------------
+
+    def test_mover_para_outra_pasta(self):
+        self.criar_pasta("Destino")
+        self.criar_nota("Nota", "x")
+        self.digitar('X2')
+        self.assertEqual(self.nome_tela(), 'DestinoScreen')
+        self.assertIn(" . - Mover para esta pasta", self.tela())
+        self.digitar('1')          # entra em Destino
+        self.digitar('.')
+        self.assertEqual(self.nome_tela(), 'BrowserScreen')
+        self.assertNaTela("movido para ~ / Destino")
+        destino = self.app.raiz.filhos[0]
+        self.assertEqual([f.nome for f in destino.filhos], ["Nota"])
+
+    def test_pasta_movida_nao_aparece_como_destino(self):
+        self.criar_pasta("A")
+        self.criar_pasta("B")
+        self.digitar('X1')
+        self.assertNotIn(" - A/", self.tela())
+        self.assertIn(" - B/", self.tela())
+
+    def test_mover_para_a_mesma_pasta_avisa(self):
+        self.criar_nota("Nota", "x")
+        self.digitar('X1')
+        self.digitar('.')
+        self.assertNaTela("já está nesta pasta")
+
+    def test_nome_repetido_no_destino_e_recusado(self):
+        self.criar_pasta("Destino")
+        self.digitar('1')
+        self.criar_nota("Nota", "dentro")
+        self.digitar('M')
+        self.criar_nota("Nota", "fora")
+        self.digitar('X2')
+        self.digitar('1')
+        self.digitar('.')
+        self.assertNaTela("Já existe um item chamado 'Nota'")
+
+    def test_enter_vazio_sobe_e_na_raiz_cancela(self):
+        self.criar_pasta("A")
+        self.digitar('1')
+        self.criar_nota("Nota", "x")
+        self.digitar('X1')
+        self.digitar('')
+        self.assertEqual(self.nome_tela(), 'DestinoScreen')
+        self.assertIn(" ~\n", self.tela())
+        self.digitar('')
+        self.assertEqual(self.nome_tela(), 'BrowserScreen')
+
+    def test_mover_para_pasta_cifrada_decifra_a_nota(self):
+        self.criar_pasta("Cofre")
+        self.digitar('K1'); self.digitar('3'); self.digitar('S')
+        self.criar_senha()
+        if self.nome_tela() == 'ConfirmScreen':
+            self.digitar('S')
+        self.criar_nota("Banco", "pin sigiloso-kappa")
+        self.digitar('K2')                      # nota cifrada por si
+        if self.nome_tela() == 'ConfirmScreen':
+            self.digitar('S')
+        self.digitar('X2'); self.digitar('1'); self.digitar('.')
+        nota = self.app.raiz.filhos[0].filhos[0]
+        self.assertFalse(nota.cifrado)          # a pasta ja protege
+        self.assertNotIn("sigiloso-kappa", self.arquivo.read_text(encoding='utf-8'))
+
+    def test_sair_da_pasta_cifrada_pede_confirmacao(self):
+        self.criar_pasta("Cofre")
+        self.digitar('1')
+        self.criar_nota("Banco", "x")
+        self.digitar('M')
+        self.digitar('K1'); self.digitar('3'); self.digitar('S')
+        self.criar_senha()
+        if self.nome_tela() == 'ConfirmScreen':
+            self.digitar('S')
+        self.digitar('1')
+        self.digitar('X1'); self.digitar('M'); self.digitar('.')
+        self.assertEqual(self.nome_tela(), 'ConfirmScreen')
+        self.assertNaTela("sai da pasta cifrada")
+
+    # --- duplicar ------------------------------------------------------------
+
+    def test_duplicar_nota(self):
+        self.criar_nota("Nota", "x")
+        self.digitar('Z1')
+        nomes = sorted(f.nome for f in self.app.raiz.filhos)
+        self.assertEqual(nomes, ["Nota", "Nota (cópia)"])
+        self.assertNaTela("duplicado como 'Nota (cópia)'")
+
+    def test_duplicar_nota_cifrada_trancada_pede_senha(self):
+        self.nota_cifrada("Banco", "pin sigiloso-kappa")
+        self.digitar('T')
+        self.digitar('Z1')
+        self.assertTrue(self.app.atual.ENTRADA_SENHA)
+        self.digitar(self.SENHA)
+        copia = next(f for f in self.app.raiz.filhos if f.nome == "Banco (cópia)")
+        self.assertTrue(copia.cifrado)
+        self.assertEqual(self.app.cofre.decifrar(copia.blob, copia.id), "pin sigiloso-kappa")
+
+    # --- trocar senha --------------------------------------------------------
+
+    def test_trocar_senha(self):
+        self.nota_cifrada()
+        self.digitar('S')
+        self.digitar('errada')
+        self.assertNaTela("Senha incorreta")
+        self.digitar(self.SENHA)
+        self.digitar('curta')
+        self.assertNaTela("pelo menos")
+        self.digitar('novinha1')
+        self.digitar('novinha1')
+        self.assertNaTela("Senha mestra trocada")
+        from keybase import cripto
+        recarregado = storage.carregar(self.arquivo)
+        cofre = cripto.Cofre.from_dict(recarregado.cofre)
+        cofre.destravar('novinha1')
+
+    def test_s_sem_senha_fica_fora_do_menu(self):
+        self.digitar('?')
+        self.assertNaoNaTela("Trocar senha")

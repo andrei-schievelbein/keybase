@@ -100,6 +100,12 @@ class JanelaPrincipal(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.view)
 
+        # limpeza da area de transferencia depois de copiar algo cifrado
+        self._timer_copia = QTimer(self)
+        self._timer_copia.setSingleShot(True)
+        self._limpar_copia = None
+        self._timer_copia.timeout.connect(lambda: self._limpar_copia and self._limpar_copia())
+
         # um timer so, reiniciado a cada aviso: o mais novo manda
         self._timer_flash = QTimer(self)
         self._timer_flash.setSingleShot(True)
@@ -188,6 +194,10 @@ class JanelaPrincipal(QWidget):
         """
 
     # --- ligacao com o App -------------------------------------------------
+
+    def agendar_limpeza_copia(self, ms, callback):
+        self._limpar_copia = callback
+        self._timer_copia.start(ms)
 
     def agendar_fim_do_flash(self, ms, callback):
         self._fim_do_flash = callback

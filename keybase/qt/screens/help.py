@@ -16,6 +16,10 @@ SECOES = [
         ("E  ou  E3", "editar o conteúdo de uma nota"),
         ("R  ou  R3", "renomear um item"),
         ("D  ou  D3", "apagar um item"),
+        ("X  ou  X3", "mover um item para outra pasta"),
+        ("Z  ou  Z3", "duplicar um item (\"Nome (cópia)\")"),
+        ("Y  ou  Y3", "copiar uma nota para a área de transferência"),
+        ("Y2 na nota", "copiar o 2º bloco de código; Y lista os blocos"),
     ]),
     ("Buscar", [
         ("texto", "filtrar a pasta atual pelo nome - basta digitar e dar Enter"),
@@ -32,6 +36,7 @@ SECOES = [
         ("[cifrada]", "nota ou pasta inteira protegida pela senha"),
         ("A", "no viewer: digitar a senha de uma nota trancada"),
         ("T", "tranca os itens cifrados; se trancados, pede a senha e destranca"),
+        ("S", "trocar a senha mestra"),
     ]),
     ("No editor de notas", [
         (atalhos.rotulo(atalhos.SALVAR), "salvar e voltar"),

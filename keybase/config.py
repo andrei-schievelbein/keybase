@@ -78,6 +78,7 @@ ESQUEMA = (
     Campo('interface', 'tempo_aviso_ms', ('interface', 'flash_ms'), 2500,
           _inteiro(500, 30000)),
     Campo('cofre', 'trancar_apos_min', ('cofre', 'auto_lock_min'), 10, _inteiro(0)),
+    Campo('cofre', 'limpar_copia_seg', ('cofre', 'clip_seg'), 20, _inteiro(0, 3600)),
 )
 
 #: o que o app regrava sozinho, fora do TOML
@@ -157,6 +158,9 @@ tempo_aviso_ms = {v('interface', 'flash_ms')}
 [cofre]
 # Minutos sem uso até os itens cifrados trancarem sozinhos (0 desliga).
 trancar_apos_min = {v('cofre', 'auto_lock_min')}
+# Ao copiar (Y) algo cifrado, segundos até a área de transferência ser limpa
+# (0 não limpa). Só limpa se ela ainda tiver o que foi copiado. Aplica na hora.
+limpar_copia_seg = {v('cofre', 'clip_seg')}
 '''
 
 

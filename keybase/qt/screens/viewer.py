@@ -15,6 +15,7 @@ class ViewerScreen(Screen):
         'A': 'cmd_abrir',
         'K': 'cmd_cifrar',
         'T': 'cmd_trancar',
+        'Y': 'cmd_copiar',
         'V': 'cmd_voltar',
         'M': 'cmd_raiz',
         'C': 'cmd_config',
@@ -22,6 +23,7 @@ class ViewerScreen(Screen):
     ROTULOS = {
         'E': 'Editar nota', 'R': 'Renomear', 'D': 'Deletar',
         'A': 'Abrir (senha)', 'K': 'Cifrar/decifrar', 'T': 'Trancar/destrancar',
+        'Y': 'Copiar',
         'V': 'Voltar', 'M': 'Ir para a raiz', 'C': 'Configuração',
     }
 
@@ -103,6 +105,15 @@ class ViewerScreen(Screen):
             from .browser import alternar_cifra_nota
             alternar_cifra_nota(self.app, self.file)
 
+    def cmd_copiar(self, alvo=None):
+        """Y: nota inteira ou a lista de blocos; Y2: o 2o bloco; Y0: a nota."""
+        if self.file is None:
+            return
+        if self.file.conteudo is None:
+            self.app.exigir_cofre(lambda: self.cmd_copiar(alvo))
+            return
+        copiar_da_nota(self.app, self.file, alvo)
+
     def cmd_trancar(self, alvo=None):
         self.app.alternar_tranca()
 
@@ -153,3 +164,47 @@ class ViewerScreen(Screen):
         self.app.push(ConfirmScreen(
             self.app, f"Apagar {tree.resumo_delecao(self.file)}?", aplicar,
         ))
+
+
+def copiar_da_nota(app, nota, alvo=None):
+    """Copia a nota ou um bloco dela. `alvo` e o indice 0-based do bloco;
+    -1 (o 'Y0') e a nota inteira; None pergunta, se houver blocos.
+
+    Compartilhado entre o viewer e a listagem (Y3 la copia a nota 3 inteira).
+    """
+    from ... import blocos as mod_blocos
+    from .prompt import PromptScreen
+
+    sensivel = app.item_sensivel(nota)
+    blocos = mod_blocos.blocos_de_codigo(nota.conteudo)
+
+    def nota_inteira():
+        app.copiar(nota.conteudo, f"nota {nota.nome!r}", sensivel)
+
+    def bloco(i):
+        if not (0 <= i < len(blocos)):
+            n = len(blocos)
+            app.flash(f"A nota tem {n} bloco{'s' if n != 1 else ''} de código." if n
+                      else "A nota não tem blocos de código. Use Y para copiar a nota.",
+                      erro=True)
+            app.rerender()
+            return
+        nome = blocos[i].linguagem or "texto"
+        app.copiar(blocos[i].texto, f"bloco {i + 1} ({nome})", sensivel)
+
+    if alvo == -1 or (alvo is None and not blocos):
+        return nota_inteira()
+    if alvo is not None:
+        return bloco(alvo)
+
+    def escolher(texto):
+        numero = int(texto)
+        nota_inteira() if numero == 0 else bloco(numero - 1)
+
+    app.push(PromptScreen(
+        app, "Copiar o quê?", escolher,
+        validar=lambda t: None if t.isdigit() and int(t) <= len(blocos)
+        else f"Digite um número de 0 a {len(blocos)}.",
+        opcoes=[(0, "A nota inteira")] + [(i, b.rotulo(60))
+                                         for i, b in enumerate(blocos, start=1)],
+    ))

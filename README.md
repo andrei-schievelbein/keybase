@@ -123,12 +123,17 @@ Como as letras de comando continuam valendo, use a barra para filtrar por um ter
 | `E` ou `E3` | Edita o conteúdo de uma nota |
 | `R` ou `R3` | Renomeia um item |
 | `D` ou `D3` | Apaga um item |
+| `X` ou `X3` | Move um item: você navega até a pasta de destino e digita `.` |
+| `Z` ou `Z3` | Duplica um item, como "Nome (cópia)" |
+| `Y` ou `Y3` | Copia uma nota para a área de transferência |
+| `Y2` (na nota) | Copia o 2º bloco de código da nota; `Y` sozinho lista os blocos |
 | `V` | Volta um nível (ou limpa o filtro) |
 | `M` | Vai direto para a raiz |
 | `B` | Busca em toda a base |
 | `C` | Abre a configuração no editor (veja [Configuração](#configuração)) |
 | `K` ou `K3` | Cifra ou decifra uma nota; numa pasta, cifra todas as notas dela |
 | `T` | Tranca os itens cifrados; se já estiverem trancados, pede a senha e destranca |
+| `S` | Troca a senha mestra |
 | `texto` | Filtra a pasta atual pelo nome — é só digitar e dar Enter |
 | `/texto` | O mesmo, para termos que colidem com um comando (`/b`, `/c`, `/sair`) |
 | `?` | Mostra ou esconde o menu de comandos (o mesmo que `Ctrl+0`) |
@@ -162,6 +167,10 @@ As marcas ficam no fim da linha, emendadas na contagem `[a]:[b]`. Uma pasta cifr
 - A senha é pedida uma vez por sessão, no primeiro item cifrado que você abrir. Os itens trancam de novo com `T` ou sozinhos depois de 10 minutos sem uso. Esse tempo é configurável com `C`, em `trancar_apos_min`.
 - Com os itens trancados, a busca encontra notas cifradas só pelo nome e não enxerga nada dentro de pastas cifradas.
 - Ao cifrar, os backups e snapshots ainda guardam a versão em claro. O KeyBase oferece cifrar essas cópias também, preservando o histórico.
+
+- `S` troca a senha mestra sem recifrar nada: só a chave das notas é reenvelopada. Backups antigos continuam abrindo com a senha antiga.
+- Copiar (`Y`) algo cifrado limpa a área de transferência depois de `limpar_copia_seg` segundos (padrão 20), se ela ainda tiver o que foi copiado.
+- Mover para dentro de uma pasta cifrada deixa o item sob a proteção dela; mover para fora pede confirmação, porque o item passa a ficar em claro.
 
 > ⚠️ **Não existe recuperação de senha.** Sem a senha mestra, as notas e pastas cifradas ficam ilegíveis para sempre.
 

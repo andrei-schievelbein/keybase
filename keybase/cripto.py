@@ -85,20 +85,24 @@ class Cofre:
         self.meta = meta
         self._dek = None
 
-    @classmethod
-    def criar(cls, senha):
-        """Cofre novo, ja destravado."""
+    @staticmethod
+    def _envelope(senha, dek):
+        """Cabecalho do cofre: a DEK cifrada pela senha, com salt novo."""
         salt = os.urandom(_TAM_SALT)
-        dek = AESGCM.generate_key(bit_length=_TAM_CHAVE * 8)
         kek = _derivar(senha, salt, SCRYPT_N, SCRYPT_R, SCRYPT_P)
-        meta = {
+        return {
             "v": VERSAO_COFRE,
             "kdf": "scrypt",
             "n": SCRYPT_N, "r": SCRYPT_R, "p": SCRYPT_P,
             "salt": _b64(salt),
             "dek": _selar(kek, dek, _AAD_DEK),
         }
-        cofre = cls(meta)
+
+    @classmethod
+    def criar(cls, senha):
+        """Cofre novo, ja destravado."""
+        dek = AESGCM.generate_key(bit_length=_TAM_CHAVE * 8)
+        cofre = cls(cls._envelope(senha, dek))
         cofre._dek = dek
         return cofre
 
@@ -123,6 +127,31 @@ class Cofre:
 
     def trancar(self):
         self._dek = None
+
+    def conferir(self, senha):
+        """True se a senha abre a DEK. Nao muda o estado (trancado segue trancado)."""
+        m = self.meta
+        kek = _derivar(senha, _de_b64(m["salt"]), m["n"], m["r"], m["p"])
+        try:
+            _abrir(kek, m["dek"], _AAD_DEK)
+        except InvalidTag:
+            return False
+        return True
+
+    def trocar_senha(self, atual, nova):
+        """Reenvelopa a MESMA DEK com a senha nova e um salt novo.
+
+        Nenhuma nota e recifrada: e o motivo do envelope. Copias antigas do
+        cabecalho (backups, snapshots) continuam abrindo com a senha antiga.
+        O estado trancado/destravado e preservado.
+        """
+        m = self.meta
+        kek = _derivar(atual, _de_b64(m["salt"]), m["n"], m["r"], m["p"])
+        try:
+            dek = _abrir(kek, m["dek"], _AAD_DEK)
+        except InvalidTag as e:
+            raise SenhaIncorretaError("senha incorreta") from e
+        self.meta = self._envelope(nova, dek)
 
     def _exigir_dek(self):
         if self._dek is None:
@@ -262,6 +291,44 @@ def cifrar_pasta(cofre, pasta):
     pasta.selado = None
     selar_pasta(cofre, pasta)
     pasta.touch()
+
+
+def absorver_em_pasta_cifrada(cofre, no):
+    """Prepara um no que entra (movido ou duplicado) numa pasta cifrada.
+
+    Dentro dela tudo ja e protegido: notas e pastas cifradas do no voltam a ser
+    comuns, e 'nasce_cifrada' e desligado - as mesmas regras de cifrar_pasta.
+    Exige o cofre destravado (as pastas cifradas do no precisam estar abertas).
+    """
+    if isinstance(no, File):
+        decifrar_nota(cofre, no)
+        return
+    for nota in notas_cifradas(no):
+        decifrar_nota(cofre, nota)
+    for pasta in pastas_cifradas(no):
+        decifrar_pasta(pasta)
+    for sub in _todas_as_pastas(no):
+        sub.nasce_cifrada = False
+
+
+def selar_copia(cofre, copia):
+    """Recifra, com os ids novos, o que era cifrado numa copia (tree.copia_profunda).
+
+    Notas primeiro, pastas de dentro para fora: o blob de uma pasta de fora
+    tem de conter o blob ja pronto das de dentro.
+    """
+    for nota in notas_cifradas(copia):
+        nota.blob = cofre.cifrar(nota.conteudo or "", nota.id)
+    for pasta in reversed(pastas_cifradas(copia)):
+        pasta.selado = None
+        selar_pasta(cofre, pasta)
+
+
+def precisa_do_cofre(no):
+    """Duplicar isto exige o cofre aberto? (algo cifrado dentro, ou trancado)"""
+    if isinstance(no, File):
+        return no.cifrado
+    return no.trancada or tem_cifra(no)
 
 
 def decifrar_pasta(pasta):
