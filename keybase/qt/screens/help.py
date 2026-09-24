@@ -22,11 +22,15 @@ SECOES = [
         ("Y2 na nota", "copiar o 2º bloco de código; Y lista os blocos"),
         ("U", "desfazer a última ação (apagar, mover, renomear, duplicar, decifrar)"),
         ("W  ou  W3", "exportar a pasta (ou a pasta 3) como arquivos .md"),
+        ("F  ou  F3", "marcar ou desmarcar um favorito"),
+        ("L", "favoritos e notas abertas recentemente"),
+        ("[[Nota]]", "numa nota, vira link; [[Pasta/Nota|texto]] também vale"),
     ]),
     ("Buscar", [
         ("texto", "filtrar a pasta atual pelo nome - basta digitar e dar Enter"),
         ("/texto", "o mesmo, para termos que colidem com um comando (/b, /c)"),
         ("B", "buscar em toda a base (nome, descrição e conteúdo)"),
+        ("setas", "nos resultados, escolhem um item; ENTER abre o escolhido"),
         ("V", "limpa o filtro e volta a listar tudo"),
     ]),
     ("Notas e pastas cifradas", [

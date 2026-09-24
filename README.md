@@ -128,10 +128,12 @@ Como as letras de comando continuam valendo, use a barra para filtrar por um ter
 | `Y` ou `Y3` | Copia uma nota para a área de transferência |
 | `Y2` (na nota) | Copia o 2º bloco de código da nota; `Y` sozinho lista os blocos |
 | `U` | Desfaz a última ação: apagar, mover, renomear, duplicar ou decifrar. Várias em sequência, enquanto nada mais tiver sido alterado depois |
+| `F` ou `F3` | Marca ou desmarca um favorito (`[favorito]` no fim da linha) |
+| `L` | Favoritos e notas abertas recentemente, numa lista só |
 | `W` ou `W3` | Exporta a pasta atual (ou a pasta 3) como arquivos `.md` numa pasta em Downloads |
 | `V` | Volta um nível (ou limpa o filtro) |
 | `M` | Vai direto para a raiz |
-| `B` | Busca em toda a base |
+| `B` | Busca em toda a base. Tolera erro de digitação no nome ("pnadas" acha "Pandas"); nos resultados, as setas escolhem e Enter abre |
 | `C` | Abre a configuração no editor (veja [Configuração](#configuração)) |
 | `K` ou `K3` | Cifra ou decifra uma nota; numa pasta, cifra todas as notas dela |
 | `T` | Tranca os itens cifrados; se já estiverem trancados, pede a senha e destranca |
@@ -193,6 +195,8 @@ As marcas ficam no fim da linha, emendadas na contagem `[a]:[b]`. Uma pasta cifr
 A tela só se divide durante a edição de uma nota. Em todo o resto do app, o terminal ocupa a tela inteira.
 
 No modo dividido, o preview acompanha o que você digita (com uma pausa curta) e a rolagem segue o editor.
+
+Para apontar para outra nota, escreva `[[Nome da nota]]`, `[[Pasta/Nome]]` ou `[[Pasta/Nome|texto mostrado]]`: no viewer vira um link, e um link que não aponta para nenhuma nota aparece riscado. Links `http(s)://` abrem no navegador.
 
 Para um bloco de código com destaque de sintaxe, use as cercas do Markdown:
 

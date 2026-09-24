@@ -17,6 +17,8 @@ class ViewerScreen(Screen):
         'T': 'cmd_trancar',
         'Y': 'cmd_copiar',
         'U': 'cmd_desfazer',
+        'F': 'cmd_favorito',
+        'L': 'cmd_favoritos',
         'V': 'cmd_voltar',
         'M': 'cmd_raiz',
         'C': 'cmd_config',
@@ -24,7 +26,7 @@ class ViewerScreen(Screen):
     ROTULOS = {
         'E': 'Editar nota', 'R': 'Renomear', 'D': 'Deletar',
         'A': 'Abrir (senha)', 'K': 'Cifrar/decifrar', 'T': 'Trancar/destrancar',
-        'Y': 'Copiar', 'U': 'Desfazer',
+        'Y': 'Copiar', 'U': 'Desfazer', 'F': 'Favoritar', 'L': 'Favoritos e recentes',
         'V': 'Voltar', 'M': 'Ir para a raiz', 'C': 'Configuração',
     }
 
@@ -33,6 +35,7 @@ class ViewerScreen(Screen):
         self.file_id = file_id
         self.file = None
         self.descartada = False
+        self._registrado = False  # entra nos recentes uma vez por abertura
 
     def on_enter(self):
         no = self.app.no(self.file_id)
@@ -42,6 +45,9 @@ class ViewerScreen(Screen):
             return
         self.file = no
         self.descartada = False
+        if not self._registrado:
+            self.app.registrar_recente(no.id)
+            self._registrado = True
 
     def render(self):
         view = self.app.view
@@ -64,7 +70,9 @@ class ViewerScreen(Screen):
                 view.linha(" Nota cifrada e trancada. Use A para digitar a senha.",
                            'vazio')
             elif self.file.conteudo.strip():
-                view.markdown(self.file.conteudo)
+                from ... import links
+                view.markdown(self.file.conteudo,
+                              existe=lambda alvo: bool(links.resolver(self.app.raiz, alvo)))
             else:
                 view.linha(" Nota vazia. Use E para escrever o conteúdo.", 'vazio')
 
@@ -116,6 +124,10 @@ class ViewerScreen(Screen):
             self.app.exigir_cofre(lambda: self.cmd_copiar(alvo))
             return
         copiar_da_nota(self.app, self.file, alvo)
+
+    def cmd_favorito(self, alvo=None):
+        if self.file is not None:
+            self.app.alternar_favorito(self.file)
 
     def cmd_desfazer(self, alvo=None):
         self.app.desfazer()

@@ -224,6 +224,9 @@ class JanelaPrincipal(QWidget):
         # o botao e so um terceiro caminho para o mesmo verbo: '?' na barra,
         # Ctrl+0 e o clique alternam exatamente a mesma coisa
         self.view.botao_ajuda.clicked.connect(app.alternar_menu)
+        # so a area de leitura: um clique no preview do editor levaria embora
+        # da nota com texto nao salvo
+        self.view.out.anchorClicked.connect(lambda url: app.abrir_link(url.toString()))
         self._atalhos(app)
         # auto-trancar do cofre: o App decide, o timer so pergunta de tempos em tempos
         self._timer_cofre = QTimer(self)
@@ -253,6 +256,15 @@ class JanelaPrincipal(QWidget):
         liga(atalhos.MODO_DIVIDIDO, lambda: app.modo(DIVIDIDO))
         liga(atalhos.MODO_CICLAR, app.ciclar_modo)
         liga(atalhos.AJUDA_DINAMICA, app.alternar_menu)
+
+        # setas SO na barra de cima (WidgetShortcut): no editor elas movem o
+        # cursor do texto, e uma tela de lista nao pode rouba-las de la
+        self._setas = []
+        for tecla, delta in ((Qt.Key.Key_Up, -1), (Qt.Key.Key_Down, 1)):
+            seta = QShortcut(QKeySequence(tecla), self.view.entrada)
+            seta.setContext(Qt.ShortcutContext.WidgetShortcut)
+            seta.activated.connect(lambda d=delta: app.seta(d))
+            self._setas.append(seta)
 
     # --- geometria ---------------------------------------------------------
 

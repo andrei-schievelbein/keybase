@@ -126,12 +126,20 @@ class Screen:
     def on_ciclar_modo(self):
         """Ctrl+E. Mesma logica do on_modo."""
 
+    def on_seta(self, delta):
+        """Seta na barra. No-op: so as telas com destaque implementam."""
+
     def on_ajuda(self):
         """'?' na barra ou Ctrl+0: mostra/esconde o menu de comandos."""
         if not self.MOSTRA_MENU:
             return
         self.app.menu_visivel = not self.app.menu_visivel
         self.app.rerender()
+
+    def cmd_favoritos(self, alvo=None):
+        """L: favoritos e notas abertas recentemente."""
+        from .favoritos import FavoritosScreen
+        self.app.push(FavoritosScreen(self.app))
 
     def cmd_config(self, alvo=None):
         """C: a configuracao aberta no editor, como uma nota."""

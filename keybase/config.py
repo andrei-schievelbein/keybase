@@ -94,6 +94,9 @@ ESQUEMA = (
 ESTADO_PADRAO = {
     'geometry': '800x600',
     'editor': {'modo': 'editar', 'proporcao': [1, 1]},
+    #: ids das ultimas notas abertas - so ids: nome de item dentro de pasta
+    #: cifrada nunca vai em claro para este arquivo
+    'recentes': [],
 }
 
 
@@ -344,6 +347,8 @@ def _carregar_estado(caminho):
             estado['geometry'] = bruto['geometry']
         if isinstance(bruto.get('editor'), dict):
             estado['editor'].update(bruto['editor'])
+        if isinstance(bruto.get('recentes'), list):
+            estado['recentes'] = [i for i in bruto['recentes'] if isinstance(i, str)][:10]
     return estado
 
 
@@ -399,7 +404,8 @@ def salvar_texto_config(texto, caminho=None):
 def salvar_estado(config, geometria, caminho=None):
     """Grava so o estado do app. Nunca toca o TOML do usuario."""
     try:
-        estado = {'geometry': geometria, 'editor': dict(config.get('editor', {}))}
+        estado = {'geometry': geometria, 'editor': dict(config.get('editor', {})),
+                  'recentes': list(config.get('recentes', []))[:10]}
         _gravar_atomico(caminho or arquivo_estado(),
                         json.dumps(estado, indent=4, ensure_ascii=False))
     except (OSError, TypeError, ValueError) as e:

@@ -289,13 +289,13 @@ class TerminalView(QWidget):
         self.linha(" " + texto, tag)
         self.barra()
 
-    def markdown(self, texto):
+    def markdown(self, texto, existe=None):
         """Insere o markdown renderizado no fim da area de leitura.
 
         insertHtml e nao setHtml: o viewer escreve cabecalho antes e rodape
         depois, no mesmo documento.
         """
-        self.out.inserir_html(self._render.html(texto))
+        self.out.inserir_html(self._render.html(texto, existe))
 
     # --- area de transferencia --------------------------------------------
 
@@ -313,6 +313,15 @@ class TerminalView(QWidget):
 
     def rolar_para(self, valor):
         self.out.verticalScrollBar().setValue(valor)
+
+    def rolar_ate_texto(self, texto):
+        """Rola a area de leitura ate a primeira ocorrencia de `texto`."""
+        cursor = self.out.document().find(texto)
+        if cursor.isNull():
+            return
+        cursor.clearSelection()
+        self.out.setTextCursor(cursor)
+        self.out.ensureCursorVisible()
 
     def ao_topo(self):
         self.out.moveCursor(QTextCursor.MoveOperation.Start)

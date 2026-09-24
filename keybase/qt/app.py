@@ -617,6 +617,75 @@ class App:
         else:
             aplicar()
 
+    # --- favoritos, recentes e abrir por referencia -------------------------
+
+    LIMITE_RECENTES = 10
+
+    def recentes(self):
+        return list(self.config.get('recentes', []))
+
+    def registrar_recente(self, node_id):
+        lista = [i for i in self.config.get('recentes', []) if i != node_id]
+        self.config['recentes'] = ([node_id] + lista)[:self.LIMITE_RECENTES]
+
+    def alternar_favorito(self, no):
+        no.favorito = not no.favorito
+        self.persistir()
+        self.flash(f"{no.nome!r} marcado como favorito." if no.favorito
+                   else f"{no.nome!r} saiu dos favoritos.")
+        self.rerender()
+
+    def abrir_no(self, no):
+        """Abre um no de qualquer lugar (favoritos, links), com a pilha do
+        caminho real por baixo - voltar percorre a arvore de verdade."""
+        from ..model import File
+        from .screens.browser import BrowserScreen
+        from .screens.viewer import ViewerScreen
+        cadeia = self.caminho_de(no.id)
+        pilha = [BrowserScreen(self, a.id) for a in cadeia[:-1]]
+        pilha.append(ViewerScreen(self, no.id) if isinstance(no, File)
+                     else BrowserScreen(self, no.id))
+        if isinstance(no, File) and no.conteudo is None:
+            self.exigir_cofre(lambda: self.reset(pilha))
+        else:
+            self.reset(pilha)
+
+    def abrir_link(self, url):
+        """Clique num link do viewer: [[nota]] navega; http(s) abre no navegador."""
+        from urllib.parse import unquote
+
+        from .. import links
+        from .render.pipeline import ESQUEMA_LINK
+        from .screens.prompt import PromptScreen
+
+        if url.startswith(('http://', 'https://')):
+            from PySide6.QtCore import QUrl
+            from PySide6.QtGui import QDesktopServices
+            QDesktopServices.openUrl(QUrl(url))
+            return
+        if not url.startswith(ESQUEMA_LINK):
+            return
+        alvo = unquote(url[len(ESQUEMA_LINK):])
+        notas = links.resolver(self.raiz, alvo)
+        if not notas:
+            self.flash(f"Link quebrado: [[{alvo}]] não aponta para nenhuma nota.", erro=True)
+            self.rerender()
+            return
+        if len(notas) == 1:
+            self.abrir_no(notas[0])
+            return
+
+        def caminho(nota):
+            return tree.breadcrumb(self.caminho_de(nota.id), " / ")
+
+        self.push(PromptScreen(
+            self, f"Há {len(notas)} notas chamadas {alvo!r}. Qual abrir?",
+            lambda t: self.abrir_no(notas[int(t) - 1]),
+            validar=lambda t: None if t.isdigit() and 1 <= int(t) <= len(notas)
+            else f"Digite um número de 1 a {len(notas)}.",
+            opcoes=[(i, caminho(n)) for i, n in enumerate(notas, start=1)],
+        ))
+
     # --- exportar -----------------------------------------------------------
 
     #: onde a exportacao cria a pasta; None = Downloads (ou a pasta do usuario)
@@ -709,6 +778,11 @@ class App:
         if 'interface' in mudou:
             self.view.ajuda.setMinimumHeight(self.config['interface']['help_area_height'])
         return mudou
+
+    def seta(self, delta):
+        """Seta para cima/baixo na barra. So as telas de lista respondem."""
+        if self.atual:
+            self.atual.on_seta(delta)
 
     def alternar_menu(self):
         """Ctrl+0. Mesma logica do modo(): inerte onde a tela nao implementa."""
