@@ -432,7 +432,7 @@ def _cifrar_no_bruto(no, cofre):
     no["cifrada"] = True
 
 
-def _ler_backup(arquivo):
+def ler_backup(arquivo):
     """JSON bruto de um backup, ou None se ilegivel - backup ruim nao trava nada."""
     try:
         bruto = json.loads(Path(arquivo).read_text(encoding='utf-8'))
@@ -447,7 +447,7 @@ def backups_com_texto_claro(caminho, ids):
     ids = set(ids)
     achados = []
     for arquivo in _arquivos_de_backup(caminho):
-        bruto = _ler_backup(arquivo)
+        bruto = ler_backup(arquivo)
         if bruto is not None and _nos_claros(bruto["raiz"], ids, []):
             achados.append(arquivo)
     return achados
@@ -464,7 +464,7 @@ def sanear_backups(caminho, cofre, ids):
     ids = set(ids)
     regravados = 0
     for arquivo in _arquivos_de_backup(caminho):
-        bruto = _ler_backup(arquivo)
+        bruto = ler_backup(arquivo)
         if bruto is None:
             continue
         nos = _nos_claros(bruto["raiz"], ids, [])

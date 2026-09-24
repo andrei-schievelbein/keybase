@@ -2338,3 +2338,63 @@ class TestFase3(CofreMixin, BaseUI):
         self.digitar('B')
         self.digitar('pnadas')
         self.assertIn("Pandas", self.tela())
+
+
+class TestFase4(CofreMixin, BaseUI):
+    def criar_modelo(self, nome, conteudo):
+        if not any(f.nome == "Modelos" for f in self.app.raiz.filhos):
+            self.criar_pasta("Modelos")
+        indice = [f.nome for f in tree.filhos_ordenados(self.app.raiz)].index("Modelos") + 1
+        self.digitar(str(indice))
+        self.criar_nota(nome, conteudo)   # dentro da pasta de modelos: sem pergunta
+        self.digitar('M')
+
+    def test_nova_nota_oferece_os_modelos_um_por_linha(self):
+        self.criar_modelo("Atalho", "# {nome}\n\nTecla:")
+        self.digitar('N')
+        self.digitar('Ctrl + P')
+        linhas = [l.strip() for l in self.tela().splitlines()]
+        self.assertIn("1 - Em branco", linhas)
+        self.assertIn("2 - Atalho", linhas)
+        self.digitar('2')
+        self.assertEqual(self.nome_tela(), 'EditorScreen')
+        self.assertEqual(self.editor().toPlainText(), "# Ctrl + P\n\nTecla:")
+
+    def test_em_branco(self):
+        self.criar_modelo("Atalho", "x")
+        self.digitar('N'); self.digitar('Nova'); self.digitar('1')
+        self.assertEqual(self.editor().toPlainText(), "")
+
+    def test_sem_modelos_nao_pergunta(self):
+        self.digitar('N'); self.digitar('Nova')
+        self.assertEqual(self.nome_tela(), 'EditorScreen')
+
+    def test_pasta_de_modelos_vazia_na_config_desliga(self):
+        self.criar_modelo("Atalho", "x")
+        self.config['notas']['modelos'] = ""
+        self.digitar('N'); self.digitar('Nova')
+        self.assertEqual(self.nome_tela(), 'EditorScreen')
+
+    def test_historico_lista_e_restaura(self):
+        self.criar_nota("Nota", "versao 1")
+        self.digitar('1')
+        self.digitar('E'); self.digitar_no_editor("versao 2"); self.app.save()
+        self.digitar('E'); self.digitar_no_editor("versao 3"); self.app.save()
+        self.digitar('H')
+        self.assertEqual(self.nome_tela(), 'HistoricoScreen')
+        linhas = [l.strip() for l in self.tela().splitlines()]
+        self.assertTrue(any(l.startswith("1 - Backup anterior") for l in linhas))
+        self.digitar('1')
+        self.assertEqual(self.nome_tela(), 'VersaoScreen')
+        self.assertNaTela("versao 2")
+        self.digitar('R')
+        self.assertEqual(self.nome_tela(), 'ViewerScreen')
+        self.assertEqual(self.app.raiz.filhos[0].conteudo, "versao 2")
+        self.digitar('U')
+        self.assertEqual(self.app.raiz.filhos[0].conteudo, "versao 3")
+
+    def test_historico_vazio_explica(self):
+        self.criar_nota("Nota", "unica")
+        self.digitar('1')
+        self.digitar('H')
+        self.assertNaTela("Nenhuma versão diferente")

@@ -68,6 +68,12 @@ def _pasta(valor):
     return None
 
 
+def _texto_ou_vazio(valor):
+    if not isinstance(valor, str):
+        return 'deveria ser um texto entre aspas ("" desliga)'
+    return None
+
+
 def _tema(valor):
     if valor not in TEMAS:
         return 'deveria ser "dark" ou "light"'
@@ -88,6 +94,7 @@ ESQUEMA = (
     Campo('cofre', 'trancar_apos_min', ('cofre', 'auto_lock_min'), 10, _inteiro(0)),
     Campo('cofre', 'limpar_copia_seg', ('cofre', 'clip_seg'), 20, _inteiro(0, 3600)),
     Campo('dados', 'pasta', ('dados', 'pasta'), '', _pasta),
+    Campo('notas', 'pasta_modelos', ('notas', 'modelos'), 'Modelos', _texto_ou_vazio),
 )
 
 #: o que o app regrava sozinho, fora do TOML
@@ -180,6 +187,12 @@ limpar_copia_seg = {v('cofre', 'clip_seg')}
 # dados em vários computadores. Vale ao reabrir; na primeira vez os dados
 # atuais são COPIADOS para lá. No Windows use / nas pastas: "C:/Users/voce/Dropbox"
 pasta = {v('dados', 'pasta')}
+
+[notas]
+# Pasta da raiz com os modelos de nota: cada nota dela é um modelo. Ao criar
+# uma nota com N, o KeyBase oferece os modelos; {{nome}} e {{data}} no texto do
+# modelo são preenchidos. "" desliga. Aplica na hora.
+pasta_modelos = {v('notas', 'modelos')}
 '''
 
 

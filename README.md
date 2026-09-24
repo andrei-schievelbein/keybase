@@ -128,6 +128,7 @@ Como as letras de comando continuam valendo, use a barra para filtrar por um ter
 | `Y` ou `Y3` | Copia uma nota para a área de transferência |
 | `Y2` (na nota) | Copia o 2º bloco de código da nota; `Y` sozinho lista os blocos |
 | `U` | Desfaz a última ação: apagar, mover, renomear, duplicar ou decifrar. Várias em sequência, enquanto nada mais tiver sido alterado depois |
+| `H` (na nota) | Histórico: as versões da nota guardadas nos backups e snapshots. Abra uma e `R` restaura (e `U` desfaz a restauração) |
 | `F` ou `F3` | Marca ou desmarca um favorito (`[favorito]` no fim da linha) |
 | `L` | Favoritos e notas abertas recentemente, numa lista só |
 | `W` ou `W3` | Exporta a pasta atual (ou a pasta 3) como arquivos `.md` numa pasta em Downloads |
@@ -195,6 +196,8 @@ As marcas ficam no fim da linha, emendadas na contagem `[a]:[b]`. Uma pasta cifr
 A tela só se divide durante a edição de uma nota. Em todo o resto do app, o terminal ocupa a tela inteira.
 
 No modo dividido, o preview acompanha o que você digita (com uma pausa curta) e a rolagem segue o editor.
+
+**Modelos:** crie uma pasta `Modelos` na raiz e ponha nela notas comuns com a estrutura que você repete (por exemplo `# {nome}` e `Quando usar:`). Ao criar uma nota com `N`, o KeyBase oferece `1 - Em branco` e os modelos; `{nome}` e `{data}` são preenchidos. O nome da pasta é configurável (`pasta_modelos`).
 
 Para apontar para outra nota, escreva `[[Nome da nota]]`, `[[Pasta/Nome]]` ou `[[Pasta/Nome|texto mostrado]]`: no viewer vira um link, e um link que não aponta para nenhuma nota aparece riscado. Links `http(s)://` abrem no navegador.
 
