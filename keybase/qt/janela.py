@@ -224,6 +224,7 @@ class JanelaPrincipal(QWidget):
     def ligar(self, app):
         self.app = app
         self.view.entrada.returnPressed.connect(app.submit)
+        self.view.entrada.textEdited.connect(app.ao_digitar)
         # o botao e so um terceiro caminho para o mesmo verbo: '?' na barra,
         # Ctrl+0 e o clique alternam exatamente a mesma coisa
         self.view.botao_ajuda.clicked.connect(app.alternar_menu)
