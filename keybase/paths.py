@@ -1,0 +1,117 @@
+"""Resolucao de caminhos: diretorio base, diretorio de dados e recursos embutidos.
+
+Isola todo o conhecimento sobre PyInstaller (sys.frozen / sys._MEIPASS) num
+lugar so. Regra critica: sys._MEIPASS e o diretorio temporario de extracao,
+apagado a cada execucao - serve para recursos somente leitura (icone), JAMAIS
+para dados do usuario.
+"""
+
+import os
+import sys
+from pathlib import Path
+
+APP_NAME = "KeyBase"
+
+
+def esta_congelado():
+    """True quando rodando a partir do executavel gerado pelo PyInstaller."""
+    return getattr(sys, 'frozen', False)
+
+
+def base_dir():
+    """Diretorio do executavel (congelado) ou da raiz do projeto (script)."""
+    if esta_congelado():
+        return Path(sys.executable).parent
+    # paths.py fica em keybase/, entao a raiz do projeto e o pai
+    return Path(__file__).resolve().parent.parent
+
+
+def recurso(nome):
+    """Caminho de um recurso embutido no executavel. SOMENTE LEITURA.
+
+    Quando congelado, o PyInstaller extrai os 'datas' para sys._MEIPASS.
+    """
+    if esta_congelado():
+        return Path(getattr(sys, '_MEIPASS', base_dir())) / nome
+    return base_dir() / nome
+
+
+def _gravavel(diretorio):
+    """Testa de fato se da para escrever no diretorio, criando um arquivo."""
+    try:
+        diretorio.mkdir(parents=True, exist_ok=True)
+        teste = diretorio / '.write_test'
+        teste.write_text('', encoding='utf-8')
+        teste.unlink()
+        return True
+    except OSError:
+        return False
+
+
+def dir_dados():
+    """Diretorio onde ficam os dados do usuario.
+
+    Preferencia pelo diretorio do app (uso portatil, pen drive). Se ele nao for
+    gravavel - caso classico do .exe instalado em C:\\Program Files - cai para o
+    diretorio de dados do usuario, em vez de perder os saves silenciosamente.
+    """
+    base = base_dir()
+    if _gravavel(base):
+        return base
+
+    if os.name == 'nt':
+        raiz = Path(os.environ.get('APPDATA', Path.home() / 'AppData' / 'Roaming'))
+        alternativo = raiz / APP_NAME
+    else:
+        alternativo = Path.home() / '.keybase'
+
+    alternativo.mkdir(parents=True, exist_ok=True)
+    return alternativo
+
+
+NOME_DADOS = 'keybase_data.json'
+
+
+def arquivo_dados():
+    """Caminho do arquivo de dados da arvore, no lugar padrao."""
+    return dir_dados() / NOME_DADOS
+
+
+def resolver_arquivo_dados(pasta_configurada, padrao=None):
+    """(caminho, aviso, erro) para a pasta de dados da configuracao.
+
+    - vazio: o lugar padrao;
+    - pasta que existe: ela. Se ainda nao tem dados e o padrao tem, COPIA o
+      arquivo do padrao para la (primeira vez apontando para a nuvem) - nunca
+      move: o original fica como estava, por seguranca;
+    - pasta que nao existe: o padrao, com erro. Criar uma base vazia num
+      caminho digitado errado faria os dados parecerem perdidos.
+    """
+    import shutil
+    padrao = Path(padrao or arquivo_dados())
+    if not pasta_configurada:
+        return padrao, None, None
+    pasta = Path(pasta_configurada).expanduser()
+    if not pasta.is_dir():
+        return padrao, None, (f"a pasta de dados {str(pasta)!r} não existe; "
+                              f"usando a padrão")
+    caminho = pasta / NOME_DADOS
+    if not caminho.exists() and padrao.exists() and padrao != caminho:
+        shutil.copy2(padrao, caminho)
+        return caminho, f"Seus dados foram copiados para {pasta}.", None
+    return caminho, None, None
+
+
+def arquivo_config():
+    """Configuracao do usuario, editavel com C dentro do app."""
+    return dir_dados() / 'keybase_config.toml'
+
+
+def arquivo_estado():
+    """Estado da janela (geometria, ultimo modo do editor), gravado pelo app."""
+    return dir_dados() / 'keybase_estado.json'
+
+
+def arquivo_config_legado():
+    """O window_config.json de antes do TOML: so lido, para migrar os valores."""
+    return dir_dados() / 'window_config.json'

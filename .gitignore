@@ -1,6 +1,8 @@
-# PyInstaller build artifacts
+# PyInstaller build artifacts (os executaveis vao para o GitHub Releases)
 build/
 dist/
+releases/
+*.exe
 *.spec.bak
 
 # Python cache
@@ -24,7 +26,17 @@ ENV/
 
 # User data files (não versionar dados pessoais)
 data.json
+data 2.json
+keybase_data.json
+keybase_data2.json
+keybase_data.bak.json
+keybase_data.snapshot-*.json
+keybase_data.pre-migracao-*.json
+keybase_data.conflito-*.json
+*.json.tmp
 window_config.json
+keybase_config.toml
+keybase_estado.json
 
 # Workflows (arquivos de configuração local do agente)
 .agent/

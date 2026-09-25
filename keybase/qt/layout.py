@@ -1,0 +1,185 @@
+"""Primitivas de desenho do terminal: barras, breadcrumb, itens e menu.
+
+Estilo visual herdado da versao 1: blocos delimitados por barras de '=' e
+linhas no formato "N - Rotulo", densas e alinhadas. Tudo em ASCII (mais '…'):
+fontes monoespacadas comuns nao garantem glifo para emoji num widget Text, que
+acabaria desenhando caixas.
+
+Pasta = nome com '/' no fim e o par '[diretas]:[total]' de contagem de NOTAS
+(soltas aqui : em toda a hierarquia); nota = nome puro. As marcas ficam
+sempre no fim da linha, alinhadas a direita e emendadas na contagem:
+
+    Projetos/                     [novas cifradas]:[2]:[5]
+    Pessoal/                                     [cifrada]       (trancada)
+    Pessoal/                             [cifrada]:[1]:[3]       (aberta)
+    Senhas                                       [cifrada]       (nota)
+
+Texto, nao cadeado, pela mesma razao do ASCII acima.
+
+Toda largura vem de TerminalView.colunas(), calculada da largura real do widget
+e da largura de um caractere na fonte - nao de uma constante. Alinhar por
+contagem de caracteres so funciona com fonte monoespacada, e a escolha da
+familia e feita em view._escolher_familia().
+"""
+
+from ..model import Folder
+from ..tree import contar_notas
+
+LARGURA_PADRAO = 78
+MARCA_RAIZ = "~"
+CARACTERE_BARRA = "="
+LARGURA_NUMERO = 2
+LARGURA_LETRA = 4  # cabe 'sair' alinhado com as letras isoladas
+MARCA_CIFRADA = "[cifrada]"
+MARCA_NOVAS_CIFRADAS = "[novas cifradas]"
+MARCA_FAVORITO = "[favorito]"
+
+
+def barra(largura=LARGURA_PADRAO):
+    return CARACTERE_BARRA * largura
+
+
+def montar_breadcrumb(cadeia, largura=LARGURA_PADRAO):
+    """Caminho legivel, colapsando o meio quando nao cabe.
+
+    Mantem sempre a raiz e os dois ultimos niveis: ~ / Python / … / ORM / Qu...
+    """
+    nomes = [no.nome for no in cadeia[1:]]
+    if not nomes:
+        return MARCA_RAIZ
+
+    partes = [MARCA_RAIZ] + nomes
+    texto = " / ".join(partes)
+    if len(texto) <= largura:
+        return texto
+
+    while len(partes) > 3:
+        partes = [MARCA_RAIZ, "…"] + partes[-2:]
+        texto = " / ".join(partes)
+        if len(texto) <= largura:
+            return texto
+        break
+
+    if len(texto) > largura:
+        texto = texto[:max(1, largura - 1)] + "…"
+    return texto
+
+
+def linha_item(numero, no, largura=LARGURA_PADRAO):
+    """Partes (texto, tag) de uma linha da listagem, no formato 'N - Nome'."""
+    prefixo = f"{numero:>{LARGURA_NUMERO}} - "
+    partes = [(prefixo, 'numero')]
+
+    if isinstance(no, Folder):
+        sufixo = ":".join(_sufixo_pasta(no))
+        rotulo, tag = no.nome + "/", 'pasta'
+    else:
+        pedacos = [MARCA_FAVORITO] if no.favorito else []
+        if no.cifrado:
+            pedacos.append(MARCA_CIFRADA)
+        sufixo = ":".join(pedacos)
+        rotulo, tag = no.nome, 'nota'
+
+    if not sufixo:
+        partes.append((truncar(rotulo, largura - len(prefixo)), tag))
+        return partes
+
+    nome = truncar(rotulo, largura - len(prefixo) - len(sufixo) - 2)
+    partes.append((nome, tag))
+    preenchimento = largura - len(prefixo) - len(nome) - len(sufixo)
+    partes.append((" " * max(2, preenchimento), None))
+    partes.append((sufixo, 'contador'))
+    return partes
+
+
+def _sufixo_pasta(pasta):
+    """Pedacos do fim da linha de uma pasta: marca e contagem, nessa ordem."""
+    pedacos = [MARCA_FAVORITO] if pasta.favorito else []
+    if pasta.cifrada:
+        pedacos.append(MARCA_CIFRADA)
+    elif pasta.nasce_cifrada:
+        pedacos.append(MARCA_NOVAS_CIFRADAS)
+    # trancada nao tem contagem (o conteudo nao esta na memoria); vazia tambem nao
+    if not pasta.trancada and pasta.filhos:
+        diretas, total = contar_notas(pasta)
+        pedacos.append(f"[{diretas}]:[{total}]")
+    return pedacos
+
+
+def linha_resultado(numero, resultado, largura=LARGURA_PADRAO, destacado=False):
+    """Duas ou tres linhas por hit de busca: rotulo+nome, caminho e trecho.
+
+    `destacado` (escolhido pelas setas) pinta a primeira linha na cor de aviso.
+    """
+    prefixo = f"{numero:>{LARGURA_NUMERO}} - "
+    rotulo = f"[{resultado.rotulo_tipo}] "
+    recuo = " " * (len(prefixo) + len(rotulo))
+
+    linhas = [[
+        (prefixo, 'flash' if destacado else 'numero'),
+        (rotulo, 'flash' if destacado else 'contador'),
+        (truncar(resultado.no.nome, largura - len(prefixo) - len(rotulo)),
+         'flash' if destacado else ('pasta' if resultado.e_pasta else 'nota')),
+    ]]
+    linhas.append([(recuo, None),
+                   (truncar(resultado.caminho, largura - len(recuo)), 'contador')])
+    if resultado.trecho:
+        linhas.append([(recuo, None),
+                       (truncar(resultado.trecho, largura - len(recuo)), 'dica')])
+    return linhas
+
+
+def celula_comando(letra, rotulo):
+    """'   C - Nova pasta' — a letra alinhada a direita para 'sair' encaixar."""
+    return f"{letra:>{LARGURA_LETRA}} - {rotulo}"
+
+
+def montar_menu(comandos, rotulos, disponiveis, largura=LARGURA_PADRAO, extras=()):
+    """Menu em duas colunas, no formato da versao 1.
+
+    Sai do mesmo dict que despacha os comandos, entao menu e comportamento nao
+    podem divergir - na versao anterior divergiam.
+    """
+    itens = [(letra, rotulos[letra])
+             for letra in comandos
+             if letra in disponiveis and letra in rotulos]
+    itens += [par for par in extras]
+    if not itens:
+        return []
+
+    metade = (len(itens) + 1) // 2
+    esquerda, direita = itens[:metade], itens[metade:]
+    coluna = max(len(celula_comando(l, r)) for l, r in esquerda) + 4
+    coluna = min(coluna, max(20, largura // 2))
+
+    linhas = []
+    for i, (letra, rotulo) in enumerate(esquerda):
+        texto = celula_comando(letra, rotulo).ljust(coluna)
+        if i < len(direita):
+            texto += celula_comando(*direita[i])
+        linhas.append(truncar(texto.rstrip(), largura))
+    return linhas
+
+
+def montar_menu_fixo(pares, largura=LARGURA_PADRAO):
+    """Menu em duas colunas, no visual do menu dinamico, para teclas que nao
+    sao uma letra so ('ENTER', 'ESC'): a coluna da tecla se ajusta a maior."""
+    if not pares:
+        return []
+    largura_tecla = max(LARGURA_LETRA, max(len(tecla) for tecla, _ in pares))
+    # um espaco de margem: 'ENTER' nao encosta na borda, como o resto da tela
+    celulas = [f" {tecla:>{largura_tecla}} - {rotulo}" for tecla, rotulo in pares]
+    metade = (len(celulas) + 1) // 2
+    esquerda, direita = celulas[:metade], celulas[metade:]
+    coluna = max(len(c) for c in esquerda) + 4
+    return [truncar((e.ljust(coluna) + (direita[i] if i < len(direita) else "")).rstrip(),
+                    largura)
+            for i, e in enumerate(esquerda)]
+
+
+def truncar(texto, largura):
+    if largura < 4:
+        return texto[:max(0, largura)]
+    if len(texto) <= largura:
+        return texto
+    return texto[:largura - 1] + "…"
