@@ -60,6 +60,18 @@ def _inteiro(minimo, maximo=None):
     return validar
 
 
+def _zero_ou_inteiro(minimo, maximo):
+    """0 (desliga o tempo) ou um inteiro na faixa."""
+    faixa = _inteiro(minimo, maximo)
+
+    def validar(valor):
+        if valor == 0 and not isinstance(valor, bool):
+            return None
+        erro = faixa(valor)
+        return erro and f"{erro} (ou 0)"
+    return validar
+
+
 def _pasta(valor):
     if not isinstance(valor, str):
         return 'deveria ser um texto entre aspas ("" para a pasta padrão)'
@@ -91,6 +103,8 @@ ESQUEMA = (
           _inteiro(0, 400)),
     Campo('interface', 'tempo_aviso_ms', ('interface', 'flash_ms'), 2500,
           _inteiro(500, 30000)),
+    Campo('interface', 'tempo_aviso_longo_ms', ('interface', 'flash_longo_ms'), 8000,
+          _zero_ou_inteiro(500, 60000)),
     Campo('cofre', 'trancar_apos_min', ('cofre', 'auto_lock_min'), 10, _inteiro(0)),
     Campo('cofre', 'limpar_copia_seg', ('cofre', 'clip_seg'), 20, _inteiro(0, 3600)),
     Campo('dados', 'pasta', ('dados', 'pasta'), '', _pasta),
@@ -104,6 +118,8 @@ ESTADO_PADRAO = {
     #: ids das ultimas notas abertas - so ids: nome de item dentro de pasta
     #: cifrada nunca vai em claro para este arquivo
     'recentes': [],
+    #: a nota "Keybase Doc" ja foi posta na raiz uma vez: apagada, nao volta
+    'doc_criada': False,
 }
 
 
@@ -173,6 +189,10 @@ altura_ajuda = {v('interface', 'help_area_height')}
 # Quanto tempo um aviso ("Pasta criada.", "Itens cifrados trancados.") fica no
 # lugar do caminho antes de sumir, em milissegundos (2500 = 2,5 s). Aplica na hora.
 tempo_aviso_ms = {v('interface', 'flash_ms')}
+# O mesmo para os avisos que trazem algo para ler com calma, como o endereço
+# de uma exportação (W) ou o que fazer com a pasta de modelos. 0 = o aviso
+# fica até você apertar ENTER. Aplica na hora.
+tempo_aviso_longo_ms = {v('interface', 'flash_longo_ms')}
 
 [cofre]
 # Minutos sem uso até os itens cifrados trancarem sozinhos (0 desliga).
@@ -362,6 +382,8 @@ def _carregar_estado(caminho):
             estado['editor'].update(bruto['editor'])
         if isinstance(bruto.get('recentes'), list):
             estado['recentes'] = [i for i in bruto['recentes'] if isinstance(i, str)][:10]
+        if isinstance(bruto.get('doc_criada'), bool):
+            estado['doc_criada'] = bruto['doc_criada']
     return estado
 
 
@@ -418,7 +440,8 @@ def salvar_estado(config, geometria, caminho=None):
     """Grava so o estado do app. Nunca toca o TOML do usuario."""
     try:
         estado = {'geometry': geometria, 'editor': dict(config.get('editor', {})),
-                  'recentes': list(config.get('recentes', []))[:10]}
+                  'recentes': list(config.get('recentes', []))[:10],
+                  'doc_criada': bool(config.get('doc_criada', False))}
         _gravar_atomico(caminho or arquivo_estado(),
                         json.dumps(estado, indent=4, ensure_ascii=False))
     except (OSError, TypeError, ValueError) as e:

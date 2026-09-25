@@ -62,6 +62,7 @@ def main():
     if erro_carga is not None:
         app.stack = [RecoveryScreen(app, erro_carga, caminho)]
     else:
+        app.garantir_doc()
         app.stack = [BrowserScreen(app, ID_RAIZ)]
         if doc.avisos:
             app.flash("Arquivo reparado: " + "; ".join(doc.avisos))

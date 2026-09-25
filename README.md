@@ -58,6 +58,8 @@ Não há tipos fixos de conteúdo. Um "snippet" é só uma nota com um bloco de 
 
 O KeyBase é operado inteiramente pelo teclado. Digite o comando no campo de cima e pressione Enter.
 
+Na primeira vez que abre, o KeyBase cria na raiz a nota **Keybase Doc**: o manual completo, com todos os comandos, atalhos e dicas, para ler dentro do próprio app. Ela é criada uma única vez. Depois é uma nota como outra qualquer, e apagada não volta.
+
 ```
 ==============================================================
  ~ / Python / Pandas
@@ -197,7 +199,7 @@ A tela só se divide durante a edição de uma nota. Em todo o resto do app, o t
 
 No modo dividido, o preview acompanha o que você digita (com uma pausa curta) e a rolagem segue o editor.
 
-**Modelos:** crie uma pasta `Modelos` na raiz e ponha nela notas comuns com a estrutura que você repete (por exemplo `# {nome}` e `Quando usar:`). Ao criar uma nota com `N`, o KeyBase oferece `1 - Em branco` e os modelos; `{nome}` e `{data}` são preenchidos. O nome da pasta é configurável (`pasta_modelos`).
+**Modelos:** crie uma pasta `Modelos` na raiz e ponha nela notas comuns com a estrutura que você repete (por exemplo `# {nome}` e `Quando usar:`). Ao criar uma nota com `N`, o KeyBase oferece `1 - Em branco` e os modelos; `{nome}` e `{data}` são preenchidos. Se a pasta ainda não existe, o `N` oferece `2 - Criar a pasta de modelos`. Toda pasta de modelos nova, criada assim ou com `P` na raiz, já vem com o modelo `KeyBase Markdown`, um tour por tudo que o markdown do KeyBase desenha. O nome da pasta é configurável (`pasta_modelos`).
 
 Para apontar para outra nota, escreva `[[Nome da nota]]`, `[[Pasta/Nome]]` ou `[[Pasta/Nome|texto mostrado]]`: no viewer vira um link, e um link que não aponta para nenhuma nota aparece riscado. Links `http(s)://` abrem no navegador.
 
@@ -227,7 +229,7 @@ trancar_apos_min = 10
 ```
 
 - `Ctrl+S` **valida** antes de gravar. Com erro de digitação, chave desconhecida ou valor fora da faixa, nada é gravado e o erro aparece em vermelho no topo do editor.
-- Tema, altura da barra de ajuda, tempo para trancar e tempo dos avisos (`tempo_aviso_ms`, quanto tempo um aviso como "Pasta criada." fica no lugar do caminho) valem na hora. Fontes valem ao reabrir o KeyBase.
+- Tema, altura da barra de ajuda, tempo para trancar e tempo dos avisos (`tempo_aviso_ms`, quanto tempo um aviso como "Pasta criada." fica no lugar do caminho; `tempo_aviso_longo_ms` para os avisos com algo para ler, como o endereço de uma exportação; `0` deixa esse aviso na tela até você apertar ENTER) valem na hora. Fontes valem ao reabrir o KeyBase.
 - O KeyBase nunca reescreve esse arquivo sozinho: seus comentários e a formatação ficam como você deixou.
 - `[dados] pasta` aponta para onde ficam os dados, por exemplo uma pasta do iCloud, Dropbox ou Google Drive, para usar os mesmos dados em vários computadores. Na primeira vez, os dados atuais são **copiados** para lá. Se outro computador tiver gravado o arquivo enquanto este estava aberto, o KeyBase não sobrescreve: guarda as suas mudanças numa cópia `keybase_data.conflito-….json` e pergunta se recarrega o do disco ou grava o daqui por cima.
 - Se o arquivo estiver inválido ao abrir o app, o KeyBase usa os padrões, avisa, e não mexe no arquivo. Use `C` para corrigir.
@@ -267,7 +269,7 @@ O KeyBase é portátil: os dados ficam **ao lado do executável**, então dá pa
 | **keybase_data.snapshot-*.json** | ❌ Automático | Uma cópia por dia, guardando os últimos 7 dias |
 | **keybase_config.toml** | ❌ Opcional | Suas preferências (tema, fontes, tempo para trancar). Editável com `C`. Recriado se faltar |
 | **keybase_data.conflito-*.json** | ❌ Automático | Suas mudanças guardadas quando outro computador gravou os dados ao mesmo tempo |
-| **keybase_estado.json** | ❌ Automático | Tamanho e posição da janela e último modo do editor |
+| **keybase_estado.json** | ❌ Automático | Tamanho e posição da janela, último modo do editor, notas recentes e se a Keybase Doc já foi criada |
 | **window_config.json** | ❌ Antigo | Configuração das versões anteriores. Na primeira vez, os valores dele são copiados para o `keybase_config.toml`; depois não é mais usado |
 
 ### Se o arquivo de dados for corrompido
