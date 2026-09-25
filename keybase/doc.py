@@ -124,7 +124,12 @@ W exporta a pasta atual (ou W3, a pasta 3) como arquivos .md, numa pasta `KeyBas
 
 ### Filtro na pasta atual
 
-Digite qualquer texto que não seja um comando e aperte ENTER: a pasta é filtrada pelo nome, sem diferenciar acento e maiúsculas. Os números passam a indexar a lista filtrada. V limpa o filtro.
+A partir da segunda letra digitada na barra, a pasta já é filtrada pelo nome, sem ENTER e sem diferenciar acento e maiúsculas. Uma letra só não filtra, para não se confundir com um comando, e texto com número (`D3`, `12`) também não.
+
+- ENTER fixa o filtro e limpa a barra. Os números passam a indexar a lista filtrada: `1` abre o primeiro item filtrado.
+- ESC apaga o que está na barra, e a lista volta.
+- Digitar com um filtro já fixado filtra a pasta inteira de novo. Apagar tudo volta ao filtro fixado.
+- V limpa o filtro fixado.
 
 Para filtrar por algo que é um comando, comece com barra: `/c` filtra por "c" em vez de abrir a configuração, e `/sair` não encerra.
 

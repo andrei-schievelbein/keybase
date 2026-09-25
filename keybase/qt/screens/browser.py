@@ -63,6 +63,9 @@ class BrowserScreen(Screen):
         super().__init__(app)
         self.node_id = node_id
         self.filtro = ""
+        #: o que esta sendo digitado na barra, ja filtrando (ver ao_digitar);
+        #: None = vale o filtro fixado com ENTER
+        self.filtro_vivo = None
         self.itens = []
         self.folder = None
         self.descartada = False
@@ -81,11 +84,60 @@ class BrowserScreen(Screen):
         self.folder = no
         self.descartada = False
 
-        if self.filtro:
-            filtrados = search.filtrar(self.folder, self.filtro)
+        if self.filtro_ativo:
+            filtrados = search.filtrar(self.folder, self.filtro_ativo)
             self.itens = filtrados if filtrados is not None else []
         else:
             self.itens = tree.filhos_ordenados(self.folder)
+
+    @property
+    def filtro_ativo(self):
+        return self.filtro_vivo if self.filtro_vivo is not None else self.filtro
+
+    # --- filtro enquanto digita ---------------------------------------------
+
+    #: a partir de quantas letras o texto na barra ja filtra: com uma so, ela
+    #: seria confundida com a letra de um comando (C, D, P...)
+    MINIMO_FILTRO_VIVO = 2
+
+    def termo_vivo(self, texto):
+        """O termo que o texto da barra filtra ao vivo, ou None.
+
+        Nunca filtra o que e (ou esta virando) comando: numero de item ('12'),
+        comando com alvo ('D3', 'Y2') e '?'/'??'. 'sair' filtra enquanto e
+        digitado, sem prejuizo: o ENTER continua encerrando.
+        """
+        termo = texto.strip()
+        if termo.startswith('/'):
+            termo = termo[1:].strip()
+        if len(termo) < self.MINIMO_FILTRO_VIVO:
+            return None
+        if any(c.isdigit() for c in termo) or '?' in termo:
+            return None
+        return termo
+
+    def ao_digitar(self, texto):
+        """Cada tecla na barra. Devolve True se a lista precisa ser repintada."""
+        vivo = self.termo_vivo(texto)
+        if vivo == self.filtro_vivo:
+            return False
+        antes = self.filtro_ativo
+        self.filtro_vivo = vivo
+        return self.filtro_ativo != antes
+
+    def handle_input(self, texto):
+        # ENTER: o que foi digitado vira comando ou filtro fixado (cmd_filtro)
+        self.filtro_vivo = None
+        return super().handle_input(texto)
+
+    def on_cancel(self):
+        """ESC com texto na barra so apaga o texto (e o filtro ao vivo)."""
+        if self.app.view.ler_entrada():
+            self.app.view.limpar_entrada()
+            self.filtro_vivo = None
+            self.app.rerender()
+            return
+        super().on_cancel()
 
     @property
     def na_raiz(self):
@@ -106,15 +158,15 @@ class BrowserScreen(Screen):
         view.barra()
         if msg:
             view.linha(" " + msg, 'erro' if erro else 'flash')
-        elif self.filtro:
+        elif self.filtro_ativo:
             view.trechos([
                 (" " + breadcrumb, 'breadcrumb'),
                 ("   filtro: ", 'contador'),
-                (f'"{self.filtro}"', 'flash'),
+                (f'"{self.filtro_ativo}"', 'flash'),
             ])
         else:
             view.linha(" " + breadcrumb, 'breadcrumb')
-        if not self.filtro and self.folder is not None and self.folder.descricao:
+        if not self.filtro_ativo and self.folder is not None and self.folder.descricao:
             view.linha(" " + truncar(self.folder.descricao, largura - 2), 'contador')
         view.barra()
 
@@ -124,7 +176,7 @@ class BrowserScreen(Screen):
             for i, no in enumerate(self.itens, start=1):
                 view.trechos(linha_item(i, no, largura))
 
-        if self.filtro:
+        if self.filtro_ativo:
             total = tree.contar_itens(self.folder)
             view.linha(f" {len(self.itens)} de {total} itens - V limpa o filtro",
                        'contador')
@@ -133,7 +185,7 @@ class BrowserScreen(Screen):
 
     def _render_vazio(self):
         view = self.app.view
-        if self.filtro:
+        if self.filtro_ativo:
             view.linha(" Nenhum item corresponde ao filtro.", 'vazio')
             return
         view.linha(" Pasta vazia.", 'vazio')

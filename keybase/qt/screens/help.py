@@ -29,7 +29,8 @@ SECOES = [
         ("Modelos/", "notas dessa pasta da raiz viram modelos ao criar com N"),
     ]),
     ("Buscar", [
-        ("texto", "filtrar a pasta atual pelo nome - basta digitar e dar Enter"),
+        ("texto", "filtra a pasta pelo nome enquanto digita, da 2ª letra em diante"),
+        ("Enter", "fixa o filtro e limpa a barra; ESC apaga o que foi digitado"),
         ("/texto", "o mesmo, para termos que colidem com um comando (/b, /c)"),
         ("B", "buscar em toda a base (nome, descrição e conteúdo)"),
         ("setas", "nos resultados, escolhem um item; ENTER abre o escolhido"),

@@ -1970,6 +1970,96 @@ class TestAvisoNoLugarDoCaminho(BaseUI):
         self.assertEqual(self.app.duracao_flash_ms(), 800)
 
 
+class TestFiltroAoVivo(BaseUI):
+    def setUp(self):
+        super().setUp()
+        for nome in ("Ciência de dados", "cifras", "Python", "Spark"):
+            self.criar_pasta(nome)
+
+    def teclar(self, texto):
+        from PySide6.QtTest import QTest
+        QTest.keyClicks(self.view.entrada, texto)
+        _app_qt().processEvents()
+
+    def apagar(self, n=1):
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+        for _ in range(n):
+            QTest.keyClick(self.view.entrada, Qt.Key.Key_Backspace)
+        _app_qt().processEvents()
+
+    def nomes(self):
+        return [n.nome for n in self.app.atual.itens]
+
+    def test_uma_letra_nao_filtra(self):
+        self.teclar('c')
+        self.assertEqual(len(self.nomes()), 4)
+        self.assertNaoNaTela("filtro:")
+
+    def test_duas_letras_filtram_sem_enter(self):
+        self.teclar('ci')
+        self.assertEqual(self.nomes(), ["Ciência de dados", "cifras"])
+        self.assertNaTela('filtro: "ci"')
+        self.assertNaTela("2 de 4 itens")
+        self.assertEqual(self.view.entrada.text(), "ci")   # a barra fica como esta
+
+    def test_apagar_volta_a_lista_inteira(self):
+        self.teclar('ci')
+        self.apagar()
+        self.assertEqual(len(self.nomes()), 4)
+        self.assertNaoNaTela("filtro:")
+
+    def test_enter_fixa_o_filtro_e_o_numero_abre_o_filtrado(self):
+        self.teclar('py')
+        self.digitar(self.view.entrada.text())   # ENTER
+        self.assertEqual(self.view.entrada.text(), "")
+        self.assertEqual(self.nomes(), ["Python"])
+        self.digitar('1')
+        self.assertEqual(self.app.atual.folder.nome, "Python")
+
+    def test_comando_com_numero_nao_filtra(self):
+        self.teclar('d2')
+        self.assertEqual(len(self.nomes()), 4)
+
+    def test_interrogacao_nao_filtra(self):
+        self.teclar('??')
+        self.assertEqual(len(self.nomes()), 4)
+
+    def test_barra_filtra_ao_vivo_tambem(self):
+        self.teclar('/sp')
+        self.assertEqual(self.nomes(), ["Spark"])
+
+    def test_digitar_sobre_um_filtro_fixado_filtra_a_pasta_inteira(self):
+        self.digitar('ci')                      # fixado
+        self.teclar('py')
+        self.assertEqual(self.nomes(), ["Python"])
+        self.apagar(2)                          # barra vazia: volta o fixado
+        self.assertEqual(self.nomes(), ["Ciência de dados", "cifras"])
+
+    def test_esc_apaga_o_texto_e_nao_sai_da_pasta(self):
+        self.digitar('1')                       # entra em Ciência de dados
+        self.criar_pasta("Aulas")
+        self.teclar('xy')
+        self.assertEqual(self.nomes(), [])
+        self.app.cancel()
+        self.assertEqual(self.view.entrada.text(), "")
+        self.assertEqual(self.nomes(), ["Aulas"])
+        self.assertEqual(self.app.atual.folder.nome, "Ciência de dados")
+
+    def test_sair_continua_encerrando(self):
+        chamado = []
+        self.app.sair = lambda: chamado.append(True)
+        self.teclar('sair')
+        self.digitar(self.view.entrada.text())
+        self.assertEqual(chamado, [True])
+
+    def test_nao_filtra_no_prompt(self):
+        self.digitar('N')
+        self.teclar('ci')
+        self.assertEqual(self.nome_tela(), 'PromptScreen')
+        self.assertEqual(self.view.entrada.text(), "ci")
+
+
 class TestKeybaseDoc(BaseUI):
     def nomes_na_raiz(self):
         return [n.nome for n in self.app.raiz.filhos]

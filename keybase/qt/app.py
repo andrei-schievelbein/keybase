@@ -634,6 +634,16 @@ class App:
         if self.atual:
             self.atual.on_save()
 
+    def ao_digitar(self, texto):
+        """Cada tecla na barra (textEdited: so o usuario, nunca o clear do app).
+
+        A tela decide se o texto muda a lista (filtro ao vivo do browser); a
+        barra fica como esta, com o cursor no lugar.
+        """
+        reagir = getattr(self.atual, 'ao_digitar', None)
+        if reagir is not None and reagir(texto):
+            self.rerender()
+
     def cancel(self):
         if self.atual:
             self.atual.on_cancel()

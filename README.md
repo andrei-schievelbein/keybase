@@ -104,7 +104,7 @@ logo abaixo do campo de comando; `?` de novo e ele some:
 
 ### Filtrando
 
-Digite qualquer texto que não seja um comando e dê Enter — o nível visível é filtrado pelo nome, ignorando acento e maiúsculas. `V` limpa o filtro.
+A partir da segunda letra, o nível visível já é filtrado pelo nome enquanto você digita, sem Enter, ignorando acento e maiúsculas. Uma letra só não filtra, para não se confundir com um comando; texto com número (`D3`, `12`) também não. Enter fixa o filtro e limpa a barra, e aí `1` abre o primeiro item filtrado. `Esc` apaga o que está na barra, e `V` limpa o filtro fixado.
 
 ```
 digitou "agr"            →   1 - Agrupamentos
@@ -141,7 +141,7 @@ Como as letras de comando continuam valendo, use a barra para filtrar por um ter
 | `K` ou `K3` | Cifra ou decifra uma nota; numa pasta, cifra todas as notas dela |
 | `T` | Tranca os itens cifrados; se já estiverem trancados, pede a senha e destranca |
 | `S` | Troca a senha mestra |
-| `texto` | Filtra a pasta atual pelo nome — é só digitar e dar Enter |
+| `texto` | Filtra a pasta atual pelo nome enquanto você digita, a partir da 2ª letra; Enter fixa o filtro |
 | `/texto` | O mesmo, para termos que colidem com um comando (`/b`, `/c`, `/sair`) |
 | `?` | Mostra ou esconde o menu de comandos (o mesmo que `Ctrl+0`) |
 | `??` | Ajuda completa |
