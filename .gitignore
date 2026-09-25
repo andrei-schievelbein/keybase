@@ -1,6 +1,8 @@
-# PyInstaller build artifacts
+# PyInstaller build artifacts (os executaveis vao para o GitHub Releases)
 build/
 dist/
+releases/
+*.exe
 *.spec.bak
 
 # Python cache
