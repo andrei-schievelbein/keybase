@@ -246,11 +246,27 @@ class BrowserScreen(Screen):
             return None
         return validar
 
+    def _e_a_pasta_de_modelos(self, nome):
+        """Uma pasta criada na raiz com o nome de pasta_modelos da configuracao."""
+        nome_pasta = self.app.config.get('notas', {}).get('modelos', '')
+        return (self.folder is self.app.raiz and bool(nome_pasta)
+                and tree.normalizar(nome) == tree.normalizar(nome_pasta))
+
     def cmd_nova_pasta(self, alvo=None):
         def criar(nome, cifrada):
             novo = tree.novo_folder(nome)
             novo.nasce_cifrada = cifrada
             tree.adicionar(self.folder, novo)
+            if self._e_a_pasta_de_modelos(nome):
+                from ... import modelos as mod_modelos
+                mod_modelos.criar_exemplo(novo)
+                self.app.persistir()
+                self.app.flash(f"Pasta de modelos {nome!r} criada, com o modelo "
+                               f"{mod_modelos.NOME_EXEMPLO!r}. Crie notas nela ou "
+                               f"copie notas para lá. Cada uma vira um modelo.",
+                               longo=True)
+                self.app.rerender()
+                return
             self.app.persistir()
             self.app.flash(f"Pasta {nome!r} criada"
                            + (" - notas novas nascem cifradas." if cifrada else "."))
@@ -288,6 +304,9 @@ class BrowserScreen(Screen):
             nome_pasta = self.app.config.get('notas', {}).get('modelos', '')
             pasta_modelos = mod_modelos.pasta_de_modelos(self.app.raiz, nome_pasta)
             disponiveis = mod_modelos.modelos(self.app.raiz, nome_pasta)
+            # sem pasta nem nada com o nome dela na raiz: oferece cria-la
+            if nome_pasta and tree.nome_disponivel(self.app.raiz, nome_pasta):
+                return oferecer_pasta(nome, nome_pasta)
             # criando dentro da propria pasta de modelos = criando um modelo novo
             if not disponiveis or self.folder is pasta_modelos:
                 return criar(nome, "")
@@ -303,6 +322,27 @@ class BrowserScreen(Screen):
                 else f"Digite um número de 1 a {len(disponiveis) + 1}.",
                 opcoes=[(1, "Em branco")] + [(i, m.nome) for i, m
                                              in enumerate(disponiveis, start=2)],
+                contexto=montar_breadcrumb(self.app.caminho_de(self.node_id)),
+            ))
+
+        def oferecer_pasta(nome, nome_pasta):
+            def escolher(texto):
+                if texto == '1':
+                    return criar(nome, "")
+                pasta = tree.novo_folder(nome_pasta)
+                tree.adicionar(self.app.raiz, pasta)
+                mod_modelos.criar_exemplo(pasta)
+                self.app.persistir()
+                self.app.flash(f"Pasta {nome_pasta!r} criada na raiz. Crie notas nela ou "
+                               f"copie notas para lá. Cada uma vira um modelo.",
+                               longo=True)
+                self.app.rerender()
+
+            self.app.push(PromptScreen(
+                self.app, f"Modelo para {nome!r}:", escolher,
+                validar=lambda t: None if t in ('1', '2') else "Digite 1 ou 2.",
+                opcoes=[(1, "Em branco"), (2, "Criar a pasta de modelos")],
+                detalhe=f"2 cria a pasta {nome_pasta!r} na raiz, sem criar a nota.",
                 contexto=montar_breadcrumb(self.app.caminho_de(self.node_id)),
             ))
 

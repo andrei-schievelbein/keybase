@@ -36,6 +36,7 @@ class App:
         self.stack = []
         self._flash = None
         self._flash_erro = False
+        self._flash_longo = False
         #: o menu de comandos comeca escondido e nao persiste entre sessoes
         self.menu_visivel = False
         self.indice = construir_indice(doc.raiz)
@@ -45,6 +46,10 @@ class App:
         #: onde a tela de configuracao le e grava; None = o padrao de paths.py
         self.caminho_config = None
         self._tela_do_flash = None
+        self._flash_mostrado_longo = False
+        #: (tela, mensagem, erro) do aviso longo que so sai com ENTER
+        #: (tempo_aviso_longo_ms = 0); redesenhado a cada repinte dessa tela
+        self._flash_fixo = None
         self._copia_sensivel = None
         #: [(descricao, raiz.to_dict() de antes da acao)] - ver registrar_desfazer
         self._desfazer = []
@@ -75,6 +80,21 @@ class App:
         from ..tree import caminho
         no = self.no(node_id)
         return caminho(self.indice, no) if no else []
+
+    def garantir_doc(self):
+        """Poe a nota "Keybase Doc" na raiz, so na primeira vez que o app abre.
+
+        A marca fica no estado (keybase_estado.json): apagada, a nota nao volta.
+        Se ja existe algo com esse nome na raiz (outro computador sincronizado
+        criou, ou o usuario), so marca.
+        """
+        from .. import doc as mod_doc
+        if self.config.get('doc_criada') or self.doc.somente_leitura:
+            return
+        if tree.nome_disponivel(self.raiz, mod_doc.NOME_DOC):
+            tree.adicionar(self.raiz, tree.novo_file(mod_doc.NOME_DOC, mod_doc.CONTEUDO_DOC))
+            self.persistir()
+        self.config['doc_criada'] = True
 
     def persistir(self):
         """Grava a arvore. Reporta falha na tela, nunca explode em silencio."""
@@ -490,7 +510,7 @@ class App:
 
     # --- render ------------------------------------------------------------
 
-    def flash(self, mensagem, erro=False):
+    def flash(self, mensagem, erro=False, longo=False):
         """Mensagem one-shot, consumida no proximo render.
 
         Aparece NO LUGAR do caminho ('~ / ...') e some sozinha depois de
@@ -498,10 +518,15 @@ class App:
         bloco proprio na tela.
         Truncada porque pode conter o nome de um item, que o usuario controla
         e pode ser bem longo.
+
+        `longo`: aviso com algo para ler com calma (um endereco, uma instrucao).
+        Fica interface.tempo_aviso_longo_ms e pode quebrar em ate 3 linhas.
         """
         from .layout import truncar
-        self._flash = truncar(mensagem, self.view.colunas() - 4)
+        linhas = 3 if longo else 1
+        self._flash = truncar(mensagem, linhas * (self.view.colunas() - 4))
         self._flash_erro = erro
+        self._flash_longo = longo
 
     def consumir_flash(self):
         msg, erro = self._flash, self._flash_erro
@@ -509,13 +534,16 @@ class App:
         self._flash_erro = False
         if msg:
             self._tela_do_flash = self.atual  # rerender agenda a volta do caminho
+            self._flash_mostrado_longo = self._flash_longo
+        self._flash_longo = False
         return msg, erro
 
-    def duracao_flash_ms(self):
+    def duracao_flash_ms(self, longo=False):
         """Lida a cada aviso: mudar na configuracao vale ja no proximo."""
         from ..config import DEFAULT_CONFIG
-        padrao = DEFAULT_CONFIG['interface']['flash_ms']
-        return self.config.get('interface', {}).get('flash_ms', padrao)
+        chave = 'flash_longo_ms' if longo else 'flash_ms'
+        padrao = DEFAULT_CONFIG['interface'][chave]
+        return self.config.get('interface', {}).get(chave, padrao)
 
     def _fim_do_flash(self):
         """O tempo do aviso acabou: repinta para o caminho voltar."""
@@ -552,19 +580,32 @@ class App:
         self.view.modo_senha(tela.ENTRADA_SENHA)
         # mesma flag que governa o desenho e o '?'/Ctrl+0: o botao acompanha
         self.view.habilitar_ajuda(tela.MOSTRA_MENU)
+        fixo, self._flash_fixo = self._flash_fixo, None
+        if fixo and fixo[0] is tela and self._flash is None:
+            # repinte da mesma tela (reajuste da janela, filtro...): o aviso volta
+            _, self._flash, self._flash_erro = fixo
+            self._flash_longo = True
         if tela.usa_editor():
             self.view.dica(tela.help_text())
             tela.render()
         else:
             self.view.modo_leitura()
             self.view.limpar()
+            pendente = self._flash, self._flash_erro
             # antes de render(): o menu e o primeiro bloco da area de leitura
             tela.desenhar_menu()
             tela.render()
             self.view.ao_topo()
             self.view.dica(tela.help_text())
             if self._tela_do_flash is tela:
-                self.janela.agendar_fim_do_flash(self.duracao_flash_ms(), self._fim_do_flash)
+                duracao = self.duracao_flash_ms(self._flash_mostrado_longo)
+                if duracao:
+                    self.janela.agendar_fim_do_flash(duracao, self._fim_do_flash)
+                elif pendente[0] is not None and self._flash is None:
+                    # tempo 0 (so o longo aceita): fica ate o ENTER, ver submit
+                    self.janela.cancelar_fim_do_flash()
+                    self._tela_do_flash = None
+                    self._flash_fixo = (tela,) + pendente
 
     # --- eventos -----------------------------------------------------------
 
@@ -572,6 +613,14 @@ class App:
         comando = self.view.ler_entrada()
         self.view.limpar_entrada()
         self.registrar_atividade()
+        if not comando.strip() and self._flash_fixo is not None \
+                and self._flash_fixo[0] is self.atual:
+            # ENTER vazio so tira o aviso fixo: nao volta nem abre nada
+            self._flash_fixo = None
+            rolagem = self.view.posicao_rolagem()
+            self.rerender()
+            self.view.rolar_para(rolagem)
+            return
         if self.atual:
             self.atual.handle_input(comando)
 
@@ -751,7 +800,7 @@ class App:
             onde = f"{r.pasta.parent.name}/{r.pasta.name}"
             puladas = f", {len(r.pulados)} cifradas puladas" if r.pulados else ""
             aviso = f"{r.notas} notas exportadas{puladas}: {onde}"
-            self.flash(aviso)
+            self.flash(aviso, longo=True)
             self.rerender()
 
         def em_claro():

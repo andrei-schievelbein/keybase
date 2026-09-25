@@ -141,6 +141,8 @@ class BaseUI(unittest.TestCase):
     def criar_nota(self, nome, conteudo=""):
         self.digitar('N')
         self.digitar(nome)          # cai no editor
+        if self.nome_tela() == 'PromptScreen':
+            self.digitar('1')       # sem pasta de modelos: "1 - Em branco"
         if conteudo:
             self.digitar_no_editor(conteudo)
         self.app.save()             # Ctrl+S
@@ -272,6 +274,7 @@ class TestCriacao(BaseUI):
     def test_nota_cai_direto_no_editor(self):
         self.digitar('N')
         self.digitar('Minha nota')
+        self.digitar('1')   # Em branco
         self.assertEqual(self.nome_tela(), 'EditorScreen')
         self.assertTrue(self.app.atual.usa_editor())
 
@@ -885,6 +888,7 @@ class TestModos(BaseUI):
 
         self.digitar('N')
         self.digitar('Nota')
+        self.digitar('1')   # Em branco
         self.assertIs(self.view.pilha.currentWidget(), self.view.painel)
 
         self.app.save()
@@ -894,6 +898,7 @@ class TestModos(BaseUI):
         self.assertFalse(self.view.ajuda.isVisibleTo(self.janela))
         self.digitar('N')
         self.digitar('Nota')
+        self.digitar('1')   # Em branco
         self.assertFalse(self.view.ajuda.isVisibleTo(self.janela))
         self.digitar('?')
         self.assertTrue(self.view.ajuda.isVisibleTo(self.janela))
@@ -1897,6 +1902,65 @@ class TestAvisoNoLugarDoCaminho(BaseUI):
         self.assertEqual(self.nome_tela(), 'PromptScreen')
         self.assertEqual(self.view.entrada.text(), "digitando")
 
+    def test_aviso_longo_usa_o_proprio_tempo_e_nao_corta_em_uma_linha(self):
+        self.config['interface']['flash_longo_ms'] = 1234
+        self.assertEqual(self.app.duracao_flash_ms(longo=True), 1234)
+        texto = "palavra " * 40
+        self.app.flash(texto, longo=True)
+        self.assertGreater(len(self.app._flash), self.view.colunas())
+        self.app.flash(texto)
+        self.assertLess(len(self.app._flash), self.view.colunas())
+
+    def test_aviso_longo_com_tempo_zero_fica_ate_o_enter(self):
+        from PySide6.QtTest import QTest
+        self.config['interface']['flash_longo_ms'] = 0
+        self.config['interface']['flash_ms'] = 30
+        self.criar_nota("Nota", "x")
+        self.app.flash("Aviso para ler com calma.", longo=True)
+        self.app.rerender()
+        QTest.qWait(150)
+        self.assertNaTela("Aviso para ler com calma.")
+        self.app._fim_do_flash()   # timer atrasado de um aviso anterior
+        self.assertNaTela("Aviso para ler com calma.")
+        self.app.rerender()        # reajuste da janela: o aviso continua
+        self.assertNaTela("Aviso para ler com calma.")
+        self.digitar('')           # ENTER vazio: so tira o aviso
+        self.assertNaoNaTela("Aviso para ler com calma.")
+        self.assertEqual(self.nome_tela(), 'BrowserScreen')
+        self.assertIn("Nota", self.tela())
+
+    def test_aviso_fixo_sai_com_um_comando_que_segue_normal(self):
+        self.config['interface']['flash_longo_ms'] = 0
+        self.criar_nota("Nota", "x")
+        self.app.flash("Aviso fixo.", longo=True)
+        self.app.rerender()
+        self.digitar('1')
+        self.assertEqual(self.nome_tela(), 'ViewerScreen')
+        self.assertNaoNaTela("Aviso fixo.")
+        self.digitar('')           # sem aviso: ENTER volta, como sempre
+        self.assertEqual(self.nome_tela(), 'BrowserScreen')
+
+    def test_aviso_curto_ignora_o_tempo_zero_do_longo(self):
+        from PySide6.QtTest import QTest
+        self.config['interface']['flash_longo_ms'] = 0
+        self.config['interface']['flash_ms'] = 30
+        self.digitar('V')
+        QTest.qWait(150)
+        self.assertNaoNaTela("Você já está na raiz")
+
+    def test_tempo_zero_so_vale_para_o_aviso_longo(self):
+        from keybase import config
+        base = config.modelo_toml()
+        _, erros = config.validar_texto(
+            base.replace('tempo_aviso_longo_ms = 8000', 'tempo_aviso_longo_ms = 0'))
+        self.assertEqual(erros, [])
+        _, erros = config.validar_texto(
+            base.replace('tempo_aviso_longo_ms = 8000', 'tempo_aviso_longo_ms = 100'))
+        self.assertTrue(erros)
+        _, erros = config.validar_texto(
+            base.replace('tempo_aviso_ms = 2500', 'tempo_aviso_ms = 0'))
+        self.assertTrue(erros)
+
     def test_tempo_do_aviso_vem_da_configuracao(self):
         from keybase import config
         texto = config.modelo_toml().replace('tempo_aviso_ms = 2500', 'tempo_aviso_ms = 800')
@@ -1904,6 +1968,47 @@ class TestAvisoNoLugarDoCaminho(BaseUI):
         self.assertEqual(erros, [])
         self.app.aplicar_config(usuario)
         self.assertEqual(self.app.duracao_flash_ms(), 800)
+
+
+class TestKeybaseDoc(BaseUI):
+    def nomes_na_raiz(self):
+        return [n.nome for n in self.app.raiz.filhos]
+
+    def test_criada_na_raiz_na_primeira_vez(self):
+        self.app.garantir_doc()
+        self.assertEqual(self.nomes_na_raiz(), ["Keybase Doc"])
+        self.assertTrue(self.config['doc_criada'])
+        self.assertTrue(self.app.raiz.filhos[0].conteudo.startswith("# Keybase Doc"))
+
+    def test_apagada_nao_volta(self):
+        self.app.garantir_doc()
+        tree.remover(self.app.raiz, self.app.raiz.filhos[0])
+        self.app.garantir_doc()
+        self.assertEqual(self.nomes_na_raiz(), [])
+
+    def test_nome_ja_ocupado_so_marca(self):
+        self.criar_nota("keybase doc", "minha")
+        self.app.garantir_doc()
+        self.assertEqual(self.nomes_na_raiz(), ["keybase doc"])
+        self.assertTrue(self.config['doc_criada'])
+
+    def test_marca_sobrevive_ao_reabrir(self):
+        from keybase import config
+        caminho = Path(self.dir) / 'estado.json'
+        self.config['doc_criada'] = True
+        config.salvar_estado(self.config, '800x600', caminho)
+        self.assertTrue(config._carregar_estado(caminho)['doc_criada'])
+
+    def test_renderiza_e_os_links_entre_notas_funcionam(self):
+        self.app.garantir_doc()
+        self.app.rerender()   # no app, garantir_doc roda antes do primeiro render
+        self.digitar('1')
+        self.assertEqual(self.nome_tela(), 'ViewerScreen')
+        html = self.view.out.toHtml()
+        self.assertIn('href="kb:Keybase%20Doc"', html)
+        self.assertNotIn("line-through", html)   # nenhum [[link]] quebrado
+        for secao in ("Navegação", "Notas e pastas cifradas", "Configuração", "Dicas"):
+            self.assertIn(secao, html)
 
 
 class TestConfiguracaoAntiga(BaseUI):
@@ -2433,7 +2538,64 @@ class TestFase4(CofreMixin, BaseUI):
         self.digitar('N'); self.digitar('Nova'); self.digitar('1')
         self.assertEqual(self.editor().toPlainText(), "")
 
-    def test_sem_modelos_nao_pergunta(self):
+    def test_pasta_de_modelos_vazia_nao_pergunta(self):
+        self.criar_pasta("Modelos")
+        pasta = self.app.raiz.filhos[0]
+        tree.remover(pasta, pasta.filhos[0])   # tira o modelo de exemplo
+        self.digitar('N'); self.digitar('Nova')
+        self.assertEqual(self.nome_tela(), 'EditorScreen')
+
+    def test_sem_pasta_de_modelos_oferece_cria_la(self):
+        self.digitar('N'); self.digitar('Nova')
+        linhas = [l.strip() for l in self.tela().splitlines()]
+        self.assertIn("1 - Em branco", linhas)
+        self.assertIn("2 - Criar a pasta de modelos", linhas)
+        self.digitar('1')
+        self.assertEqual(self.nome_tela(), 'EditorScreen')
+        self.assertEqual(self.editor().toPlainText(), "")
+
+    def test_criar_a_pasta_de_modelos_avisa_com_aviso_longo(self):
+        self.digitar('N'); self.digitar('Nova'); self.digitar('2')
+        self.assertEqual(self.nome_tela(), 'BrowserScreen')
+        self.assertEqual([f.nome for f in self.app.raiz.filhos], ["Modelos"])
+        self.assertEqual([n.nome for n in self.app.raiz.filhos[0].filhos],
+                         ["KeyBase Markdown"])
+        self.assertNaTela("criada na raiz")
+        self.assertTrue(self.app._flash_mostrado_longo)
+        # a partir dai o N oferece o modelo de exemplo
+        self.digitar('N'); self.digitar('Nova')
+        linhas = [l.strip() for l in self.tela().splitlines()]
+        self.assertIn("2 - KeyBase Markdown", linhas)
+        self.digitar('2')
+        texto = self.editor().toPlainText()
+        self.assertTrue(texto.startswith("# Nova\n"))
+        self.assertNotIn("{data}", texto)
+
+    def test_criar_a_pasta_de_modelos_com_P_traz_o_exemplo(self):
+        self.criar_pasta("modelos")   # sem caixa: ainda e a pasta de modelos
+        self.assertEqual([n.nome for n in self.app.raiz.filhos[0].filhos],
+                         ["KeyBase Markdown"])
+        self.assertNaTela("Pasta de modelos")
+
+    def test_pasta_modelos_fora_da_raiz_e_uma_pasta_comum(self):
+        self.criar_pasta("Projetos")
+        self.digitar('1')
+        self.criar_pasta("Modelos")
+        self.assertEqual(self.app.raiz.filhos[0].filhos[0].filhos, [])
+
+    def test_modelo_de_exemplo_renderiza_tudo_e_o_link_para_si_funciona(self):
+        self.digitar('N'); self.digitar('Nova'); self.digitar('2')
+        self.digitar('1')   # abre a pasta Modelos
+        self.digitar('1')   # abre o KeyBase Markdown
+        self.assertEqual(self.nome_tela(), 'ViewerScreen')
+        html = self.view.out.toHtml()
+        for trecho in ("Tabela", "☑", "☐", "saudacao", "Nota de rodapé"):
+            self.assertIn(trecho, html)
+        self.assertIn('href="kb:Modelos/KeyBase%20Markdown"', html)
+        self.assertIn("line-through", html)   # o link quebrado de proposito
+
+    def test_nome_da_pasta_de_modelos_ocupado_nao_oferece(self):
+        self.criar_nota("Modelos", "x")
         self.digitar('N'); self.digitar('Nova')
         self.assertEqual(self.nome_tela(), 'EditorScreen')
 

@@ -203,6 +203,9 @@ class JanelaPrincipal(QWidget):
         self._fim_do_flash = callback
         self._timer_flash.start(ms)
 
+    def cancelar_fim_do_flash(self):
+        self._timer_flash.stop()
+
     def _ao_fim_do_flash(self):
         if self._fim_do_flash is not None and not self._encerrando:
             self._fim_do_flash()

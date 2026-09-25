@@ -61,6 +61,7 @@ SECOES = [
         ("C", "abre keybase_config.toml no editor, como uma nota"),
         (atalhos.rotulo(atalhos.SALVAR), "valida, salva e aplica (fontes só ao reabrir)"),
         ("tempo_aviso_ms", "quanto tempo um aviso fica no lugar do caminho"),
+        ("tempo_aviso_longo_ms", "o mesmo, para avisos com algo para ler; 0 = fica até o ENTER"),
         ("", "com erro, nada é gravado: o erro aparece em vermelho no topo"),
     ]),
     ("Outros", [
