@@ -10,7 +10,9 @@ digitado - a ordem exibida e derivada e difere da ordem de insercao. Foi esse
 descasamento que fez a versao anterior abrir o item errado depois de uma busca.
 """
 
-from ... import cripto, search, tree
+import re
+
+from ... import cripto, search, selecao, tree
 from ...model import File, Folder
 from ..layout import montar_breadcrumb, truncar
 from .base import Screen
@@ -37,8 +39,8 @@ class BrowserScreen(Screen):
         'B': 'cmd_buscar',
         'K': 'cmd_cifrar',
         'T': 'cmd_trancar',
-        'Y': 'cmd_copiar',
-        'X': 'cmd_mover',
+        'C': 'cmd_copiar',
+        'M': 'cmd_mover',
         'Z': 'cmd_duplicar',
         'S': 'cmd_senha',
         'U': 'cmd_desfazer',
@@ -46,17 +48,17 @@ class BrowserScreen(Screen):
         'F': 'cmd_favorito',
         'L': 'cmd_favoritos',
         'V': 'cmd_voltar',
-        'M': 'cmd_raiz',
-        'C': 'cmd_config',
+        '/': 'cmd_raiz',
+        'O': 'cmd_config',
     }
     ROTULOS = {
         'P': 'Nova pasta', 'N': 'Nova nota', 'E': 'Editar nota',
-        'C': 'Configuração',
+        'O': 'Opções',
         'R': 'Renomear', 'D': 'Deletar', 'B': 'Buscar',
-        'K': 'Cifrar/decifrar', 'T': 'Trancar/destrancar', 'Y': 'Copiar para...',
-        'X': 'Mover', 'Z': 'Duplicar', 'S': 'Trocar senha', 'U': 'Desfazer',
+        'K': 'Cifrar/decifrar', 'T': 'Trancar/destrancar', 'C': 'Copiar para...',
+        'M': 'Mover', 'Z': 'Duplicar', 'S': 'Trocar senha', 'U': 'Desfazer',
         'W': 'Exportar .md', 'F': 'Favoritar', 'L': 'Favoritos e recentes',
-        'V': 'Voltar', 'M': 'Ir para a raiz',
+        'V': 'Voltar', '/': 'Ir para a raiz',
     }
 
     def __init__(self, app, node_id):
@@ -117,13 +119,17 @@ class BrowserScreen(Screen):
         return termo
 
     def ao_digitar(self, texto):
-        """Cada tecla na barra. Devolve True se a lista precisa ser repintada."""
+        """Cada tecla na barra. Devolve True se a tela precisa ser repintada:
+        o filtro ao vivo mudou a lista, ou o menu troca de comando (base)."""
+        menu = super().ao_digitar(texto)
         vivo = self.termo_vivo(texto)
         if vivo == self.filtro_vivo:
-            return False
+            return menu
         antes = self.filtro_ativo
         self.filtro_vivo = vivo
-        return self.filtro_ativo != antes
+        return self.filtro_ativo != antes or menu
+
+    COMANDOS_EM_LOTE = ('C', 'M', 'Z', 'D', 'F')
 
     def handle_input(self, texto):
         # ENTER: o que foi digitado vira comando ou filtro fixado (cmd_filtro)
@@ -133,10 +139,7 @@ class BrowserScreen(Screen):
     def on_cancel(self):
         """ESC com texto na barra so apaga o texto (e o filtro ao vivo)."""
         if self.app.view.ler_entrada():
-            self.app.view.limpar_entrada()
             self.filtro_vivo = None
-            self.app.rerender()
-            return
         super().on_cancel()
 
     @property
@@ -194,11 +197,44 @@ class BrowserScreen(Screen):
     def help_text(self):
         return None
 
+    #: comandos que agem sobre um item: o que o menu diz com a letra na barra,
+    #: '{}' e o item ("o item 3", "'Receitas/'")
+    ACOES_NO_ITEM = {
+        'E': "Editar {}", 'R': "Renomear {}", 'D': "Deletar {}",
+        'K': "Cifrar/decifrar {}", 'C': "Copiar {} para outra pasta",
+        'M': "Mover {} para outra pasta", 'Z': "Duplicar {}",
+        'F': "Favoritar/desfavoritar {}", 'W': "Exportar {} como .md",
+    }
+
+    def comando_na_barra(self, texto):
+        """Tambem o numero sozinho ('3'): o menu diz o que o ENTER abre."""
+        termo = (texto or "").strip()
+        if termo.isdigit() and int(termo) > 0:
+            return None, int(termo) - 1
+        return super().comando_na_barra(texto)
+
+    def menu_do_comando(self, letra, alvo):
+        """O numero sozinho e o W, que sozinho nao pergunta; o resto e da base."""
+        desistir = ("ESC", "Desistir do comando")
+        if letra is None:
+            if alvo >= len(self.itens):
+                return [("ENTER", f"Não há item {alvo + 1} na lista"), desistir]
+            no = self.itens[alvo]
+            acao = f"Entrar em {no.nome + '/'!r}" if isinstance(no, Folder) \
+                else f"Abrir {no.nome!r}"
+            return [("ENTER", acao), desistir]
+        if letra == 'W' and alvo is None:
+            # W sozinho nao pergunta: exporta a pasta mostrada
+            acao = self.ACOES_NO_ITEM['W']
+            return [("ENTER", acao.format("esta pasta")),
+                    ("W + nº", acao.format("a pasta nº")), desistir]
+        return super().menu_do_comando(letra, alvo)
+
     def comandos_disponiveis(self):
         ativos = set(self.COMANDOS)
         if self.na_raiz and not self.filtro:
             ativos.discard('V')
-            ativos.discard('M')
+            ativos.discard('/')
         if not any(isinstance(n, File) for n in self.itens):
             ativos.discard('E')
         if not self.itens:
@@ -206,10 +242,10 @@ class BrowserScreen(Screen):
             ativos.discard('D')
             ativos.discard('E')
             ativos.discard('K')
-            ativos.discard('X')
+            ativos.discard('M')
             ativos.discard('Z')
             ativos.discard('F')
-            ativos.discard('Y')
+            ativos.discard('C')
         if self.app.cofre is None:
             ativos.discard('T')
             ativos.discard('S')
@@ -240,14 +276,6 @@ class BrowserScreen(Screen):
             self.app.exigir_cofre(acao)
         else:
             acao()
-
-    def _item(self, indice):
-        """Resolve um numero contra a lista EXIBIDA. Ver invariante no topo."""
-        if indice is None or not (0 <= indice < len(self.itens)):
-            self.app.flash("Número fora da lista.", erro=True)
-            self.app.rerender()
-            return None
-        return self.itens[indice]
 
     def on_back(self):
         if self.filtro:
@@ -426,36 +454,8 @@ class BrowserScreen(Screen):
 
     # --- comandos com alvo -------------------------------------------------
 
-    def _com_alvo(self, alvo, pergunta, acao, filtro=None):
-        """Aceita `D3` (alvo direto) e `D` (pergunta o numero).
-
-        O parsing ja veio pronto da classe base; aqui so falta o caso sem alvo.
-        """
-        if alvo is not None:
-            no = self._item(alvo)
-            if no is not None:
-                acao(no)
-            return
-
-        if not self.itens:
-            self.app.flash("Não há itens nesta pasta.", erro=True)
-            self.app.rerender()
-            return
-
-        def escolher(texto):
-            if not texto.isdigit():
-                self.app.flash("Digite o número do item.", erro=True)
-                self.app.rerender()
-                return
-            no = self._item(int(texto) - 1)
-            if no is not None:
-                acao(no)
-
-        self.app.push(PromptScreen(
-            self.app, pergunta, escolher,
-            contexto=montar_breadcrumb(self.app.caminho_de(self.node_id)),
-            itens=list(self.itens),
-        ))
+    def contexto_do_prompt(self):
+        return montar_breadcrumb(self.app.caminho_de(self.node_id))
 
     def cmd_editar(self, alvo=None):
         def abrir(no):
@@ -511,7 +511,32 @@ class BrowserScreen(Screen):
                 forte=forte,
             ))
 
-        self._com_alvo(alvo, "Deletar qual item? (número)", deletar)
+        def deletar_varios(nos):
+            def aplicar():
+                self.app.snapshot()
+                self.app.registrar_desfazer(selecao.descricao_lote("apagar", nos))
+                for no in nos:
+                    tree.remover(self.folder, no)
+                self.app.persistir()
+                self.app.flash(f"{len(nos)} itens removidos.")
+                self.app.rerender()
+
+            notas = sum(isinstance(no, File) for no in nos)
+            pastas = len(nos) - notas
+            partes = ([f"{notas} nota{'s' if notas != 1 else ''}"] if notas else []) \
+                + ([f"{pastas} pasta{'s' if pastas != 1 else ''}"] if pastas else [])
+            fortes = [no for no in nos if tree.precisa_confirmacao_forte(no)]
+            detalhe = ""
+            if fortes:
+                detalhe = ("Vai junto: " + "; ".join(tree.resumo_delecao(no) for no in fortes)
+                           + ". Um backup é gravado antes.")
+            self.app.push(ConfirmScreen(
+                self.app, f"Apagar {len(nos)} itens ({' e '.join(partes)})?",
+                aplicar, detalhe=detalhe, forte=bool(fortes),
+            ))
+
+        self._com_alvo(alvo, "Deletar qual item? (número)", deletar,
+                       varios=deletar_varios, verbo="Deletar")
 
     # --- notas cifradas ----------------------------------------------------
 
@@ -612,14 +637,16 @@ class BrowserScreen(Screen):
         self.app.alternar_tranca()
 
     def cmd_mover(self, alvo=None):
-        def mover(no):
+        def mover(nos):
             from .destino import DestinoScreen
-            self.app.push(DestinoScreen(self.app, no.id, self.node_id))
+            self.app.push(DestinoScreen(self.app, [no.id for no in nos], self.node_id))
 
-        self._com_alvo(alvo, "Mover qual item? (número)", mover)
+        self._com_alvo(alvo, "Mover qual item? (número)", lambda no: mover([no]),
+                       varios=mover, verbo="Mover")
 
     def cmd_favorito(self, alvo=None):
-        self._com_alvo(alvo, "Favoritar qual item? (número)", self.app.alternar_favorito)
+        self._com_alvo(alvo, "Favoritar qual item? (número)", self.app.alternar_favorito,
+                       varios=self.app.alternar_favoritos, verbo="Favoritar")
 
     def cmd_exportar(self, alvo=None):
         """W exporta a pasta atual; W3 exporta o item 3."""
@@ -630,7 +657,7 @@ class BrowserScreen(Screen):
         if no is None:
             return
         if isinstance(no, File):
-            self.app.flash("W exporta pastas. Para uma nota, use Y (copiar).", erro=True)
+            self.app.flash("W exporta pastas. Para uma nota, use C (copiar).", erro=True)
             self.app.rerender()
             return
         self.app.exportar(no)
@@ -643,18 +670,22 @@ class BrowserScreen(Screen):
 
     def cmd_duplicar(self, alvo=None):
         self._com_alvo(alvo, "Duplicar qual item? (número)",
-                       lambda no: self.app.duplicar(no, self.folder))
+                       lambda no: self.app.duplicar(no, self.folder),
+                       varios=lambda nos: self.app.duplicar_varios(nos, self.folder),
+                       verbo="Duplicar")
 
     def cmd_copiar(self, alvo=None):
-        """Y3: copia o item 3 para outra pasta - o mover, sem tirar da origem.
+        """C3: copia o item 3 para outra pasta - o mover, sem tirar da origem.
 
-        Para a area de transferencia, e o Y dentro da nota.
+        Para a area de transferencia, e o C dentro da nota.
         """
-        def copiar(no):
+        def copiar(nos):
             from .destino import DestinoScreen
-            self.app.push(DestinoScreen(self.app, no.id, self.node_id, copiar=True))
+            self.app.push(DestinoScreen(self.app, [no.id for no in nos], self.node_id,
+                                        copiar=True))
 
-        self._com_alvo(alvo, "Copiar qual item? (número)", copiar)
+        self._com_alvo(alvo, "Copiar qual item? (número)", lambda no: copiar([no]),
+                       varios=copiar, verbo="Copiar")
 
 
 def alternar_cifra_nota(app, nota):

@@ -11,7 +11,7 @@ NOME_DOC = "Keybase Doc"
 CONTEUDO_DOC = '''\
 # Keybase Doc
 
-O manual do KeyBase, dentro do próprio KeyBase. Esta nota é sua: edite com E, mova com X ou apague com D. Ela não volta sozinha depois de apagada.
+O manual do KeyBase, dentro do próprio KeyBase. Esta nota é sua: edite com E, mova com M ou apague com D. Ela não volta sozinha depois de apagada.
 
 [TOC]
 
@@ -65,6 +65,10 @@ Cada pasta mostra `[a]:[b]`, contando só notas:
 
 O menu começa escondido. `?` (ou Ctrl+0, ou o botão `?` ao lado da barra) mostra e esconde. `??` abre a ajuda completa.
 
+Ctrl+T deixa a janela sempre por cima das outras, com uma borda azul de 2px em volta para lembrar. Ctrl+T de novo desliga. Não é lembrado ao reabrir.
+
+Com um comando digitado na barra, antes do ENTER, o menu mostra só o que serve dentro dele: com `C`, o número do item, ENTER para escolher na lista e ESC para desistir. ESC apaga o comando e o menu completo volta.
+
 ## Navegação
 
 | Comando | O que faz |
@@ -72,8 +76,8 @@ O menu começa escondido. `?` (ou Ctrl+0, ou o botão `?` ao lado da barra) most
 | `1` `2` `3` … | Abre o item pelo número |
 | `V` | Volta um nível (ou limpa o filtro) |
 | ENTER vazio | O mesmo que V |
-| `M` | Vai direto para a raiz |
-| `L` | Favoritos e notas abertas recentemente, numa lista só |
+| `/` | Vai direto para a raiz |
+| `L` | Favoritos e notas abertas recentemente, numa lista só. Lá, `D2`, `D1,3` ou `D` (com `M` para marcar) tira da lista: desfavorita ou esquece o recente. `X` limpa os recentes |
 | `sair` | Encerra (fechar a janela também salva) |
 
 ## Criar e organizar
@@ -84,15 +88,21 @@ O menu começa escondido. `?` (ou Ctrl+0, ou o botão `?` ao lado da barra) most
 | `N` | Cria uma nota na pasta atual e já abre o editor |
 | `E` ou `E3` | Edita uma nota |
 | `R` ou `R3` | Renomeia um item |
-| `D` ou `D3` | Apaga um item (pede confirmação) |
-| `X` ou `X3` | Move um item para outra pasta |
-| `Y` ou `Y3` | Copia um item para outra pasta; o original fica |
-| `Z` ou `Z3` | Duplica um item como "Nome (cópia)" |
-| `F` ou `F3` | Marca ou desmarca um favorito |
+| `D`, `D3` ou `D1,3` | Apaga um item ou vários (pede confirmação) |
+| `M`, `M3` ou `M1,2` | Move um item ou vários para outra pasta |
+| `C`, `C3` ou `C1-4` | Copia um item ou vários para outra pasta; o original fica |
+| `Z`, `Z3` ou `Z1-3` | Duplica um item ou vários como "Nome (cópia)" |
+| `F`, `F3` ou `F1,3` | Marca ou desmarca um favorito (em lote: se algum não é favorito, todos viram) |
 | `W` ou `W3` | Exporta a pasta como arquivos .md |
 | `U` | Desfaz a última ação |
 
 Comandos que agem sobre um item aceitam o número junto (`D3` apaga o item 3) ou sozinho (`D` pergunta qual).
+
+### Vários itens de uma vez
+
+C, M, Z, D e F aceitam vários itens: `C1,2,5` ou `M1-4` direto na barra, ou a mesma lista na pergunta "qual item?". Na pergunta, `M` abre a seleção múltipla: as setas percorrem a lista, ESPAÇO marca `[X]`, ENTER confirma e ESC volta para a barra. Um U desfaz o lote inteiro.
+
+Ao mover vários itens, se algum nome já existe no destino, o KeyBase pergunta o que fazer com os conflitantes: mover só os outros, substituir ou mover com outro nome.
 
 ### Apagar
 
@@ -100,14 +110,14 @@ Apagar uma nota ou uma pasta vazia pede uma confirmação simples. Uma pasta com
 
 ### Mover e copiar para outra pasta
 
-X e Y abrem uma tela para escolher o destino. O menu fica fixo no topo:
+M e C abrem uma tela para escolher o destino. O menu fica fixo no topo:
 
 | Tecla | Ação |
 |:------|:-----|
 | número | Entra na pasta |
 | `C` | Move (ou copia) para a pasta mostrada |
 | ENTER | Sobe um nível |
-| `M` | Vai para a raiz |
+| `/` | Vai para a raiz |
 | ESC | Cancela |
 
 Mover para dentro de uma pasta cifrada deixa o item protegido por ela. Mover para fora pede confirmação, porque o item passa a ficar em claro.
@@ -131,7 +141,7 @@ A partir da segunda letra digitada na barra, a pasta já é filtrada pelo nome, 
 - Digitar com um filtro já fixado filtra a pasta inteira de novo. Apagar tudo volta ao filtro fixado.
 - V limpa o filtro fixado.
 
-Para filtrar por algo que é um comando, comece com barra: `/c` filtra por "c" em vez de abrir a configuração, e `/sair` não encerra.
+Para filtrar por algo que é um comando, comece com barra: `/c` filtra por "c" em vez de abrir o copiar, e `/sair` não encerra.
 
 ### Busca em toda a base
 
@@ -153,7 +163,7 @@ Abrir uma nota mostra o Markdown já desenhado. Nela valem:
 | `E` | Edita |
 | `R` | Renomeia |
 | `D` | Apaga |
-| `Y` | Área de transferência (veja abaixo) |
+| `C` | Copia o texto para a área de transferência (veja abaixo) |
 | `H` | Histórico de versões |
 | `F` | Favorito |
 | `K` | Cifra ou decifra |
@@ -162,8 +172,8 @@ Abrir uma nota mostra o Markdown já desenhado. Nela valem:
 
 ### Copiar para a área de transferência
 
-- `Y2` copia o 2º bloco de código da nota.
-- `Y` sozinho lista os blocos de código; `0` copia a nota inteira. Uma nota sem blocos é copiada inteira.
+- `C2` copia o 2º bloco de código da nota.
+- `C` sozinho lista os blocos de código; `0` copia a nota inteira. Uma nota sem blocos é copiada inteira.
 - Algo cifrado copiado é apagado da área de transferência depois de 20 segundos (configurável), se ela ainda tiver o que foi copiado.
 
 ### Histórico
@@ -269,9 +279,9 @@ Você escolhe o que cifrar. Tudo fica protegido por uma senha mestra única (AES
 - Trocar a senha com S não recifra as notas. Backups antigos continuam abrindo com a senha antiga.
 - Ao cifrar, os backups ainda guardam a versão em claro. O KeyBase oferece cifrar essas cópias também, sem perder o histórico.
 
-## Configuração
+## Opções
 
-C abre o arquivo `keybase_config.toml` no editor, como uma nota. Ctrl+S valida antes de gravar: com erro, nada é gravado e o erro aparece em vermelho no topo. O KeyBase nunca reescreve esse arquivo sozinho, então seus comentários ficam.
+O abre o arquivo `keybase_config.toml` no editor, como uma nota. Ctrl+S valida antes de gravar: com erro, nada é gravado e o erro aparece em vermelho no topo. O KeyBase nunca reescreve esse arquivo sozinho, então seus comentários ficam.
 
 | Opção | O que faz | Quando vale |
 |:------|:----------|:------------|
@@ -312,12 +322,12 @@ Se outro computador gravou enquanto este estava aberto, o KeyBase não sobrescre
 
 - Toda gravação é atômica: uma queda no meio não deixa o arquivo pela metade.
 - Um arquivo de dados que não pôde ser lido nunca é sobrescrito. O KeyBase abre sem gravar nada, mostra o erro e oferece restaurar o backup ou um snapshot.
-- Uma configuração inválida ao abrir faz o KeyBase usar os padrões e avisar, sem mexer no arquivo. Corrija com C.
+- Uma configuração inválida ao abrir faz o KeyBase usar os padrões e avisar, sem mexer no arquivo. Corrija com O.
 
 ## Dicas
 
 - Nomeie notas de atalho pela combinação: uma nota "Ctrl + P" dentro de `Vscode/` se acha pelo filtro digitando só "ctrl".
-- Guarde comandos em blocos de código: na nota, Y1 copia o primeiro sem precisar selecionar nada.
+- Guarde comandos em blocos de código: na nota, C1 copia o primeiro sem precisar selecionar nada.
 - Use F nas notas que você abre toda hora e L para chegar nelas de qualquer lugar.
 - Crie modelos para o que você repete: um modelo de atalho com `# {nome}` e "Quando usar:" padroniza as notas.
 - Ligue notas relacionadas com `[[Nome da nota]]` relacionadas em vez de repetir o mesmo texto em dois lugares.

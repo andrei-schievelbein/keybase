@@ -7,7 +7,7 @@ SECOES = [
     ("Navegação", [
         ("1 2 3 …", "abrir o item pelo número da lista"),
         ("V", "voltar um nível (ou limpar o filtro)"),
-        ("M", "ir direto para a raiz"),
+        ("/", "ir direto para a raiz"),
         ("Enter vazio", "o mesmo que V"),
     ]),
     ("Criar e editar", [
@@ -16,14 +16,15 @@ SECOES = [
         ("E  ou  E3", "editar o conteúdo de uma nota"),
         ("R  ou  R3", "renomear um item"),
         ("D  ou  D3", "apagar um item"),
-        ("X  ou  X3", "mover um item para outra pasta"),
+        ("M  ou  M3", "mover um item para outra pasta (M1,2 ou M1-4: vários)"),
         ("Z  ou  Z3", "duplicar um item (\"Nome (cópia)\")"),
-        ("Y  ou  Y3", "copiar um item para outra pasta (o original fica)"),
-        ("Y na nota", "área de transferência: Y2 copia o 2º bloco de código"),
+        ("C  ou  C3", "copiar um item para outra pasta (o original fica)"),
+        ("C na nota", "área de transferência: C2 copia o 2º bloco de código"),
         ("U", "desfazer a última ação (apagar, mover, renomear, duplicar, decifrar)"),
         ("W  ou  W3", "exportar a pasta (ou a pasta 3) como arquivos .md"),
-        ("F  ou  F3", "marcar ou desmarcar um favorito"),
+        ("F  ou  F3", "marcar ou desmarcar um favorito (F1,3 · F1-4 · M marca)"),
         ("L", "favoritos e notas abertas recentemente"),
+        ("D  em  L", "desfavorita ou tira dos recentes (D1,3 · D1-4 · M marca); X limpa os recentes"),
         ("[[Nota]]", "numa nota, vira link; [[Pasta/Nota|texto]] também vale"),
         ("H na nota", "histórico: versões dos backups; R restaura (U desfaz)"),
         ("Modelos/", "notas dessa pasta da raiz viram modelos ao criar com N"),
@@ -58,8 +59,8 @@ SECOES = [
         ("??", "na barra de cima: esta ajuda (o texto não salvo é mantido)"),
         ("```python", "abre um bloco de código com destaque de sintaxe"),
     ]),
-    ("Configuração", [
-        ("C", "abre keybase_config.toml no editor, como uma nota"),
+    ("Opções", [
+        ("O", "abre keybase_config.toml no editor, como uma nota"),
         (atalhos.rotulo(atalhos.SALVAR), "valida, salva e aplica (fontes só ao reabrir)"),
         ("tempo_aviso_ms", "quanto tempo um aviso fica no lugar do caminho"),
         ("tempo_aviso_longo_ms", "o mesmo, para avisos com algo para ler; 0 = fica até o ENTER"),
@@ -68,6 +69,7 @@ SECOES = [
     ("Outros", [
         ("?", "mostra ou esconde o menu de comandos"),
         (atalhos.rotulo(atalhos.AJUDA_DINAMICA), "o mesmo que ?"),
+        (atalhos.rotulo(atalhos.SEMPRE_POR_CIMA), "janela sempre por cima das outras (borda azul); de novo desliga"),
         ("??", "esta ajuda completa"),
         ("sair", "encerrar (a janela também salva ao fechar)"),
     ]),

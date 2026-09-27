@@ -96,7 +96,7 @@ def nome_de_copia(pai, nome):
 
 def mover(no, origem, destino):
     """Reparenta um no. Disponivel na API, fora da UI no v1."""
-    if no is destino or _contem(no, destino):
+    if criaria_ciclo(no, destino):
         raise CicloError(f"nao da para mover {no.nome!r} para dentro de si mesmo")
     origem.filhos.remove(no)
     destino.filhos.append(no)
@@ -111,6 +111,11 @@ def _visiveis(folder):
     trancada nao existe na memoria, e nada deve fingir que ela esta vazia.
     """
     return folder.filhos if folder.filhos is not None else ()
+
+
+def criaria_ciclo(no, destino):
+    """Mover `no` para `destino` o poria dentro de si mesmo."""
+    return no is destino or _contem(no, destino)
 
 
 def _contem(possivel_ancestral, no):
@@ -213,6 +218,15 @@ def percorrer(raiz):
                 yield from visitar(filho, ancestrais + (filho,))
 
     yield from visitar(raiz, (raiz,))
+
+
+def homonimo(pai, nome):
+    """O filho de `pai` com esse nome (ignorando caixa e acento), ou None."""
+    alvo = normalizar(nome)
+    for filho in _visiveis(pai):
+        if normalizar(filho.nome) == alvo:
+            return filho
+    return None
 
 
 def nome_disponivel(pai, nome, ignorar=None):

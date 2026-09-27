@@ -15,7 +15,7 @@ filtro que ele tinha, que vive na instancia da tela.
 
 import time
 
-from .. import cripto, storage, tree
+from .. import cripto, selecao, storage, tree
 from ..model import ID_RAIZ
 from ..tree import construir_indice
 
@@ -658,7 +658,7 @@ class App:
         if self.atual:
             self.atual.on_ciclar_modo()
 
-    def _copiar_para(self, no, destino, nome, descricao):
+    def _copiar_para(self, no, destino, nome, descricao, registrar=True, copia=None):
         """Poe uma copia de `no` em `destino`, com o nome dado. Desfazivel.
 
         Destino sob uma pasta cifrada: a copia fica sob a protecao dela (o que
@@ -666,52 +666,93 @@ class App:
         recifrado com os ids novos. Quem chama garantiu o cofre aberto quando
         ha algo cifrado (cripto.precisa_do_cofre).
         """
-        copia = tree.copia_profunda(no)
+        if copia is None:
+            copia = tree.copia_profunda(no)
         copia.nome = nome
-        self.registrar_desfazer(descricao)
+        if registrar:
+            self.registrar_desfazer(descricao)
         if self.pasta_protetora(destino.id) is not None:
             cripto.absorver_em_pasta_cifrada(self.cofre, copia)
         elif self.cofre_destravado:
             cripto.selar_copia(self.cofre, copia)
         tree.adicionar(destino, copia)
-        self.persistir()
+        if registrar:
+            # no lote (registrar=False) quem chama grava uma vez no fim: cada
+            # persistir() consome a marca de desfazivel, e o segundo limparia
+            # a pilha de desfazer
+            self.persistir()
         return copia
 
-    def _com_cofre_se_preciso(self, no, acao):
-        if cripto.precisa_do_cofre(no):
+    def _com_cofre_se_preciso(self, nos, acao):
+        """Uma senha so para o lote: pede o cofre se ALGUM no precisa dele."""
+        if not isinstance(nos, (list, tuple)):
+            nos = [nos]
+        if any(cripto.precisa_do_cofre(no) for no in nos):
             self.exigir_cofre(acao)  # destravar tambem abre a pasta cifrada
         else:
             acao()
 
     def duplicar(self, no, pai):
         """Z: copia na mesma pasta, como 'Nome (cópia)'."""
+        self.duplicar_varios([no], pai)
+
+    def duplicar_varios(self, nos, pai):
+        """Z com varios itens: um registro so de desfazer para o lote."""
         def aplicar():
-            copia = self._copiar_para(no, pai, tree.nome_de_copia(pai, no.nome),
-                                      f"duplicar {no.nome!r}")
-            self.flash(f"{no.nome!r} duplicado como {copia.nome!r}.")
+            self.registrar_desfazer(selecao.descricao_lote("duplicar", nos))
+            prontas = [tree.copia_profunda(no) for no in nos]
+            copias = [self._copiar_para(no, pai, tree.nome_de_copia(pai, no.nome),
+                                        "", registrar=False, copia=pronta)
+                      for no, pronta in zip(nos, prontas)]
+            self.persistir()
+            if len(nos) == 1:
+                self.flash(f"{nos[0].nome!r} duplicado como {copias[0].nome!r}.")
+            else:
+                self.flash(f"{len(nos)} itens duplicados.")
             self.rerender()
 
-        self._com_cofre_se_preciso(no, aplicar)
+        self._com_cofre_se_preciso(nos, aplicar)
 
     def copiar_para(self, no, destino, depois=None):
-        """Y na lista: copia para outra pasta, mantendo o original.
+        """C na lista: copia para outra pasta, mantendo o original.
 
         Mesmo nome se estiver livre no destino; senao, 'Nome (cópia)'.
         """
+        self.copiar_varios([no], destino, depois)
+
+    def copiar_varios(self, nos, destino, depois=None):
+        """C com varios itens: um registro so de desfazer para o lote."""
         from .layout import montar_breadcrumb
 
         def aplicar():
-            nome = (no.nome if tree.nome_disponivel(destino, no.nome)
-                    else tree.nome_de_copia(destino, no.nome))
-            copia = self._copiar_para(no, destino, nome, f"copiar {no.nome!r}")
+            self.registrar_desfazer(selecao.descricao_lote("copiar", nos))
+            # todas as copias ANTES de por qualquer uma no destino: com o
+            # destino dentro de uma pasta do lote, a copia dela levaria junto
+            # as copias ja feitas dos outros itens
+            prontas = [tree.copia_profunda(no) for no in nos]
+            copias = []
+            for no, pronta in zip(nos, prontas):
+                # nome decidido a cada copia: o destino ja tem as anteriores
+                nome = (no.nome if tree.nome_disponivel(destino, no.nome)
+                        else tree.nome_de_copia(destino, no.nome))
+                copias.append(self._copiar_para(no, destino, nome, "",
+                                                registrar=False, copia=pronta))
+            self.persistir()
             if depois is not None:
                 depois()
             caminho = montar_breadcrumb(self.caminho_de(destino.id))
-            extra = f" como {copia.nome!r}" if copia.nome != no.nome else ""
-            self.flash(f"{no.nome!r} copiado para {caminho}{extra}.")
+            if len(nos) == 1:
+                extra = (f" como {copias[0].nome!r}"
+                         if copias[0].nome != nos[0].nome else "")
+                self.flash(f"{nos[0].nome!r} copiado para {caminho}{extra}.")
+            else:
+                renomeados = sum(c.nome != n.nome for c, n in zip(copias, nos))
+                extra = (f" ({renomeados} com outro nome, já havia um igual)"
+                         if renomeados else "")
+                self.flash(f"{len(nos)} itens copiados para {caminho}{extra}.")
             self.rerender()
 
-        self._com_cofre_se_preciso(no, aplicar)
+        self._com_cofre_se_preciso(nos, aplicar)
 
     # --- favoritos, recentes e abrir por referencia -------------------------
 
@@ -729,6 +770,22 @@ class App:
         self.persistir()
         self.flash(f"{no.nome!r} marcado como favorito." if no.favorito
                    else f"{no.nome!r} saiu dos favoritos.")
+        self.rerender()
+
+    def alternar_favoritos(self, nos):
+        """F em lote. Com a selecao misturada, alternar cada um daria um
+        resultado imprevisivel: se algum ainda nao e favorito, todos viram;
+        se todos ja sao, todos saem."""
+        marcar = not all(no.favorito for no in nos)
+        ja_eram = sum(no.favorito for no in nos) if marcar else 0
+        for no in nos:
+            no.favorito = marcar
+        self.persistir()
+        if marcar:
+            extra = f" ({ja_eram} já {'era' if ja_eram == 1 else 'eram'})" if ja_eram else ""
+            self.flash(f"{len(nos)} itens marcados como favoritos{extra}.")
+        else:
+            self.flash(f"{len(nos)} itens saíram dos favoritos.")
         self.rerender()
 
     def abrir_no(self, no):
@@ -880,6 +937,13 @@ class App:
         if self.atual:
             self.atual.on_seta(delta)
 
+    def tecla_de_lista(self, nome):
+        """Seta, espaco ou ENTER com o foco na lista. True = a tela tratou."""
+        if self.atual is None:
+            return False
+        self.registrar_atividade()
+        return bool(self.atual.on_tecla_de_lista(nome))
+
     def alternar_menu(self):
         """Ctrl+0. Mesma logica do modo(): inerte onde a tela nao implementa."""
         if self.atual:
@@ -898,3 +962,4 @@ class App:
 
     def ao_fechar(self):
         self.sair()
+

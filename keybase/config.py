@@ -2,7 +2,7 @@
 
 Dois arquivos, porque tem dois donos:
 
-- keybase_config.toml e do USUARIO. Editado com C dentro do app (ou a mao),
+- keybase_config.toml e do USUARIO. Editado com O dentro do app (ou a mao),
   com comentarios. O app so o cria na primeira vez e depois grava exatamente o
   texto que o usuario salvou - nunca o reescreve a partir de um dict, entao
   comentarios e formatacao sobrevivem. Por isso nao ha escritor de TOML aqui.
@@ -167,7 +167,7 @@ def modelo_toml(config=None):
         return _toml(_ler(config, caminho))
 
     return f'''# KeyBase - configuração
-# Edite com C dentro do app. Ctrl+S valida, salva e aplica.
+# Edite com O (Opções) dentro do app. Ctrl+S valida, salva e aplica.
 # Linhas começando com # são comentários.
 
 # Tema: "dark" (escuro) ou "light" (claro). Aplica na hora.
@@ -197,7 +197,7 @@ tempo_aviso_longo_ms = {v('interface', 'flash_longo_ms')}
 [cofre]
 # Minutos sem uso até os itens cifrados trancarem sozinhos (0 desliga).
 trancar_apos_min = {v('cofre', 'auto_lock_min')}
-# Ao copiar (Y) algo cifrado, segundos até a área de transferência ser limpa
+# Ao copiar (C, na nota) algo cifrado, segundos até a área de transferência ser limpa
 # (0 não limpa). Só limpa se ela ainda tiver o que foi copiado. Aplica na hora.
 limpar_copia_seg = {v('cofre', 'clip_seg')}
 

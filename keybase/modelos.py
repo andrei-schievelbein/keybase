@@ -94,7 +94,7 @@ aparece como quebra de linha.
 
 ## Blocos de código
 
-Com a linguagem depois das crases, o código ganha cores. Na nota, Y1 copia o primeiro bloco, Y2 o segundo, e Y sozinho lista os blocos.
+Com a linguagem depois das crases, o código ganha cores. Na nota, C1 copia o primeiro bloco, C2 o segundo, e C sozinho lista os blocos.
 
 ```python
 def saudacao(quem):

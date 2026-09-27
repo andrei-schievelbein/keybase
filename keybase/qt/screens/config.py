@@ -49,7 +49,7 @@ class ConfigScreen(EditorScreen):
 
     def _atualizar_barra(self):
         view = self.app.view
-        view.cabecalho_edicao(["CONFIGURAÇÃO"], "CONFIGURAÇÃO",
+        view.cabecalho_edicao(["OPÇÕES"], "OPÇÕES",
                               f"Editando: {NOME_ARQUIVO}", erro=self.erro,
                               aviso=self.aviso)
         view.dica(self.help_text())
@@ -102,7 +102,7 @@ class ConfigScreen(EditorScreen):
         self.aviso = None
         self.texto_original = texto
         mudou = self.app.aplicar_config(usuario)
-        aviso = "Configuração salva."
+        aviso = "Opções salvas."
         if 'fonts' in mudou:
             aviso += " Fontes mudam ao reabrir o KeyBase."
         if 'dados' in mudou:

@@ -21,6 +21,7 @@ MODO_PREVIEW = 'Ctrl+2'
 MODO_DIVIDIDO = 'Ctrl+3'
 MODO_CICLAR = 'Ctrl+E'
 AJUDA_DINAMICA = 'Ctrl+0'
+SEMPRE_POR_CIMA = 'Ctrl+T'
 
 NO_MACOS = sys.platform == 'darwin'
 

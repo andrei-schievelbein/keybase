@@ -15,20 +15,20 @@ class ViewerScreen(Screen):
         'A': 'cmd_abrir',
         'K': 'cmd_cifrar',
         'T': 'cmd_trancar',
-        'Y': 'cmd_copiar',
+        'C': 'cmd_copiar',
         'U': 'cmd_desfazer',
         'F': 'cmd_favorito',
         'H': 'cmd_historico',
         'L': 'cmd_favoritos',
         'V': 'cmd_voltar',
-        'M': 'cmd_raiz',
-        'C': 'cmd_config',
+        '/': 'cmd_raiz',
+        'O': 'cmd_config',
     }
     ROTULOS = {
         'E': 'Editar nota', 'R': 'Renomear', 'D': 'Deletar',
         'A': 'Abrir (senha)', 'K': 'Cifrar/decifrar', 'T': 'Trancar/destrancar',
-        'Y': 'Área de transferência', 'U': 'Desfazer', 'H': 'Histórico', 'F': 'Favoritar', 'L': 'Favoritos e recentes',
-        'V': 'Voltar', 'M': 'Ir para a raiz', 'C': 'Configuração',
+        'C': 'Copiar o texto', 'U': 'Desfazer', 'H': 'Histórico', 'F': 'Favoritar', 'L': 'Favoritos e recentes',
+        'V': 'Voltar', '/': 'Ir para a raiz', 'O': 'Opções',
     }
 
     def __init__(self, app, file_id):
@@ -118,7 +118,7 @@ class ViewerScreen(Screen):
             alternar_cifra_nota(self.app, self.file)
 
     def cmd_copiar(self, alvo=None):
-        """Y: nota inteira ou a lista de blocos; Y2: o 2o bloco; Y0: a nota."""
+        """C: nota inteira ou a lista de blocos; C2: o 2o bloco; C0: a nota."""
         if self.file is None:
             return
         if self.file.conteudo is None:
@@ -204,7 +204,7 @@ def copiar_da_nota(app, nota, alvo=None):
     """Copia a nota ou um bloco dela. `alvo` e o indice 0-based do bloco;
     -1 (o 'Y0') e a nota inteira; None pergunta, se houver blocos.
 
-    Compartilhado entre o viewer e a listagem (Y3 la copia a nota 3 inteira).
+    Compartilhado entre o viewer e a listagem.
     """
     from ... import blocos as mod_blocos
     from .prompt import PromptScreen
@@ -219,7 +219,7 @@ def copiar_da_nota(app, nota, alvo=None):
         if not (0 <= i < len(blocos)):
             n = len(blocos)
             app.flash(f"A nota tem {n} bloco{'s' if n != 1 else ''} de código." if n
-                      else "A nota não tem blocos de código. Use Y para copiar a nota.",
+                      else "A nota não tem blocos de código. Use C para copiar a nota.",
                       erro=True)
             app.rerender()
             return

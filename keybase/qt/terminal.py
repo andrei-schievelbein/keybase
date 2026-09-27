@@ -35,6 +35,9 @@ class AreaTerminal(QTextBrowser):
         self.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse
                                      | Qt.TextInteractionFlag.TextSelectableByKeyboard)
         self.setFocusPolicy(Qt.FocusPolicy.ClickFocus)  # Tab nao rouba o foco da entrada
+        # sem o traco piscando: com o foco aqui (selecao multipla) quem mostra
+        # a posicao e o '›' da linha, e o cursor de texto so poluiria a tela
+        self.setCursorWidth(0)
         self.setWordWrapMode(QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere)
 
         # A largura do viewport precisa ser INDEPENDENTE do conteudo, senao a
@@ -49,6 +52,25 @@ class AreaTerminal(QTextBrowser):
         self._blocos = {}
         self._bloco_padrao = QTextBlockFormat()
         self.recarregar_cores(tema)
+
+        #: callback(nome_da_tecla) -> bool, ligado pela janela: quando a tela
+        #: atual trata a tecla (selecao multipla), ela nao rola nem seleciona
+        self.tecla_de_lista = None
+
+    #: teclas que uma lista com foco pode querer, pelo nome que a tela recebe
+    TECLAS_DE_LISTA = {
+        Qt.Key.Key_Up: 'cima', Qt.Key.Key_Down: 'baixo', Qt.Key.Key_Space: 'espaco',
+        Qt.Key.Key_Return: 'enter', Qt.Key.Key_Enter: 'enter',
+    }
+
+    def keyPressEvent(self, evento):
+        nome = self.TECLAS_DE_LISTA.get(evento.key())
+        if (nome is not None and self.tecla_de_lista is not None
+                and not evento.modifiers() & ~Qt.KeyboardModifier.KeypadModifier
+                and self.tecla_de_lista(nome)):
+            evento.accept()
+            return
+        super().keyPressEvent(evento)
 
     def recarregar_cores(self, tema):
         """(Re)constroi os formatos. Cacheados: criar por trecho e desperdicio."""

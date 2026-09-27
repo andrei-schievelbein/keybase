@@ -186,12 +186,12 @@ class TestNavegacao(BaseUI):
         self.assertEqual(self.nome_tela(), 'BrowserScreen')
         self.assertIn("já está na raiz", self.tela())
 
-    def test_comando_M_volta_para_a_raiz(self):
+    def test_barra_volta_para_a_raiz(self):
         self.criar_pasta("A")
         self.digitar('1')
         self.criar_pasta("B")
         self.digitar('1')
-        self.digitar('M')
+        self.digitar('/')
         self.assertEqual(len(self.app.stack), 1)
 
     def test_numero_fora_da_lista(self):
@@ -459,7 +459,7 @@ class TestBusca(BaseUI):
         self.criar_pasta("Navegação")
         self.digitar('1')
         self.criar_nota("Ctrl + P", "Abre o seletor rápido de arquivos.")
-        self.digitar('M')
+        self.digitar('/')
 
     def test_buscar_em_profundidade_e_pular(self):
         self.montar()
@@ -1397,7 +1397,8 @@ class TestAtalhosMultiplataforma(BaseUI):
         from keybase.qt import atalhos
         sequencias = (atalhos.SALVAR, atalhos.CANCELAR, atalhos.MODO_EDITAR,
                       atalhos.MODO_PREVIEW, atalhos.MODO_DIVIDIDO,
-                      atalhos.MODO_CICLAR, atalhos.AJUDA_DINAMICA)
+                      atalhos.MODO_CICLAR, atalhos.AJUDA_DINAMICA,
+                      atalhos.SEMPRE_POR_CIMA)
         # conta pelas proprias variantes: o Esc nao duplica no macOS
         esperado = sum(len(atalhos.variantes(s)) for s in sequencias)
         self.assertEqual(len(self.janela._registrados), esperado)
@@ -1606,7 +1607,7 @@ class TestNotasCifradas(CofreMixin, BaseUI):
         self.criar_pasta("Sub")
         self.digitar('1')
         self.criar_nota("B", "bbb")
-        self.digitar('M')
+        self.digitar('/')
         self.digitar('K1')
         self.digitar('1')          # cifrar as notas em claro
         self.assertNaTela("Cifrar 2 notas")
@@ -1673,7 +1674,7 @@ class TestPastaCifrada(CofreMixin, BaseUI):
         self.criar_pasta("Pessoal")
         self.digitar('1')
         self.criar_nota("Banco", "pin sigiloso-kappa")
-        self.digitar('M')
+        self.digitar('/')
 
     def cifrar_pasta_1(self):
         self.digitar('K1')
@@ -1789,16 +1790,16 @@ class TestConfiguracao(BaseUI):
     def abrir_config(self):
         from keybase import config
         self.arquivo_config.write_text(config.modelo_toml(), encoding='utf-8')
-        self.digitar('C')
+        self.digitar('O')
         self.assertEqual(self.nome_tela(), 'ConfigScreen')
 
-    def test_p_cria_pasta_e_c_abre_a_configuracao(self):
+    def test_p_cria_pasta_e_o_abre_as_opcoes(self):
         self.digitar('?')
         self.assertNaTela("P - Nova pasta")
-        self.assertNaTela("C - Configuração")
+        self.assertNaTela("O - Opções")
         self.abrir_config()
         self.assertIn('tema = "dark"', self.editor().toPlainText())
-        self.assertIn("[CONFIGURAÇÃO]", self.view.edicao_modos.text())
+        self.assertIn("[OPÇÕES]", self.view.edicao_modos.text())
         self.assertIn("keybase_config.toml", self.view.edicao_caminho.text())
 
     def test_salvar_com_erro_nao_grava_nem_sai(self):
@@ -1821,7 +1822,7 @@ class TestConfiguracao(BaseUI):
         self.digitar_no_editor(texto)
         self.app.save()
         self.assertEqual(self.nome_tela(), 'BrowserScreen')
-        self.assertNaTela("Configuração salva.")
+        self.assertNaTela("Opções salvas.")
         self.assertEqual(self.arquivo_config.read_text(encoding='utf-8'), texto)
         self.assertEqual(self.config['theme'], 'light')
         self.assertIn(cores_interface('light')['fundo'], self.janela.styleSheet())
@@ -2097,7 +2098,7 @@ class TestKeybaseDoc(BaseUI):
         html = self.view.out.toHtml()
         self.assertIn('href="kb:Keybase%20Doc"', html)
         self.assertNotIn("line-through", html)   # nenhum [[link]] quebrado
-        for secao in ("Navegação", "Notas e pastas cifradas", "Configuração", "Dicas"):
+        for secao in ("Navegação", "Notas e pastas cifradas", "Opções", "Dicas"):
             self.assertIn(secao, html)
 
 
@@ -2106,7 +2107,7 @@ class TestConfiguracaoAntiga(BaseUI):
         from keybase import config
         antigo = TestConfigTextos.sem_aviso(config.modelo_toml())
         self.arquivo_config.write_text(antigo, encoding='utf-8')
-        self.digitar('C')
+        self.digitar('O')
         self.assertIn("tempo_aviso_ms = 2500", self.editor().toPlainText())
         self.assertTrue(self.view.edicao_aviso.isVisibleTo(self.janela))
         self.assertIn("interface.tempo_aviso_ms", self.view.edicao_aviso.text())
@@ -2133,33 +2134,33 @@ class TestFase1(CofreMixin, BaseUI):
 
     # --- copiar --------------------------------------------------------------
 
-    def test_y_numero_copia_o_bloco(self):
+    def test_c_numero_copia_o_bloco(self):
         self.criar_nota("Cmd", self.NOTA)
         self.digitar('1')
-        self.digitar('Y2')
+        self.digitar('C2')
         self.assertEqual(self.copiado(), "print('oi')")
         self.assertNaTela("Copiado: bloco 2")
 
-    def test_y_sem_numero_lista_os_blocos_um_por_linha(self):
+    def test_c_sem_numero_lista_os_blocos_um_por_linha(self):
         self.criar_nota("Cmd", self.NOTA)
         self.digitar('1')
-        self.digitar('Y')
+        self.digitar('C')
         linhas = [l.strip() for l in self.tela().splitlines()]
         self.assertIn("0 - A nota inteira", linhas)
         self.assertIn("1 - sh (1 linha): ls -la", linhas)
         self.digitar('0')
         self.assertEqual(self.copiado(), self.NOTA)
 
-    def test_y_numa_nota_sem_blocos_copia_a_nota(self):
+    def test_c_numa_nota_sem_blocos_copia_a_nota(self):
         self.criar_nota("Simples", "so texto")
         self.digitar('1')
-        self.digitar('Y')
+        self.digitar('C')
         self.assertEqual(self.copiado(), "so texto")
 
-    def test_y_na_lista_copia_para_outra_pasta_e_mantem_o_original(self):
+    def test_c_na_lista_copia_para_outra_pasta_e_mantem_o_original(self):
         self.criar_pasta("Destino")
         self.criar_nota("Cmd", self.NOTA)
-        self.digitar('Y2')
+        self.digitar('C2')
         self.assertEqual(self.nome_tela(), 'DestinoScreen')
         self.assertIn("   C - Copiar para cá", self.tela())
         self.digitar('1'); self.digitar('C')
@@ -2175,9 +2176,9 @@ class TestFase1(CofreMixin, BaseUI):
         self.criar_pasta("A")
         self.digitar('1')
         self.criar_nota("n", "x")
-        self.digitar('M')
+        self.digitar('/')
         self.criar_pasta("B")
-        self.digitar('Y1')
+        self.digitar('C1')
         self.digitar('1')    # a propria A nao aparece como destino: B e o 1
         self.digitar('C')
         b = next(f for f in self.app.raiz.filhos if f.nome == "B")
@@ -2186,20 +2187,20 @@ class TestFase1(CofreMixin, BaseUI):
 
     def test_copiar_na_mesma_pasta_vira_copia(self):
         self.criar_nota("Cmd", "x")
-        self.digitar('Y1'); self.digitar('C')
+        self.digitar('C1'); self.digitar('C')
         self.assertEqual(sorted(f.nome for f in self.app.raiz.filhos), ["Cmd", "Cmd (cópia)"])
 
     def test_copiar_desfaz_com_u(self):
         self.criar_pasta("Destino")
         self.criar_nota("Cmd", "x")
-        self.digitar('Y2'); self.digitar('1'); self.digitar('C')
+        self.digitar('C2'); self.digitar('1'); self.digitar('C')
         self.digitar('U')
         self.assertEqual(self.app.raiz.filhos[0].filhos, [])
 
     def test_copiar_nota_cifrada_recifra_a_copia(self):
         self.nota_cifrada("Banco", "pin sigiloso-kappa")   # K1: a nota e o item 1
         self.criar_pasta("Destino")
-        self.digitar('Y2'); self.digitar('1'); self.digitar('C')
+        self.digitar('C2'); self.digitar('1'); self.digitar('C')
         destino = next(f for f in self.app.raiz.filhos if f.nome == "Destino")
         copia = destino.filhos[0]
         self.assertTrue(copia.cifrado)
@@ -2210,13 +2211,13 @@ class TestFase1(CofreMixin, BaseUI):
         self.criar_pasta("Cofre")
         self.digitar('1')
         self.criar_nota("Banco", "x")
-        self.digitar('M')
+        self.digitar('/')
         self.digitar('K1'); self.digitar('3'); self.digitar('S')
         self.criar_senha()
         if self.nome_tela() == 'ConfirmScreen':
             self.digitar('S')
         self.digitar('1')
-        self.digitar('Y1'); self.digitar('M'); self.digitar('C')
+        self.digitar('C1'); self.digitar('/'); self.digitar('C')
         self.assertEqual(self.nome_tela(), 'ConfirmScreen')
         self.assertNaTela("fica fora da pasta cifrada")
 
@@ -2224,12 +2225,12 @@ class TestFase1(CofreMixin, BaseUI):
         self.criar_nota("Cmd", "x")
         self.digitar('1')
         self.digitar('?')
-        self.assertNaTela("Y - Área de transferência")
+        self.assertNaTela("C - Copiar o texto")
 
     def test_bloco_inexistente_avisa(self):
         self.criar_nota("Cmd", self.NOTA)
         self.digitar('1')
-        self.digitar('Y9')
+        self.digitar('C9')
         self.assertNaTela("A nota tem 2 blocos de código")
 
     def test_copia_cifrada_e_limpa_depois(self):
@@ -2237,7 +2238,7 @@ class TestFase1(CofreMixin, BaseUI):
         self.config['cofre']['clip_seg'] = 1
         self.nota_cifrada("Banco", "pin sigiloso-kappa")
         self.digitar('1')
-        self.digitar('Y')
+        self.digitar('C')
         self.assertEqual(self.copiado(), "pin sigiloso-kappa")
         self.assertNaTela("(limpa em 1 s)")
         QTest.qWait(1300)
@@ -2246,7 +2247,7 @@ class TestFase1(CofreMixin, BaseUI):
     def test_limpeza_nao_apaga_o_que_o_usuario_copiou_depois(self):
         self.nota_cifrada("Banco", "pin sigiloso-kappa")
         self.digitar('1')
-        self.digitar('Y')
+        self.digitar('C')
         self.assertEqual(self.copiado(), "pin sigiloso-kappa")
         _app_qt().clipboard().setText("outra coisa")
         self.app.limpar_copia_sensivel()
@@ -2257,7 +2258,7 @@ class TestFase1(CofreMixin, BaseUI):
     def test_mover_para_outra_pasta(self):
         self.criar_pasta("Destino")
         self.criar_nota("Nota", "x")
-        self.digitar('X2')
+        self.digitar('M2')
         self.assertEqual(self.nome_tela(), 'DestinoScreen')
         self.assertIn("   C - Mover para cá", self.tela())
         self.digitar('1')          # entra em Destino
@@ -2270,13 +2271,13 @@ class TestFase1(CofreMixin, BaseUI):
     def test_pasta_movida_nao_aparece_como_destino(self):
         self.criar_pasta("A")
         self.criar_pasta("B")
-        self.digitar('X1')
+        self.digitar('M1')
         self.assertNotIn(" - A/", self.tela())
         self.assertIn(" - B/", self.tela())
 
     def test_mover_para_a_mesma_pasta_avisa(self):
         self.criar_nota("Nota", "x")
-        self.digitar('X1')
+        self.digitar('M1')
         self.digitar('C')
         self.assertNaTela("já está nesta pasta")
 
@@ -2284,9 +2285,9 @@ class TestFase1(CofreMixin, BaseUI):
         self.criar_pasta("Destino")
         self.digitar('1')
         self.criar_nota("Nota", "dentro")
-        self.digitar('M')
+        self.digitar('/')
         self.criar_nota("Nota", "fora")
-        self.digitar('X2')
+        self.digitar('M2')
         self.digitar('1')
         self.digitar('C')
         self.assertNaTela("Já existe um item chamado 'Nota'")
@@ -2295,7 +2296,7 @@ class TestFase1(CofreMixin, BaseUI):
         self.criar_pasta("A")
         self.digitar('1')
         self.criar_nota("Nota", "x")
-        self.digitar('X1')
+        self.digitar('M1')
         self.digitar('')
         self.assertEqual(self.nome_tela(), 'DestinoScreen')
         self.assertIn(" ~\n", self.tela())
@@ -2312,7 +2313,7 @@ class TestFase1(CofreMixin, BaseUI):
         self.digitar('K2')                      # nota cifrada por si
         if self.nome_tela() == 'ConfirmScreen':
             self.digitar('S')
-        self.digitar('X2'); self.digitar('1'); self.digitar('C')
+        self.digitar('M2'); self.digitar('1'); self.digitar('C')
         nota = self.app.raiz.filhos[0].filhos[0]
         self.assertFalse(nota.cifrado)          # a pasta ja protege
         self.assertNotIn("sigiloso-kappa", self.arquivo.read_text(encoding='utf-8'))
@@ -2321,13 +2322,13 @@ class TestFase1(CofreMixin, BaseUI):
         self.criar_pasta("Cofre")
         self.digitar('1')
         self.criar_nota("Banco", "x")
-        self.digitar('M')
+        self.digitar('/')
         self.digitar('K1'); self.digitar('3'); self.digitar('S')
         self.criar_senha()
         if self.nome_tela() == 'ConfirmScreen':
             self.digitar('S')
         self.digitar('1')
-        self.digitar('X1'); self.digitar('M'); self.digitar('C')
+        self.digitar('M1'); self.digitar('/'); self.digitar('C')
         self.assertEqual(self.nome_tela(), 'ConfirmScreen')
         self.assertNaTela("sai da pasta cifrada")
 
@@ -2471,7 +2472,7 @@ class TestFase2(CofreMixin, BaseUI):
         self.criar_pasta("Vscode")
         self.digitar('1')
         self.criar_nota("Ctrl + P", "abre")
-        self.digitar('M')
+        self.digitar('/')
         self.digitar('W')
         self.assertNaTela("1 notas exportadas")
         saidas = list(self.dir.glob('KeyBase-export-*'))
@@ -2511,7 +2512,7 @@ class TestFase3(CofreMixin, BaseUI):
         self.digitar('1')
         self.criar_nota("Ctrl + P", "abre")
         self.digitar('F1')
-        self.digitar('M')
+        self.digitar('/')
         self.digitar('L')
         self.digitar('1')
         self.assertEqual(self.nome_tela(), 'ViewerScreen')
@@ -2540,7 +2541,7 @@ class TestFase3(CofreMixin, BaseUI):
         self.criar_pasta("Vscode")
         self.digitar('1')
         self.criar_nota("Ctrl + P", "abre o seletor")
-        self.digitar('M')
+        self.digitar('/')
         self.criar_nota("Indice", "veja [[Vscode/Ctrl + P]]")
         self.digitar('2')
         self.app.abrir_link("kb:Vscode/Ctrl%20%2B%20P")
@@ -2552,7 +2553,7 @@ class TestFase3(CofreMixin, BaseUI):
             self.criar_pasta(pasta)
             self.digitar('1' if pasta == "A" else '2')
             self.criar_nota("Mesmo", pasta)
-            self.digitar('M')
+            self.digitar('/')
         self.app.abrir_link("kb:Mesmo")
         linhas = [l.strip() for l in self.tela().splitlines()]
         self.assertIn("1 - A / Mesmo", linhas)
@@ -2610,7 +2611,7 @@ class TestFase4(CofreMixin, BaseUI):
         indice = [f.nome for f in tree.filhos_ordenados(self.app.raiz)].index("Modelos") + 1
         self.digitar(str(indice))
         self.criar_nota(nome, conteudo)   # dentro da pasta de modelos: sem pergunta
-        self.digitar('M')
+        self.digitar('/')
 
     def test_nova_nota_oferece_os_modelos_um_por_linha(self):
         self.criar_modelo("Atalho", "# {nome}\n\nTecla:")
@@ -2724,20 +2725,527 @@ class TestMenuDoDestino(BaseUI):
     def test_menu_fixo_no_visual_do_dinamico(self):
         self.criar_pasta("Destino")
         self.criar_nota("Nota", "x")
-        self.digitar('X2')
+        self.digitar('M2')
         linhas = self.tela().splitlines()
         self.assertTrue(set(linhas[0]) == {'='})                 # o menu abre a tela
         self.assertTrue(linhas[1].strip().startswith("C - Mover para cá"))
-        self.assertIn("M - Raiz", linhas[1])
+        self.assertIn("/ - Raiz", linhas[1])
         self.assertIn("ENTER - Subir nível", linhas[2])
         self.assertIn("ESC - Cancelar", linhas[2])
         self.app.alternar_menu()                                  # '?' nao o esconde
         self.assertIn("C - Mover para cá", self.tela())
 
-    def test_m_vai_para_a_raiz(self):
+    def test_barra_vai_para_a_raiz(self):
         self.criar_pasta("A")
         self.digitar('1')
         self.criar_nota("Nota", "x")
-        self.digitar('X1')
-        self.digitar('M')
+        self.digitar('M1')
+        self.digitar('/')
         self.assertIn(" ~\n", self.tela())
+
+    def test_letra_errada_aponta_para_o_que_existe(self):
+        self.criar_pasta("Destino")
+        self.criar_nota("Nota", "x")
+        self.digitar('C2')
+        self.digitar('P')
+        self.assertEqual(self.nome_tela(), 'DestinoScreen')
+        self.assertNaTela("C para copiar para cá")
+        self.assertNaoNaTela("Digite ?")
+
+
+class TestMenuDoComandoNaBarra(BaseUI):
+    """Com um comando digitado e sem o ENTER, o menu mostra so o que serve
+    dentro dele - o resto do menu so trocaria de comando."""
+
+    def setUp(self):
+        super().setUp()
+        self.criar_pasta("Pasta")
+        self.criar_nota("Nota", "x")
+        self.digitar('?')                 # liga o menu
+
+    def teclar(self, texto):
+        from PySide6.QtTest import QTest
+        QTest.keyClicks(self.view.entrada, texto)
+        _app_qt().processEvents()
+
+    def test_c_sozinho_mostra_so_as_opcoes_do_c(self):
+        self.teclar('c')
+        self.assertNaTela("C + nº - Copiar o item nº para outra pasta")
+        self.assertNaTela("C + 1,2,5 / 1-4 - Copiar vários itens para outra pasta")
+        self.assertNaTela("ENTER - Escolher na lista (um, vários ou M para marcar)")
+        self.assertNaTela("ESC - Desistir do comando")
+        self.assertNaoNaTela("P - Nova pasta")
+        self.assertNaoNaTela("O - Opções")
+        self.assertNaTela("2 - Nota")     # a lista fica, para achar o numero
+
+    def test_com_numero_nomeia_o_item(self):
+        self.teclar('m2')
+        self.assertNaTela("ENTER - Mover 'Nota' para outra pasta")
+        self.teclar('9')
+        self.assertNaTela("Não há item 29 na lista")
+
+    def test_numero_sozinho_diz_o_que_abre(self):
+        self.teclar('1')
+        self.assertNaTela("ENTER - Entrar em 'Pasta/'")
+
+    def test_comando_sem_alvo(self):
+        self.teclar('o')
+        self.assertNaTela("ENTER - Opções")
+        self.assertNaoNaTela("P - Nova pasta")
+
+    def test_esc_desiste_e_o_menu_volta(self):
+        self.teclar('z')
+        self.app.cancel()
+        self.assertEqual(self.nome_tela(), 'BrowserScreen')
+        self.assertEqual(self.view.ler_entrada(), "")
+        self.assertNaTela("P - Nova pasta")
+
+    def test_filtro_volta_ao_menu_completo(self):
+        self.teclar('pa')
+        self.assertNaoNaTela("Desistir do comando")
+
+    def test_menu_escondido_nao_aparece(self):
+        self.digitar('?')                 # desliga
+        self.teclar('c')
+        self.assertNaoNaTela("Desistir do comando")
+
+    def test_esc_no_viewer_apaga_o_comando_sem_sair_da_nota(self):
+        self.digitar('2')
+        self.teclar('c')
+        self.assertNaTela("ENTER - Copiar o texto")
+        self.app.cancel()
+        self.assertEqual(self.nome_tela(), 'ViewerScreen')
+        self.assertEqual(self.view.ler_entrada(), "")
+
+    def test_letra_na_pergunta_de_item_nao_cancela(self):
+        self.digitar('C')
+        self.digitar('P')
+        self.assertEqual(self.nome_tela(), 'PromptScreen')
+        self.assertNaTela("Digite o número do item, de 1 a 2")
+        self.digitar('2')
+        self.assertEqual(self.nome_tela(), 'DestinoScreen')
+
+
+class TestSelecaoMultipla(BaseUI):
+    """Y, X, Z e D com varios itens: '1,2,5', '1-4', ou M e marcar com espaco."""
+
+    def setUp(self):
+        super().setUp()
+        self.criar_pasta("Destino")
+        for nome in ("Alfa", "Beta", "Gama"):
+            self.criar_nota(nome, nome.lower())
+        # ordem exibida: 1 - Destino/, 2 - Alfa, 3 - Beta, 4 - Gama
+
+    def tecla(self, qual):
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+        teclas = {'cima': Qt.Key.Key_Up, 'baixo': Qt.Key.Key_Down,
+                  'espaco': Qt.Key.Key_Space, 'enter': Qt.Key.Key_Return}
+        QTest.keyClick(self.view.out, teclas[qual])
+        _app_qt().processEvents()
+
+    def nomes(self, pasta):
+        return sorted(f.nome for f in pasta.filhos)
+
+    def destino(self):
+        return next(f for f in self.app.raiz.filhos if f.nome == "Destino")
+
+    def test_pergunta_mostra_o_menu_do_lote(self):
+        self.digitar('C')
+        self.assertNaTela("1,2,5 / 1-4 - Vários itens")
+        self.assertNaTela("M - Seleção múltipla")
+
+    def test_virgula_na_pergunta_copia_os_itens(self):
+        self.digitar('C')
+        self.digitar('2,4')
+        self.assertEqual(self.nome_tela(), 'DestinoScreen')
+        self.assertNaTela("Copiar 2 itens para:")
+        self.digitar('1')                 # entra em Destino
+        self.digitar('C')
+        self.assertEqual(self.nomes(self.destino()), ["Alfa", "Gama"])
+        self.assertNaTela("2 itens copiados")
+        self.assertEqual(len(self.app.raiz.filhos), 4)   # os originais ficam
+
+    def test_lista_errada_nao_cancela(self):
+        self.digitar('M')
+        self.digitar('2,9')
+        self.assertEqual(self.nome_tela(), 'PromptScreen')
+        self.assertNaTela("Não há item 9")
+
+    def test_lote_direto_na_barra(self):
+        self.digitar('M2-3')
+        self.assertNaTela("Mover 2 itens para:")
+        self.digitar('1')
+        self.digitar('C')
+        self.assertEqual(self.nomes(self.destino()), ["Alfa", "Beta"])
+        self.assertNaTela("2 itens movidos")
+
+    def test_lote_invalido_na_barra_avisa(self):
+        self.digitar('M2,9')
+        self.assertEqual(self.nome_tela(), 'BrowserScreen')
+        self.assertNaTela("Não há item 9")
+
+    def test_menu_da_barra_conta_os_itens(self):
+        from PySide6.QtTest import QTest
+        self.digitar('?')
+        QTest.keyClicks(self.view.entrada, 'c2,3')
+        _app_qt().processEvents()
+        self.assertNaTela("ENTER - Copiar 2 itens para outra pasta")
+
+    def test_m_abre_a_selecao_com_foco_na_lista(self):
+        self.digitar('C')
+        self.digitar('M')
+        self.assertEqual(self.nome_tela(), 'SelecaoScreen')
+        self.assertTrue(self.view.foco_na_lista())
+        self.assertNaTela("> [ ] Destino/")
+        self.assertNaTela("ESPAÇO - Marcar/desmarcar")
+
+    def test_setas_espaco_e_enter(self):
+        self.digitar('C')
+        self.digitar('M')
+        self.tecla('baixo'); self.tecla('espaco')      # Alfa
+        self.tecla('baixo'); self.tecla('baixo')
+        self.tecla('espaco')                           # Gama
+        self.tecla('baixo')                            # para no fim
+        self.assertNaTela("> [X] Gama")
+        self.assertNaTela("[X] Alfa")
+        self.assertNaTela("2 marcados")
+        self.tecla('cima'); self.tecla('espaco'); self.tecla('espaco')  # marca e desmarca Beta
+        self.assertNaTela("[ ] Beta")
+        self.tecla('enter')
+        self.assertEqual(self.nome_tela(), 'DestinoScreen')
+        self.assertNaTela("Copiar 2 itens para:")
+        self.app.cancel()
+        self.assertEqual(self.nome_tela(), 'BrowserScreen')   # a pergunta nao fica
+
+    def test_enter_sem_marcar_avisa(self):
+        self.digitar('Z')
+        self.digitar('M')
+        self.tecla('enter')
+        self.assertEqual(self.nome_tela(), 'SelecaoScreen')
+        self.assertNaTela("Marque ao menos um item")
+
+    def test_esc_volta_para_a_pergunta(self):
+        self.digitar('C')
+        self.digitar('M')
+        self.app.cancel()
+        self.assertEqual(self.nome_tela(), 'PromptScreen')
+        self.assertNaTela("Copiar qual item?")
+        self.assertFalse(self.view.foco_na_lista())
+
+    def test_duplicar_em_lote_e_um_u_desfaz(self):
+        self.digitar('Z2,3')
+        nomes = [f.nome for f in self.app.raiz.filhos]
+        self.assertIn("Alfa (cópia)", nomes)
+        self.assertIn("Beta (cópia)", nomes)
+        self.assertNaTela("2 itens duplicados")
+        self.digitar('U')
+        self.assertEqual(len(self.app.raiz.filhos), 4)
+        self.assertNaTela("Desfeito: duplicar 2 itens")
+
+    def test_deletar_em_lote(self):
+        self.digitar('D2-4')
+        self.assertNaTela("Apagar 3 itens (3 notas)?")
+        self.digitar('s')
+        self.assertEqual([f.nome for f in self.app.raiz.filhos], ["Destino"])
+        self.digitar('U')
+        self.assertEqual(len(self.app.raiz.filhos), 4)
+
+    def test_deletar_em_lote_com_pasta_cheia_exige_deletar(self):
+        self.digitar('1')
+        self.criar_nota("Dentro", "x")
+        self.digitar('')
+        self.digitar('D1,2')
+        self.assertNaTela("Apagar 2 itens (1 nota e 1 pasta)?")
+        self.assertNaTela("Digite DELETAR")
+        self.digitar('s')                 # nao basta
+        self.assertEqual(len(self.app.raiz.filhos), 4)
+        self.digitar('D1,2')
+        self.digitar('DELETAR')
+        self.assertEqual(len(self.app.raiz.filhos), 2)
+
+    # --- conflito no mover -----------------------------------------------
+
+    def preparar_conflito(self):
+        """Destino ja tem uma 'Alfa': mover Alfa, Beta e Gama conflita em uma."""
+        self.digitar('1')
+        self.criar_nota("Alfa", "a de la")
+        self.digitar('')
+        self.digitar('M2-4')
+        self.digitar('1')
+        self.digitar('C')
+
+    def test_conflito_pergunta(self):
+        self.preparar_conflito()
+        self.assertEqual(self.nome_tela(), 'PromptScreen')
+        self.assertNaTela("2 itens podem ser movidos, 1 em conflito")
+        self.assertNaTela("Em conflito: 'Alfa'.")
+        self.assertNaTela("1 - Mover só os 2 sem conflito")
+        self.assertNaTela("2 - Substituir")
+        self.assertNaTela("3 - Mover o conflitante com outro nome ('Alfa (cópia)')")
+
+    def test_conflito_mover_so_os_livres(self):
+        self.preparar_conflito()
+        self.digitar('1')
+        self.assertEqual(self.nomes(self.destino()), ["Alfa", "Beta", "Gama"])
+        self.assertEqual(self.destino().filhos[0].conteudo, "a de la")
+        self.assertIn("Alfa", [f.nome for f in self.app.raiz.filhos])
+        self.assertNaTela("(1 ficou por conflito)")
+
+    def test_conflito_substituir(self):
+        self.preparar_conflito()
+        self.digitar('2')
+        self.assertEqual(self.nomes(self.destino()), ["Alfa", "Beta", "Gama"])
+        alfa = next(f for f in self.destino().filhos if f.nome == "Alfa")
+        self.assertEqual(alfa.conteudo, "alfa")
+        self.assertEqual([f.nome for f in self.app.raiz.filhos], ["Destino"])
+        self.digitar('U')                 # um U desfaz o lote inteiro
+        self.assertEqual(len(self.app.raiz.filhos), 4)
+
+    def test_conflito_outro_nome(self):
+        self.preparar_conflito()
+        self.digitar('3')
+        self.assertEqual(self.nomes(self.destino()),
+                         ["Alfa", "Alfa (cópia)", "Beta", "Gama"])
+        self.assertNaTela("1 com outro nome")
+
+    def test_conflito_esc_nao_move_nada(self):
+        self.preparar_conflito()
+        self.app.cancel()
+        self.assertEqual(self.nome_tela(), 'DestinoScreen')
+        self.assertEqual(self.nomes(self.destino()), ["Alfa"])
+        self.assertEqual(len(self.app.raiz.filhos), 4)
+
+    def test_conflito_de_um_item_so(self):
+        self.digitar('1')
+        self.criar_nota("Alfa", "a de la")
+        self.digitar('')
+        self.digitar('M2')
+        self.digitar('1')
+        self.digitar('C')
+        self.assertNaTela("Já existe um item chamado 'Alfa' nesta pasta.")
+        self.assertNaTela("1 - Não mover")
+        self.digitar('3')
+        self.assertEqual(self.nomes(self.destino()), ["Alfa", "Alfa (cópia)"])
+
+
+class TestTeclasNovas(BaseUI):
+    """C copia, M move, / vai para a raiz e O abre as opções; Y e X saíram."""
+
+    def test_menu_da_lista(self):
+        self.criar_pasta("A")
+        self.digitar('1')
+        self.criar_nota("n", "x")
+        self.digitar('?')
+        for trecho in ("C - Copiar para...", "M - Mover", "/ - Ir para a raiz", "O - Opções"):
+            self.assertNaTela(trecho)
+        for trecho in ("Y - ", "X - ", "Configuração"):
+            self.assertNaoNaTela(trecho)
+
+    def test_barra_com_texto_continua_filtrando(self):
+        self.criar_pasta("Casa")
+        self.criar_pasta("Carro")
+        self.digitar('/ca')
+        self.assertNaTela('filtro: "ca"')
+        self.assertEqual(self.nome_tela(), 'BrowserScreen')
+
+    def test_y_nao_e_mais_comando(self):
+        self.criar_nota("n", "x")
+        self.digitar('Y1')
+        self.assertEqual(self.nome_tela(), 'BrowserScreen')   # virou filtro, nada abriu
+
+
+class TestFavoritosTirarDaLista(BaseUI):
+    """D desfavorita (em Favoritos) ou esquece (em Recentes); X limpa os recentes.
+
+    Lista: 1 - Alfa, 2 - Beta (favoritos); 3 - Gama, 4 - Beta, 5 - Alfa (recentes).
+    """
+
+    def setUp(self):
+        super().setUp()
+        for nome in ("Alfa", "Beta", "Gama"):
+            self.criar_nota(nome, nome.lower())   # criar abre a nota: vira recente
+        self.digitar('F1'); self.digitar('F2')
+        self.digitar('2'); self.digitar('')
+        self.digitar('3'); self.digitar('')
+        self.digitar('L')
+
+    def no(self, nome):
+        return next(f for f in self.app.raiz.filhos if f.nome == nome)
+
+    def nomes_recentes(self):
+        return [self.app.no(i).nome for i in self.app.recentes()]
+
+    def test_d_num_favorito_desfavorita_e_a_nota_fica_nos_recentes(self):
+        self.digitar('D2')
+        self.assertFalse(self.no("Beta").favorito)
+        self.assertIn("Beta", self.nomes_recentes())
+        self.assertNaTela("'Beta' saiu dos favoritos.")
+        self.assertEqual(self.nome_tela(), 'FavoritosScreen')
+
+    def test_d_num_recente_so_esquece(self):
+        self.digitar('D4')
+        self.assertTrue(self.no("Beta").favorito)
+        self.assertNotIn("Beta", self.nomes_recentes())
+        self.assertNaTela("'Beta' saiu dos recentes.")
+
+    def test_lote_na_barra_mistura_as_duas_listas(self):
+        self.digitar('D1,3-4')
+        self.assertFalse(self.no("Alfa").favorito)
+        self.assertTrue(self.no("Beta").favorito)
+        self.assertEqual(self.nomes_recentes(), ["Alfa"])
+        self.assertNaTela("'Alfa' saiu dos favoritos e 2 saíram dos recentes.")
+
+    def test_pergunta_diz_de_qual_lista(self):
+        self.digitar('D')
+        self.assertNaTela("2 - Beta  (favorito)")
+        self.assertNaTela("4 - Beta  (recente)")
+        self.assertNaTela("M - Seleção múltipla")
+        self.digitar('1-2')
+        self.assertFalse(self.no("Alfa").favorito)
+        self.assertFalse(self.no("Beta").favorito)
+
+    def test_selecao_marca_por_posicao(self):
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+        self.digitar('D')
+        self.digitar('M')
+        self.assertEqual(self.nome_tela(), 'SelecaoScreen')
+        for tecla in (Qt.Key.Key_Down, Qt.Key.Key_Space,               # 2 - Beta favorito
+                      Qt.Key.Key_Down, Qt.Key.Key_Down, Qt.Key.Key_Space,  # 4 - Beta recente
+                      Qt.Key.Key_Return):
+            QTest.keyClick(self.view.out, tecla)
+        _app_qt().processEvents()
+        self.assertFalse(self.no("Beta").favorito)
+        self.assertNotIn("Beta", self.nomes_recentes())
+        self.assertTrue(self.no("Alfa").favorito)
+        self.assertEqual(self.nome_tela(), 'FavoritosScreen')
+
+    def test_menu_da_barra_nomeia_a_acao(self):
+        from PySide6.QtTest import QTest
+        self.digitar('?')
+        QTest.keyClicks(self.view.entrada, 'd2')
+        _app_qt().processEvents()
+        self.assertNaTela("ENTER - Desfavoritar 'Beta'")
+        QTest.keyClicks(self.view.entrada, ',4')
+        _app_qt().processEvents()
+        self.assertNaTela("ENTER - Tirar 2 itens da lista")
+
+    def test_x_limpa_os_recentes_com_confirmacao(self):
+        self.digitar('X')
+        self.assertNaTela("Limpar os 3 recentes?")
+        self.digitar('s')
+        self.assertEqual(self.app.recentes(), [])
+        self.assertTrue(self.no("Alfa").favorito)      # favoritos ficam
+        self.assertNaTela("Nenhuma nota aberta ainda.")
+
+    def test_x_cancelado_nao_limpa(self):
+        self.digitar('X')
+        self.digitar('n')
+        self.assertEqual(len(self.app.recentes()), 3)
+
+
+class TestFavoritarEmLote(BaseUI):
+    """F1,3, F1-3 e F com M, como C/M/Z/D. Lista: 1 - Alfa, 2 - Beta, 3 - Gama."""
+
+    def setUp(self):
+        super().setUp()
+        for nome in ("Alfa", "Beta", "Gama"):
+            self.criar_nota(nome, nome.lower())
+
+    def favoritos(self):
+        return sorted(f.nome for f in self.app.raiz.filhos if f.favorito)
+
+    def test_lote_na_barra(self):
+        self.digitar('F1,3')
+        self.assertEqual(self.favoritos(), ["Alfa", "Gama"])
+        self.assertNaTela("2 itens marcados como favoritos.")
+
+    def test_misturado_marca_todos(self):
+        self.digitar('F2')
+        self.digitar('F1-3')
+        self.assertEqual(self.favoritos(), ["Alfa", "Beta", "Gama"])
+        self.assertNaTela("(1 já era)")
+
+    def test_todos_ja_favoritos_saem(self):
+        self.digitar('F1-2')
+        self.digitar('F1-2')
+        self.assertEqual(self.favoritos(), [])
+        self.assertNaTela("2 itens saíram dos favoritos.")
+
+    def test_pergunta_aceita_lista_e_m(self):
+        self.digitar('F')
+        self.assertNaTela("M - Seleção múltipla")
+        self.digitar('2-3')
+        self.assertEqual(self.favoritos(), ["Beta", "Gama"])
+
+    def test_selecao_com_espaco(self):
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+        self.digitar('F')
+        self.digitar('M')
+        for tecla in (Qt.Key.Key_Space, Qt.Key.Key_Down, Qt.Key.Key_Down,
+                      Qt.Key.Key_Space, Qt.Key.Key_Return):
+            QTest.keyClick(self.view.out, tecla)
+        _app_qt().processEvents()
+        self.assertEqual(self.favoritos(), ["Alfa", "Gama"])
+
+    def test_f3_continua_alternando_um(self):
+        self.digitar('F3')
+        self.assertNaTela("'Gama' marcado como favorito.")
+        self.digitar('F3')
+        self.assertEqual(self.favoritos(), [])
+
+
+
+class TestSemprePorCima(BaseUI):
+    """Ctrl+T liga e desliga; ligado, borda de 2px na cor da pasta."""
+
+    def ctrl_t(self):
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+        modificador = (Qt.KeyboardModifier.MetaModifier
+                       if sys.platform == 'darwin'
+                       else Qt.KeyboardModifier.ControlModifier)
+        alvo = _app_qt().focusWidget() or self.janela
+        QTest.keyClick(alvo, Qt.Key.Key_T, modificador)
+        _app_qt().processEvents()
+
+    def por_cima(self):
+        from PySide6.QtCore import Qt
+        return bool(self.janela.windowFlags() & Qt.WindowType.WindowStaysOnTopHint)
+
+    def test_ctrl_t_alterna(self):
+        self.assertFalse(self.por_cima())
+        self.ctrl_t()
+        self.assertTrue(self.por_cima())
+        self.assertTrue(self.janela.isVisible())
+        self.ctrl_t()
+        self.assertFalse(self.por_cima())
+
+    def test_borda_na_cor_da_pasta_so_quando_ligado(self):
+        from PySide6.QtGui import QColor
+
+        from keybase.qt.theme import cores_interface
+        pasta = QColor(cores_interface(self.config['theme'])['pasta'])
+
+        def canto():
+            _app_qt().processEvents()
+            return self.janela.grab().toImage().pixelColor(0, 300)
+
+        self.assertNotEqual(canto(), pasta)
+        self.janela.definir_por_cima(True)
+        self.assertEqual(canto(), pasta)
+        self.assertEqual(self.janela._layout.contentsMargins().left(), 2)
+        self.janela.definir_por_cima(False)
+        self.assertNotEqual(canto(), pasta)
+        self.assertEqual(self.janela._layout.contentsMargins().left(), 0)
+
+    def test_funciona_no_editor_sem_perder_o_texto(self):
+        self.criar_nota("Nota", "x")
+        self.digitar('1'); self.digitar('E')
+        self.digitar_no_editor("texto nao salvo")
+        self.ctrl_t()
+        self.assertTrue(self.por_cima())
+        self.assertEqual(self.nome_tela(), 'EditorScreen')
+        self.assertIn("texto nao salvo", self.editor().toPlainText())

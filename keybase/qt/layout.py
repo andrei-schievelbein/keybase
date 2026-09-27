@@ -65,10 +65,13 @@ def montar_breadcrumb(cadeia, largura=LARGURA_PADRAO):
     return texto
 
 
-def linha_item(numero, no, largura=LARGURA_PADRAO):
-    """Partes (texto, tag) de uma linha da listagem, no formato 'N - Nome'."""
-    prefixo = f"{numero:>{LARGURA_NUMERO}} - "
-    partes = [(prefixo, 'numero')]
+def linha_item(numero, no, largura=LARGURA_PADRAO, prefixo=None, tag_prefixo='numero'):
+    """Partes (texto, tag) de uma linha da listagem, no formato 'N - Nome'.
+
+    `prefixo` troca o 'N - ' (a selecao multipla usa ' > [X] ')."""
+    if prefixo is None:
+        prefixo = f"{numero:>{LARGURA_NUMERO}} - "
+    partes = [(prefixo, tag_prefixo)]
 
     if isinstance(no, Folder):
         sufixo = ":".join(_sufixo_pasta(no))
@@ -161,14 +164,19 @@ def montar_menu(comandos, rotulos, disponiveis, largura=LARGURA_PADRAO, extras=(
     return linhas
 
 
-def montar_menu_fixo(pares, largura=LARGURA_PADRAO):
+def montar_menu_fixo(pares, largura=LARGURA_PADRAO, colunas=2):
     """Menu em duas colunas, no visual do menu dinamico, para teclas que nao
-    sao uma letra so ('ENTER', 'ESC'): a coluna da tecla se ajusta a maior."""
+    sao uma letra so ('ENTER', 'ESC'): a coluna da tecla se ajusta a maior.
+
+    colunas=1 poe uma opcao por linha: para rotulos longos, que em duas
+    colunas seriam cortados."""
     if not pares:
         return []
     largura_tecla = max(LARGURA_LETRA, max(len(tecla) for tecla, _ in pares))
     # um espaco de margem: 'ENTER' nao encosta na borda, como o resto da tela
     celulas = [f" {tecla:>{largura_tecla}} - {rotulo}" for tecla, rotulo in pares]
+    if colunas == 1:
+        return [truncar(c, largura) for c in celulas]
     metade = (len(celulas) + 1) // 2
     esquerda, direita = celulas[:metade], celulas[metade:]
     coluna = max(len(c) for c in esquerda) + 4

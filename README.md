@@ -89,8 +89,8 @@ logo abaixo do campo de comando; `?` de novo e ele some:
 ==============================================================
    P - Nova pasta        B - Buscar
    N - Nova nota         V - Voltar
-   E - Editar nota       M - Ir para a raiz
-   R - Renomear          C - Configuração
+   E - Editar nota       / - Ir para a raiz
+   R - Renomear          O - Opções
    D - Deletar          ?? - Ajuda completa
                       sair - Encerrar
 ==============================================================
@@ -101,6 +101,18 @@ logo abaixo do campo de comando; `?` de novo e ele some:
  3 - Merge e join
 ==============================================================
 ```
+
+Com um comando digitado na barra, antes do Enter, o menu mostra só o que serve dentro dele. Digitou `C`, por exemplo:
+
+```
+==============================================================
+ C + nº - Copiar o item nº para outra pasta
+  ENTER - Escolher o item pelo número
+    ESC - Desistir do comando
+==============================================================
+```
+
+Com `C3` o menu já nomeia o item (`ENTER - Copiar 'Receitas' para outra pasta`), e com um número sozinho diz o que o Enter abre. `Esc` apaga o comando e o menu completo volta.
 
 ### Filtrando
 
@@ -113,7 +125,7 @@ digitou "agr"            →   1 - Agrupamentos
 
 O filtro nunca sai do lugar: o breadcrumb continua o mesmo e os números passam a indexar a lista filtrada, então `1` abre o primeiro item **do que está na tela**.
 
-Como as letras de comando continuam valendo, use a barra para filtrar por um termo que colida com elas: `/c` filtra por "c" em vez de criar uma pasta.
+Como as letras de comando continuam valendo, use a barra para filtrar por um termo que colida com elas: `/c` filtra por "c" em vez de abrir o copiar.
 
 ### Comandos
 
@@ -124,30 +136,55 @@ Como as letras de comando continuam valendo, use a barra para filtrar por um ter
 | `N` | Cria uma nota na pasta atual (e já abre o editor) |
 | `E` ou `E3` | Edita o conteúdo de uma nota |
 | `R` ou `R3` | Renomeia um item |
-| `D` ou `D3` | Apaga um item |
-| `X` ou `X3` | Move um item: você navega até a pasta de destino e confirma com `C` (`ENTER` sobe um nível, `M` vai à raiz, `ESC` cancela) |
-| `Z` ou `Z3` | Duplica um item, como "Nome (cópia)" |
-| `Y` ou `Y3` | Copia um item (nota ou pasta) para outra pasta: como o mover, mas o original fica |
-| `Y` (na nota) | Área de transferência: `Y2` copia o 2º bloco de código; `Y` sozinho lista os blocos (e `0` copia a nota inteira) |
+| `D`, `D3` ou `D1,3` | Apaga um item (ou vários) |
+| `M`, `M3` ou `M1,2` | Move um item (ou vários): você navega até a pasta de destino e confirma com `C` (`ENTER` sobe um nível, `/` vai à raiz, `ESC` cancela) |
+| `Z`, `Z3` ou `Z1-3` | Duplica um item (ou vários), como "Nome (cópia)" |
+| `C`, `C3` ou `C1-4` | Copia um item (nota ou pasta), ou vários, para outra pasta: como o mover, mas o original fica |
+| `C` (na nota) | Área de transferência: `C2` copia o 2º bloco de código; `C` sozinho lista os blocos (e `0` copia a nota inteira) |
 | `U` | Desfaz a última ação: apagar, mover, renomear, duplicar ou decifrar. Várias em sequência, enquanto nada mais tiver sido alterado depois |
 | `H` (na nota) | Histórico: as versões da nota guardadas nos backups e snapshots. Abra uma e `R` restaura (e `U` desfaz a restauração) |
-| `F` ou `F3` | Marca ou desmarca um favorito (`[favorito]` no fim da linha) |
-| `L` | Favoritos e notas abertas recentemente, numa lista só |
+| `F`, `F3` ou `F1,3` | Marca ou desmarca um favorito (`[favorito]` no fim da linha). Em lote, se algum ainda não é favorito, todos viram; se todos já são, todos saem |
+| `L` | Favoritos e notas abertas recentemente, numa lista só. Lá, `D2` (ou `D1,3`, `D1-4`, `D` e `M` para marcar) desfavorita o que está em Favoritos e tira dos recentes o que está em Recentes; `X` limpa os recentes |
 | `W` ou `W3` | Exporta a pasta atual (ou a pasta 3) como arquivos `.md` numa pasta em Downloads |
 | `V` | Volta um nível (ou limpa o filtro) |
-| `M` | Vai direto para a raiz |
+| `/` | Vai direto para a raiz |
 | `B` | Busca em toda a base. Tolera erro de digitação no nome ("pnadas" acha "Pandas"); nos resultados, as setas escolhem e Enter abre |
-| `C` | Abre a configuração no editor (veja [Configuração](#configuração)) |
+| `O` | Opções: abre a configuração no editor (veja [Opções](#opções)) |
 | `K` ou `K3` | Cifra ou decifra uma nota; numa pasta, cifra todas as notas dela |
 | `T` | Tranca os itens cifrados; se já estiverem trancados, pede a senha e destranca |
 | `S` | Troca a senha mestra |
 | `texto` | Filtra a pasta atual pelo nome enquanto você digita, a partir da 2ª letra; Enter fixa o filtro |
 | `/texto` | O mesmo, para termos que colidem com um comando (`/b`, `/c`, `/sair`) |
 | `?` | Mostra ou esconde o menu de comandos (o mesmo que `Ctrl+0`) |
+| `Ctrl+T` | Deixa a janela sempre por cima das outras, com uma borda azul em volta; de novo desliga. Não é lembrado ao reabrir |
 | `??` | Ajuda completa |
 | `sair` | Encerra |
 
 Comandos que agem sobre um item aceitam o número junto (`D3` apaga o item 3) ou sozinho (`D` pergunta qual).
+
+#### Vários itens de uma vez (C, M, Z, D e F)
+
+Copiar, mover, duplicar, apagar e favoritar aceitam vários itens:
+
+- **Direto na barra:** `C1,2,5`, `M1-4`, `Z2,3`, `D1-3,7`. Números repetidos contam uma vez.
+- **Na pergunta "Copiar qual item?":** digite `1,2,5` ou `1-4` do mesmo jeito, ou `M` para a seleção múltipla.
+- **Seleção múltipla (`M`):** o cursor sai da barra e vai para a lista. `↑`/`↓` percorrem, `Espaço` marca ou desmarca (`[X]`), `Enter` confirma e `Esc` volta para a pergunta.
+
+```
+   [ ] Modelos/
+ > [X] VS Code/
+   [X] Keybase Doc
+```
+
+O lote todo vira uma ação só: um `U` desfaz tudo. Apagar vários pede uma confirmação só, e exige digitar DELETAR se alguma pasta tiver conteúdo.
+
+Ao mover vários itens, um nome que já existe no destino não trava o lote. O KeyBase avisa quantos podem ser movidos e quantos estão em conflito, e pergunta o que fazer com os conflitantes:
+
+1. mover só os que não conflitam;
+2. substituir os de mesmo nome no destino (com backup antes);
+3. mover os conflitantes com outro nome ("Nota (cópia)").
+
+`Esc` nessa pergunta cancela, e nada é movido.
 
 ### Notas e pastas cifradas
 
@@ -171,12 +208,12 @@ As marcas ficam no fim da linha, emendadas na contagem `[a]:[b]`. Uma pasta cifr
 - Dentro de uma pasta cifrada tudo já é protegido: o `K` não cifra nada de novo e a criação de pasta não pergunta sobre notas cifradas.
 - `K` sobre uma pasta cifrada decifra a pasta, com confirmação.
 - Ao criar uma pasta com `P`, o KeyBase pergunta se as notas dela nascem cifradas. Enter vazio responde não.
-- A senha é pedida uma vez por sessão, no primeiro item cifrado que você abrir. Os itens trancam de novo com `T` ou sozinhos depois de 10 minutos sem uso. Esse tempo é configurável com `C`, em `trancar_apos_min`.
+- A senha é pedida uma vez por sessão, no primeiro item cifrado que você abrir. Os itens trancam de novo com `T` ou sozinhos depois de 10 minutos sem uso. Esse tempo é configurável com `O`, em `trancar_apos_min`.
 - Com os itens trancados, a busca encontra notas cifradas só pelo nome e não enxerga nada dentro de pastas cifradas.
 - Ao cifrar, os backups e snapshots ainda guardam a versão em claro. O KeyBase oferece cifrar essas cópias também, preservando o histórico.
 
 - `S` troca a senha mestra sem recifrar nada: só a chave das notas é reenvelopada. Backups antigos continuam abrindo com a senha antiga.
-- Copiar algo cifrado para a área de transferência (`Y` dentro da nota) limpa a área de transferência depois de `limpar_copia_seg` segundos (padrão 20), se ela ainda tiver o que foi copiado.
+- Copiar algo cifrado para a área de transferência (`C` dentro da nota) limpa a área de transferência depois de `limpar_copia_seg` segundos (padrão 20), se ela ainda tiver o que foi copiado.
 - Mover para dentro de uma pasta cifrada deixa o item sob a proteção dela; mover para fora pede confirmação, porque o item passa a ficar em claro.
 
 > ⚠️ **Não existe recuperação de senha.** Sem a senha mestra, as notas e pastas cifradas ficam ilegíveis para sempre.
@@ -211,9 +248,9 @@ df = pd.read_csv("dados.csv")
 ```
 ````
 
-### Configuração
+### Opções
 
-`C` abre o `keybase_config.toml` no próprio editor, como uma nota. O arquivo é criado na primeira vez que o KeyBase abre, com os valores padrão e um comentário explicando cada opção:
+`O` abre o `keybase_config.toml` no próprio editor, como uma nota. O arquivo é criado na primeira vez que o KeyBase abre, com os valores padrão e um comentário explicando cada opção:
 
 ```toml
 # Tema: "dark" (escuro) ou "light" (claro). Aplica na hora.
@@ -232,7 +269,7 @@ trancar_apos_min = 10
 - Tema, altura da barra de ajuda, tempo para trancar e tempo dos avisos (`tempo_aviso_ms`, quanto tempo um aviso como "Pasta criada." fica no lugar do caminho; `tempo_aviso_longo_ms` para os avisos com algo para ler, como o endereço de uma exportação; `0` deixa esse aviso na tela até você apertar ENTER) valem na hora. Fontes valem ao reabrir o KeyBase.
 - O KeyBase nunca reescreve esse arquivo sozinho: seus comentários e a formatação ficam como você deixou.
 - `[dados] pasta` aponta para onde ficam os dados, por exemplo uma pasta do iCloud, Dropbox ou Google Drive, para usar os mesmos dados em vários computadores. Na primeira vez, os dados atuais são **copiados** para lá. Se outro computador tiver gravado o arquivo enquanto este estava aberto, o KeyBase não sobrescreve: guarda as suas mudanças numa cópia `keybase_data.conflito-….json` e pergunta se recarrega o do disco ou grava o daqui por cima.
-- Se o arquivo estiver inválido ao abrir o app, o KeyBase usa os padrões, avisa, e não mexe no arquivo. Use `C` para corrigir.
+- Se o arquivo estiver inválido ao abrir o app, o KeyBase usa os padrões, avisa, e não mexe no arquivo. Use `O` para corrigir.
 
 ## 🛠️ Instalação
 
@@ -267,7 +304,7 @@ O KeyBase é portátil: os dados ficam **ao lado do executável**, então dá pa
 | **keybase_data.json** | ⚠️ Recomendado | Suas pastas e notas. Sem ele, você começa do zero |
 | **keybase_data.bak.json** | ❌ Automático | Cópia da versão anterior, gravada antes de cada alteração |
 | **keybase_data.snapshot-*.json** | ❌ Automático | Uma cópia por dia, guardando os últimos 7 dias |
-| **keybase_config.toml** | ❌ Opcional | Suas preferências (tema, fontes, tempo para trancar). Editável com `C`. Recriado se faltar |
+| **keybase_config.toml** | ❌ Opcional | Suas preferências (tema, fontes, tempo para trancar). Editável com `O`. Recriado se faltar |
 | **keybase_data.conflito-*.json** | ❌ Automático | Suas mudanças guardadas quando outro computador gravou os dados ao mesmo tempo |
 | **keybase_estado.json** | ❌ Automático | Tamanho e posição da janela, último modo do editor, notas recentes e se a Keybase Doc já foi criada |
 | **window_config.json** | ❌ Antigo | Configuração das versões anteriores. Na primeira vez, os valores dele são copiados para o `keybase_config.toml`; depois não é mais usado |

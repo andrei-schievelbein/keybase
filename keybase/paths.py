@@ -103,7 +103,7 @@ def resolver_arquivo_dados(pasta_configurada, padrao=None):
 
 
 def arquivo_config():
-    """Configuracao do usuario, editavel com C dentro do app."""
+    """Configuracao do usuario, editavel com O (Opcoes) dentro do app."""
     return dir_dados() / 'keybase_config.toml'
 
 

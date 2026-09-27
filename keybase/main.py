@@ -67,12 +67,12 @@ def main():
         if doc.avisos:
             app.flash("Arquivo reparado: " + "; ".join(doc.avisos))
         elif erro_dados:
-            app.flash(f"Atenção: {erro_dados}. Corrija com C.", erro=True)
+            app.flash(f"Atenção: {erro_dados}. Corrija com O (Opções).", erro=True)
         elif aviso_dados:
             app.flash(aviso_dados)
         elif erros_config:
             app.flash(f"Configuração inválida ({erros_config[0]}). "
-                      f"Usando os padrões - use C para corrigir.", erro=True)
+                      f"Usando os padrões - use O (Opções) para corrigir.", erro=True)
 
     janela.aplicar_geometria(config['geometry'])
     janela.show()          # antes do rerender: colunas() so e valida depois

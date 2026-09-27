@@ -15,12 +15,12 @@ class SearchResultsScreen(Screen):
     COMANDOS = {
         'B': 'cmd_nova_busca',
         'V': 'cmd_voltar',
-        'M': 'cmd_raiz',
-        'C': 'cmd_config',
+        '/': 'cmd_raiz',
+        'O': 'cmd_config',
         'L': 'cmd_favoritos',
     }
-    ROTULOS = {'B': 'Nova busca', 'V': 'Voltar', 'M': 'Ir para a raiz',
-               'C': 'Configuração', 'L': 'Favoritos e recentes'}
+    ROTULOS = {'B': 'Nova busca', 'V': 'Voltar', '/': 'Ir para a raiz',
+               'O': 'Opções', 'L': 'Favoritos e recentes'}
 
     def __init__(self, app, termo):
         super().__init__(app)

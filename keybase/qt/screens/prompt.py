@@ -23,8 +23,14 @@ class PromptScreen(Screen):
 
     def __init__(self, app, pergunta, on_submit, valor_inicial="",
                  validar=None, permitir_vazio=False, contexto="", senha=False,
-                 detalhe="", itens=None, opcoes=None):
+                 detalhe="", itens=None, opcoes=None, menu=None, atalhos=None):
         super().__init__(app)
+        #: pares (tecla, rotulo) de um menu fixo no topo, como o da tela de
+        #: destino - sem ele, o prompt nao desenha menu nenhum
+        self.menu = menu or []
+        #: letra -> callback tratado SEM fechar o prompt (M abre a selecao
+        #: multipla por cima; o ESC de la volta para ca)
+        self.atalhos = {k.upper(): v for k, v in (atalhos or {}).items()}
         #: escolhas numeradas [(numero, rotulo)], uma por linha no formato
         #: 'N - Rotulo' do resto do app - nunca espremidas numa linha so
         self.opcoes = opcoes or []
@@ -44,6 +50,15 @@ class PromptScreen(Screen):
 
     def on_enter(self):
         pass
+
+    def desenhar_menu(self):
+        if not self.menu:
+            return
+        from ..layout import montar_menu_fixo
+        view = self.app.view
+        view.barra()
+        for linha in montar_menu_fixo(self.menu, view.colunas(), colunas=1):
+            view.linha(linha, 'dica')
 
     def render(self):
         view = self.app.view
@@ -85,6 +100,12 @@ class PromptScreen(Screen):
 
         if not texto and not self.permitir_vazio:
             self.app.pop()  # Enter vazio cancela
+            return
+
+        atalho = self.atalhos.get(texto.upper())
+        if atalho is not None:
+            self._erro = None
+            atalho()
             return
 
         if self.validar:

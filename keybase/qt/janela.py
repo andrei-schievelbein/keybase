@@ -9,7 +9,7 @@ editor simplesmente nao faz nada, sem nenhum `if` aqui.
 import re
 
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QGuiApplication, QKeySequence, QShortcut
+from PySide6.QtGui import QColor, QGuiApplication, QKeySequence, QPainter, QShortcut
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
 from . import atalhos
@@ -99,6 +99,9 @@ class JanelaPrincipal(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.view)
+        self._layout = layout
+        #: Ctrl+T: a janela fica sobre as outras. Nao persiste entre sessoes.
+        self.por_cima = False
 
         # limpeza da area de transferencia depois de copiar algo cifrado
         self._timer_copia = QTimer(self)
@@ -231,6 +234,7 @@ class JanelaPrincipal(QWidget):
         # so a area de leitura: um clique no preview do editor levaria embora
         # da nota com texto nao salvo
         self.view.out.anchorClicked.connect(lambda url: app.abrir_link(url.toString()))
+        self.view.out.tecla_de_lista = app.tecla_de_lista
         self._atalhos(app)
         # auto-trancar do cofre: o App decide, o timer so pergunta de tempos em tempos
         self._timer_cofre = QTimer(self)
@@ -260,6 +264,8 @@ class JanelaPrincipal(QWidget):
         liga(atalhos.MODO_DIVIDIDO, lambda: app.modo(DIVIDIDO))
         liga(atalhos.MODO_CICLAR, app.ciclar_modo)
         liga(atalhos.AJUDA_DINAMICA, app.alternar_menu)
+        # direto na janela, nao no App: nao depende da tela e nao repinta nada
+        liga(atalhos.SEMPRE_POR_CIMA, self.alternar_por_cima)
 
         # setas SO na barra de cima (WidgetShortcut): no editor elas movem o
         # cursor do texto, e uma tela de lista nao pode rouba-las de la
@@ -269,6 +275,44 @@ class JanelaPrincipal(QWidget):
             seta.setContext(Qt.ShortcutContext.WidgetShortcut)
             seta.activated.connect(lambda d=delta: app.seta(d))
             self._setas.append(seta)
+
+    # --- sempre por cima -----------------------------------------------------
+
+    #: espessura da borda que mostra que a janela esta por cima
+    BORDA_POR_CIMA = 2
+
+    def alternar_por_cima(self):
+        """Ctrl+T liga e desliga. A borda na cor da pasta e o unico aviso: um
+        flash obrigaria a repintar a tela (e o viewer voltaria ao topo)."""
+        self.definir_por_cima(not self.por_cima)
+
+    def definir_por_cima(self, ligado):
+        self.por_cima = bool(ligado)
+        geometria = self.geometry()
+        # trocar a flag esconde a janela; show() a traz de volta no lugar
+        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, self.por_cima)
+        margem = self.BORDA_POR_CIMA if self.por_cima else 0
+        # a margem abre a faixa onde paintEvent desenha a borda
+        self._layout.setContentsMargins(margem, margem, margem, margem)
+        self.setGeometry(geometria)
+        self.show()
+        self.raise_()
+        self.activateWindow()
+        self.update()
+
+    def paintEvent(self, evento):
+        super().paintEvent(evento)
+        if not self.por_cima:
+            return
+        pintor = QPainter(self)
+        cor = QColor(cores_interface(self.config['theme'])['pasta'])
+        b = self.BORDA_POR_CIMA
+        r = self.rect()
+        pintor.fillRect(0, 0, r.width(), b, cor)
+        pintor.fillRect(0, r.height() - b, r.width(), b, cor)
+        pintor.fillRect(0, 0, b, r.height(), cor)
+        pintor.fillRect(r.width() - b, 0, b, r.height(), cor)
+        pintor.end()
 
     # --- geometria ---------------------------------------------------------
 

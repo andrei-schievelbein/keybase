@@ -370,5 +370,12 @@ class TerminalView(QWidget):
     def focar_entrada(self):
         self.entrada.setFocus()
 
+    def focar_lista(self):
+        """Foco na area de leitura: a selecao multipla anda com as setas nela."""
+        self.out.setFocus()
+
+    def foco_na_lista(self):
+        return self.out.hasFocus()
+
     def focar_editor(self):
         self.painel.editor.setFocus()
