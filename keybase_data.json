@@ -1,0 +1,172 @@
+{
+    "schema_version": 4,
+    "app_version": "2.0.0",
+    "atualizado_em": "2026-09-27T12:18:54+00:00",
+    "raiz": {
+        "id": "raiz",
+        "tipo": "folder",
+        "nome": "KeyBase",
+        "descricao": "",
+        "criado_em": "2026-09-19T14:25:17+00:00",
+        "atualizado_em": "2026-09-26T22:14:10+00:00",
+        "filhos": [
+            {
+                "id": "2e47b477405a40ffb8c301b6aa738822",
+                "tipo": "folder",
+                "nome": "Modelos",
+                "descricao": "",
+                "criado_em": "2026-09-25T00:29:47+00:00",
+                "atualizado_em": "2026-09-25T00:29:47+00:00",
+                "filhos": [
+                    {
+                        "id": "61cefa3a542744f3a3205e1cf89f7e3f",
+                        "tipo": "file",
+                        "nome": "KeyBase Markdown",
+                        "conteudo": "# {nome}\n\nCriada em {data}.\n\nEste é um modelo. Ao criar uma nota com N e escolher \"KeyBase Markdown\", o título acima vira o nome da nota nova, e a data, a de hoje. Edite com E para ver o markdown por trás de cada trecho.\n\n[TOC]\n\n## Texto\n\nTexto em **negrito**, em *itálico*, em ***negrito e itálico*** e ~~riscado~~. Código no meio da frase: `git status`.\n\nUma quebra de linha digitada\naparece como quebra de linha.\n\n## Títulos\n\n### Título de nível 3\n#### Título de nível 4\n\n## Listas\n\n- Item\n- Outro item\n  - Item dentro de item\n  - Mais um\n\n1. Primeiro passo\n2. Segundo passo\n3. Terceiro passo\n\n## Tarefas\n\n- [x] Tarefa feita\n- [ ] Tarefa pendente\n\n## Citação\n\n> Uma citação, para destacar um trecho.\n> Pode ter mais de uma linha.\n\n## Tabela\n\n| Comando | O que faz | Onde |\n|:--------|:---------:|-----:|\n| `N` | Cria uma nota | Lista |\n| `E` | Edita a nota | Nota |\n| `Y2` | Copia o 2º bloco de código | Nota |\n\n## Blocos de código\n\nCom a linguagem depois das crases, o código ganha cores. Na nota, Y1 copia o primeiro bloco, Y2 o segundo, e Y sozinho lista os blocos.\n\n```python\ndef saudacao(quem):\n    return \"Olá, \" + quem + \"!\"\n```\n\n```bash\nls -la ~/Downloads\n```\n\n```sql\nSELECT nome, criado_em FROM notas WHERE favorito = 1;\n```\n\n## Links\n\nLink para a web com texto: [um site de exemplo](https://example.com). Ou só o endereço: https://example.com\n\nLink para outra nota: [[Modelos/KeyBase Markdown|esta própria nota]].\nUm link para uma nota que não existe aparece riscado: [[Nota que não existe]].\n\n## Nota de rodapé\n\nUma frase com uma nota de rodapé.[^1]\n\n[^1]: O texto da nota de rodapé aparece no fim da nota.\n\n---\n\nUma linha com três hífens, como a de cima, separa seções.\n",
+                        "criado_em": "2026-09-25T00:29:47+00:00",
+                        "atualizado_em": "2026-09-25T00:29:47+00:00"
+                    }
+                ]
+            },
+            {
+                "id": "6546594440344c749dde0cce20b01f03",
+                "tipo": "file",
+                "nome": "Keybase Doc",
+                "conteudo": "# Keybase Doc\n\nO manual do KeyBase, dentro do próprio KeyBase. Esta nota é sua: edite com E, mova com X ou apague com D. Ela não volta sozinha depois de apagada.\n\n[TOC]\n\n## O que é o KeyBase\n\nUm lugar para guardar referências rápidas: atalhos de teclado, comandos, trechos de código, anotações. Tudo o que você consulta no dia a dia.\n\nExistem só dois tipos de item:\n\n- **Pasta**: agrupa notas e outras pastas, sem limite de profundidade.\n- **Nota**: um texto em Markdown.\n\nNão há tipos fixos de conteúdo. Um \"snippet\" é uma nota com um bloco de código; um \"atalho\" é uma nota com a combinação de teclas no título. A organização é sua.\n\n## A tela\n\nO KeyBase é operado pelo teclado. Digite o comando na barra de cima e aperte ENTER.\n\n```\n==============================================================\n ~ / Python / Pandas\n==============================================================\n 1 - Leitura de arquivos/                              [0]:[4]\n 2 - Agrupamentos\n 3 - Merge e join\n==============================================================\n```\n\n- A primeira linha é o caminho. `~` é a raiz.\n- Pastas terminam em `/`. As pastas vêm antes das notas, e cada grupo fica em ordem alfabética. A ordem não se muda à mão.\n- Os avisos (\"Pasta criada.\", \"Renomeado para...\") aparecem no lugar do caminho por alguns segundos.\n\n### Os dois números da pasta\n\nCada pasta mostra `[a]:[b]`, contando só notas:\n\n- **a**: notas soltas dentro da pasta;\n- **b**: todas as notas da hierarquia, entrando em cada sub-pasta.\n\n`[0]:[4]` quer dizer \"nada solto aqui, mas 4 notas lá dentro\". Pasta vazia não mostra contador.\n\n### Marcas no fim da linha\n\n| Marca | Significado |\n|:------|:------------|\n| `[favorito]` | Marcado com F |\n| `[cifrada]` | Nota ou pasta inteira protegida pela senha mestra |\n| `[novas cifradas]` | Pasta cujas notas novas já nascem cifradas |\n\n### O menu de comandos\n\nO menu começa escondido. `?` (ou Ctrl+0, ou o botão `?` ao lado da barra) mostra e esconde. `??` abre a ajuda completa.\n\n## Navegação\n\n| Comando | O que faz |\n|:--------|:----------|\n| `1` `2` `3` … | Abre o item pelo número |\n| `V` | Volta um nível (ou limpa o filtro) |\n| ENTER vazio | O mesmo que V |\n| `M` | Vai direto para a raiz |\n| `L` | Favoritos e notas abertas recentemente, numa lista só |\n| `sair` | Encerra (fechar a janela também salva) |\n\n## Criar e organizar\n\n| Comando | O que faz |\n|:--------|:----------|\n| `P` | Cria uma pasta na pasta atual |\n| `N` | Cria uma nota na pasta atual e já abre o editor |\n| `E` ou `E3` | Edita uma nota |\n| `R` ou `R3` | Renomeia um item |\n| `D` ou `D3` | Apaga um item (pede confirmação) |\n| `X` ou `X3` | Move um item para outra pasta |\n| `Y` ou `Y3` | Copia um item para outra pasta; o original fica |\n| `Z` ou `Z3` | Duplica um item como \"Nome (cópia)\" |\n| `F` ou `F3` | Marca ou desmarca um favorito |\n| `W` ou `W3` | Exporta a pasta como arquivos .md |\n| `U` | Desfaz a última ação |\n\nComandos que agem sobre um item aceitam o número junto (`D3` apaga o item 3) ou sozinho (`D` pergunta qual).\n\n### Apagar\n\nApagar uma nota ou uma pasta vazia pede uma confirmação simples. Uma pasta com conteúdo mostra quanto vai junto, exige digitar DELETAR e grava um backup antes. Nos dois casos, U desfaz.\n\n### Mover e copiar para outra pasta\n\nX e Y abrem uma tela para escolher o destino. O menu fica fixo no topo:\n\n| Tecla | Ação |\n|:------|:-----|\n| número | Entra na pasta |\n| `C` | Move (ou copia) para a pasta mostrada |\n| ENTER | Sobe um nível |\n| `M` | Vai para a raiz |\n| ESC | Cancela |\n\nMover para dentro de uma pasta cifrada deixa o item protegido por ela. Mover para fora pede confirmação, porque o item passa a ficar em claro.\n\n### Desfazer\n\nU desfaz a última ação: apagar, mover, renomear, duplicar, decifrar ou restaurar uma versão. Dá para desfazer várias em sequência, enquanto nada mais tiver sido alterado depois.\n\n### Exportar\n\nW exporta a pasta atual (ou W3, a pasta 3) como arquivos .md, numa pasta `KeyBase-export-AAAA-MM-DD` em Downloads. Na raiz, exporta tudo. Se houver itens cifrados, o KeyBase pergunta se pula ou inclui em claro.\n\n## Filtrar e buscar\n\n### Filtro na pasta atual\n\nA partir da segunda letra digitada na barra, a pasta já é filtrada pelo nome, sem ENTER e sem diferenciar acento e maiúsculas. Uma letra só não filtra, para não se confundir com um comando, e texto com número (`D3`, `12`) também não.\n\n- ENTER fixa o filtro e limpa a barra. Os números passam a indexar a lista filtrada: `1` abre o primeiro item filtrado.\n- ESC apaga o que está na barra, e a lista volta.\n- Digitar com um filtro já fixado filtra a pasta inteira de novo. Apagar tudo volta ao filtro fixado.\n- V limpa o filtro fixado.\n\nPara filtrar por algo que é um comando, comece com barra: `/c` filtra por \"c\" em vez de abrir a configuração, e `/sair` não encerra.\n\n### Busca em toda a base\n\nB busca pelo nome, pela descrição e pelo conteúdo das notas, em todas as pastas. Cada resultado mostra o caminho.\n\n- O termo precisa de pelo menos 2 letras.\n- Tolera erro de digitação no nome: \"pnadas\" acha \"Pandas\".\n- As setas escolhem um resultado e ENTER abre. Um número também abre.\n- Com os itens cifrados trancados, notas cifradas são achadas só pelo nome, e nada dentro de pastas cifradas aparece.\n\n## Notas\n\n### Ler\n\nAbrir uma nota mostra o Markdown já desenhado. Nela valem:\n\n| Comando | O que faz |\n|:--------|:----------|\n| `E` | Edita |\n| `R` | Renomeia |\n| `D` | Apaga |\n| `Y` | Área de transferência (veja abaixo) |\n| `H` | Histórico de versões |\n| `F` | Favorito |\n| `K` | Cifra ou decifra |\n| `A` | Digita a senha de uma nota trancada |\n| `V` ou ENTER | Volta |\n\n### Copiar para a área de transferência\n\n- `Y2` copia o 2º bloco de código da nota.\n- `Y` sozinho lista os blocos de código; `0` copia a nota inteira. Uma nota sem blocos é copiada inteira.\n- Algo cifrado copiado é apagado da área de transferência depois de 20 segundos (configurável), se ela ainda tiver o que foi copiado.\n\n### Histórico\n\nH lista as versões da nota guardadas nos backups e snapshots, sem repetir iguais. Abra uma para ler e aperte R para restaurá-la. U desfaz a restauração.\n\n### Editor\n\n| Tecla | Ação |\n|:------|:-----|\n| Ctrl+S | Salva e volta |\n| ESC | Vai para a barra de cima; ESC de novo cancela (pergunta antes de descartar) |\n| ENTER na barra | Volta ao texto |\n| Ctrl+1 | Só o editor |\n| Ctrl+2 | Só o preview do texto ainda não salvo |\n| Ctrl+3 | Tela dividida: editor e preview lado a lado |\n| Ctrl+E | Alterna entre os três modos |\n| `?` na barra | Mostra ou esconde os atalhos de edição |\n| `??` na barra | Ajuda completa, sem perder o texto |\n\nNo modo dividido, o preview acompanha a digitação e a rolagem segue o editor. O KeyBase lembra o último modo usado.\n\nNo macOS, tanto o Ctrl quanto o Cmd funcionam nesses atalhos.\n\n### Modelos\n\nModelos são notas comuns numa pasta `Modelos` na raiz. Ao criar uma nota com N, o KeyBase oferece `1 - Em branco` e os modelos. No texto do modelo, `{nome}` vira o nome da nota nova e `{data}`, a data de hoje.\n\n- Se a pasta ainda não existe, o N oferece `2 - Criar a pasta de modelos`.\n- Toda pasta de modelos nova já vem com o modelo \"KeyBase Markdown\", um tour por tudo o que o Markdown do KeyBase desenha.\n- Criar uma nota dentro da própria pasta de modelos cria um modelo novo, sem perguntar.\n- O nome da pasta é configurável em `pasta_modelos`.\n\n## Markdown\n\nAs notas são escritas em Markdown. O modelo \"KeyBase Markdown\", na pasta de modelos, mostra cada recurso funcionando.\n\n| Recurso | Como escrever |\n|:--------|:--------------|\n| Título | `# Título`, `## Seção`, `### Sub-seção` |\n| Negrito, itálico | `**negrito**`, `*itálico*` |\n| Riscado | `~~riscado~~` |\n| Código no texto | `` `comando` `` |\n| Lista | `- item`, ou `1. passo` |\n| Tarefa | `- [ ] pendente`, `- [x] feita` |\n| Citação | `> texto` |\n| Tabela | linhas com `|`, e `|:--|` para alinhar |\n| Linha horizontal | `---` |\n| Nota de rodapé | `texto[^1]` e, no fim, `[^1]: explicação` |\n| Sumário | `[TOC]` numa linha sozinha |\n\nUma quebra de linha digitada aparece como quebra de linha. O `#` precisa de espaço depois para virar título: `#!/bin/bash` e `#config` ficam como texto.\n\n### Blocos de código\n\nTrês crases com o nome da linguagem abrem um bloco com cores:\n\n````markdown\n```python\ndf = pd.read_csv(\"dados.csv\")\n```\n````\n\nQualquer linguagem do Pygments funciona: python, bash, sql, json, yaml, javascript e muitas outras.\n\n### Links\n\n- `https://...` abre no navegador. `[texto](https://...)` mostra o texto no lugar do endereço.\n- `[[Nome da nota]]` vira link para outra nota. Também valem `[[Pasta/Nome]]` e `[[Pasta/Nome|texto mostrado]]`.\n- Um link para uma nota que não existe aparece riscado.\n\nLink para este manual: [[Keybase Doc]].\n\n## Notas e pastas cifradas\n\nVocê escolhe o que cifrar. Tudo fica protegido por uma senha mestra única (AES-256-GCM, com a chave derivada da senha por scrypt).\n\n> **Não existe recuperação de senha.** Sem a senha mestra, o que foi cifrado fica ilegível para sempre.\n\n### Três níveis de proteção\n\n| Nível | Como ligar | O que fica visível no arquivo |\n|:------|:-----------|:------------------------------|\n| Nota cifrada | K sobre a nota | O nome da nota |\n| Pasta com notas novas cifradas | K sobre a pasta, opção 2, ou `s` ao criar com P | Os nomes e as notas antigas |\n| Pasta inteira cifrada | K sobre a pasta, opção 3 | Só o nome da pasta |\n\n### Comandos\n\n| Comando | O que faz |\n|:--------|:----------|\n| `K` ou `K3` | Cifra ou decifra uma nota; decifrar pede confirmação |\n| `K` numa pasta | 1 cifra todas as notas dela, 2 liga ou desliga \"novas cifradas\", 3 cifra a pasta inteira |\n| `T` | Tranca os itens cifrados; se já estiverem trancados, pede a senha |\n| `A` | Na nota trancada, pede a senha |\n| `S` | Troca a senha mestra |\n\n### Como funciona no dia a dia\n\n- Na primeira vez que você cifra algo, o KeyBase pede para criar a senha mestra.\n- A senha é pedida uma vez por sessão. Depois de 10 minutos sem uso (configurável), tudo tranca de novo.\n- Dentro de uma pasta cifrada, tudo já é protegido: nada lá dentro pede senha de novo, e o K não cifra nada a mais.\n- Trocar a senha com S não recifra as notas. Backups antigos continuam abrindo com a senha antiga.\n- Ao cifrar, os backups ainda guardam a versão em claro. O KeyBase oferece cifrar essas cópias também, sem perder o histórico.\n\n## Configuração\n\nC abre o arquivo `keybase_config.toml` no editor, como uma nota. Ctrl+S valida antes de gravar: com erro, nada é gravado e o erro aparece em vermelho no topo. O KeyBase nunca reescreve esse arquivo sozinho, então seus comentários ficam.\n\n| Opção | O que faz | Quando vale |\n|:------|:----------|:------------|\n| `tema` | `\"dark\"` ou `\"light\"` | Na hora |\n| `[fontes]` | Família e tamanhos das fontes | Ao reabrir |\n| `altura_ajuda` | Altura mínima da barra de ajuda | Na hora |\n| `tempo_aviso_ms` | Quanto tempo um aviso fica no lugar do caminho | Na hora |\n| `tempo_aviso_longo_ms` | O mesmo, para avisos com algo para ler, como o endereço de uma exportação. `0` deixa o aviso até você apertar ENTER | Na hora |\n| `trancar_apos_min` | Minutos sem uso até os cifrados trancarem (`0` desliga) | Na hora |\n| `limpar_copia_seg` | Segundos até limpar algo cifrado copiado (`0` não limpa) | Na hora |\n| `[dados] pasta` | Onde ficam os dados | Ao reabrir |\n| `pasta_modelos` | Nome da pasta de modelos na raiz (`\"\"` desliga) | Na hora |\n\nOpções novas de versões futuras aparecem sozinhas no editor, com o comentário, e só vão para o arquivo quando você salvar.\n\n## Dados e segurança\n\n### Onde ficam os arquivos\n\nOs dados ficam ao lado do programa, então o KeyBase roda de um pen drive. Se essa pasta não aceitar gravação, eles vão para a pasta de dados do usuário.\n\n| Arquivo | O que é |\n|:--------|:--------|\n| `keybase_data.json` | Suas pastas e notas |\n| `keybase_data.bak.json` | A versão anterior, gravada antes de cada alteração |\n| `keybase_data.snapshot-*.json` | Uma cópia por dia, dos últimos 7 dias |\n| `keybase_config.toml` | Suas preferências |\n| `keybase_estado.json` | Tamanho da janela, último modo do editor e notas recentes |\n| `keybase_data.conflito-*.json` | Suas mudanças, quando outro computador gravou ao mesmo tempo |\n\n### Vários computadores\n\nAponte `[dados] pasta` para uma pasta do iCloud, Dropbox ou Google Drive. Na primeira vez, os dados atuais são copiados para lá. No Windows, use `/` no caminho: `\"C:/Users/voce/Dropbox\"`.\n\nSe outro computador gravou enquanto este estava aberto, o KeyBase não sobrescreve: guarda as suas mudanças numa cópia de conflito e pergunta se recarrega o do disco ou grava o daqui por cima.\n\n### Se algo der errado\n\n- Toda gravação é atômica: uma queda no meio não deixa o arquivo pela metade.\n- Um arquivo de dados que não pôde ser lido nunca é sobrescrito. O KeyBase abre sem gravar nada, mostra o erro e oferece restaurar o backup ou um snapshot.\n- Uma configuração inválida ao abrir faz o KeyBase usar os padrões e avisar, sem mexer no arquivo. Corrija com C.\n\n## Dicas\n\n- Nomeie notas de atalho pela combinação: uma nota \"Ctrl + P\" dentro de `Vscode/` se acha pelo filtro digitando só \"ctrl\".\n- Guarde comandos em blocos de código: na nota, Y1 copia o primeiro sem precisar selecionar nada.\n- Use F nas notas que você abre toda hora e L para chegar nelas de qualquer lugar.\n- Crie modelos para o que você repete: um modelo de atalho com `# {nome}` e \"Quando usar:\" padroniza as notas.\n- Ligue notas relacionadas com `[[Nome da nota]]` relacionadas em vez de repetir o mesmo texto em dois lugares.\n- Errou? U desfaz. Perdeu um texto que existia antes? H na nota mostra as versões antigas.\n- Cifre só o que é sensível. O que está em claro continua aparecendo na busca pelo conteúdo.\n",
+                "criado_em": "2026-09-25T00:41:28+00:00",
+                "atualizado_em": "2026-09-25T11:30:51+00:00"
+            },
+            {
+                "id": "3c0645a163b44d978b17fd4f9549679e",
+                "tipo": "folder",
+                "nome": "VS Code",
+                "descricao": "Editor de código da Microsoft",
+                "criado_em": "2026-09-25T11:37:23+00:00",
+                "atualizado_em": "2026-09-25T11:37:23+00:00",
+                "filhos": [
+                    {
+                        "id": "049cad6841114a5ca43d3e792ef48c1f",
+                        "tipo": "folder",
+                        "nome": "Atalhos",
+                        "descricao": "",
+                        "criado_em": "2026-09-25T11:37:23+00:00",
+                        "atualizado_em": "2026-09-26T21:20:30+00:00",
+                        "filhos": [
+                            {
+                                "id": "ec4d8779a5814bc0b5e499e8de84e1a4",
+                                "tipo": "file",
+                                "nome": "Ctrl + P",
+                                "conteudo": "# Ctrl + P\n\nAbre o seletor rápido de arquivos: digite parte do nome e ENTER abre.\n\n| Sistema | Tecla |\n|:--------|:------|\n| Windows / Linux | `Ctrl + P` |\n| macOS | `Cmd + P` |\n\n**Quando usar:** para abrir um arquivo sem tirar a mão do teclado nem procurar na barra lateral.\n\nDicas:\n\n- `Ctrl + P` e depois `:42` vai para a linha 42 do arquivo aberto.\n- `Ctrl + P` e depois `@` lista as funções e classes do arquivo.\n- Veja também [[VS Code/Atalhos/Ctrl + Shift + P]].\n",
+                                "criado_em": "2026-09-25T11:37:23+00:00",
+                                "atualizado_em": "2026-09-25T11:37:23+00:00"
+                            },
+                            {
+                                "id": "78df62824c0a4a02aebeb0be8e123c08",
+                                "tipo": "file",
+                                "nome": "Ctrl + Shift + P",
+                                "conteudo": "# Ctrl + Shift + P\n\nAbre a paleta de comandos: todo comando do VS Code está aqui, mesmo os que não têm atalho.\n\n| Sistema | Tecla |\n|:--------|:------|\n| Windows / Linux | `Ctrl + Shift + P` |\n| macOS | `Cmd + Shift + P` |\n\nComandos que valem decorar:\n\n- **Preferences: Open User Settings (JSON)** abre o [[VS Code/Snippets/settings.json|settings.json]].\n- **Python: Select Interpreter** escolhe o ambiente virtual.\n- **Developer: Reload Window** recarrega a janela sem fechar o VS Code.\n",
+                                "criado_em": "2026-09-25T11:37:23+00:00",
+                                "atualizado_em": "2026-09-25T11:37:23+00:00"
+                            },
+                            {
+                                "id": "eda44aa136924c5f959a9f6f87d391d1",
+                                "tipo": "file",
+                                "nome": "Ctrl + D",
+                                "conteudo": "# Ctrl + D\n\nSeleciona a próxima ocorrência da palavra sob o cursor, criando mais um cursor. Cada `Ctrl + D` acrescenta uma.\n\n| Sistema | Tecla |\n|:--------|:------|\n| Windows / Linux | `Ctrl + D` |\n| macOS | `Cmd + D` |\n\n**Quando usar:** para renomear uma variável em poucos lugares, sem abrir o substituir.\n\n- `Ctrl + K`, `Ctrl + D` pula a ocorrência atual.\n- `Ctrl + Shift + L` seleciona todas de uma vez.\n",
+                                "criado_em": "2026-09-25T11:37:23+00:00",
+                                "atualizado_em": "2026-09-25T11:37:23+00:00"
+                            },
+                            {
+                                "id": "1e8e5992a9c743f0bbc56febd61abec3",
+                                "tipo": "file",
+                                "nome": "Alt + ↑ ↓",
+                                "conteudo": "# Alt + ↑ ↓\n\nMove a linha atual (ou as linhas selecionadas) para cima ou para baixo.\n\n| Sistema | Mover | Duplicar |\n|:--------|:------|:---------|\n| Windows / Linux | `Alt + ↑ ↓` | `Shift + Alt + ↑ ↓` |\n| macOS | `Option + ↑ ↓` | `Shift + Option + ↑ ↓` |\n",
+                                "criado_em": "2026-09-25T11:37:23+00:00",
+                                "atualizado_em": "2026-09-25T11:37:23+00:00"
+                            },
+                            {
+                                "id": "f62b3c3552764ef08e932a96b5a3be50",
+                                "tipo": "folder",
+                                "nome": "teste",
+                                "descricao": "",
+                                "criado_em": "2026-09-26T21:20:30+00:00",
+                                "atualizado_em": "2026-09-26T21:20:30+00:00",
+                                "filhos": []
+                            }
+                        ]
+                    },
+                    {
+                        "id": "6864472ea8cf4b4b8595dfe2111c0e79",
+                        "tipo": "folder",
+                        "nome": "Notas",
+                        "descricao": "",
+                        "criado_em": "2026-09-25T11:37:23+00:00",
+                        "atualizado_em": "2026-09-25T11:37:23+00:00",
+                        "filhos": [
+                            {
+                                "id": "59fd3f74db4c436dbddc378cf084971a",
+                                "tipo": "file",
+                                "nome": "Extensões recomendadas",
+                                "conteudo": "# Extensões recomendadas\n\nExtensões que valem a pena para quem programa em Python.\n\n- [x] **Python** (Microsoft): execução, depuração e seleção de ambiente.\n- [x] **Pylance**: autocompletar e checagem de tipos.\n- [x] **GitLens**: quem mudou cada linha, e quando.\n- [ ] **Ruff**: lint e formatação muito rápidos.\n- [ ] **Error Lens**: mostra o erro na própria linha.\n\n> Instale pelo painel de extensões (`Ctrl + Shift + X`) ou pelo terminal:\n\n```bash\ncode --install-extension ms-python.python\ncode --install-extension charliermarsh.ruff\n```\n\nAs configurações dessas extensões estão em [[VS Code/Snippets/settings.json]].\n",
+                                "criado_em": "2026-09-25T11:37:23+00:00",
+                                "atualizado_em": "2026-09-25T11:37:23+00:00"
+                            },
+                            {
+                                "id": "7075c7f7a9f54f5b9e7fa24f66e29398",
+                                "tipo": "file",
+                                "nome": "Ambiente virtual Python",
+                                "conteudo": "# Ambiente virtual Python\n\nUm ambiente por projeto, para as bibliotecas de um não brigarem com as de outro.\n\n## Criar e ativar\n\n```bash\npython -m venv .venv\nsource .venv/bin/activate      # macOS / Linux\n.venv\\Scripts\\activate         # Windows\n```\n\n## Instalar as dependências\n\n```bash\npip install -r requirements.txt\n```\n\n## Fazer o VS Code usar o ambiente\n\n1. `Ctrl + Shift + P`\n2. **Python: Select Interpreter**\n3. Escolha o que aponta para `.venv`\n\nDepois disso, o terminal integrado já abre com o ambiente ativado. Veja [[VS Code/Atalhos/Ctrl + Shift + P]].\n",
+                                "favorito": true,
+                                "criado_em": "2026-09-25T11:37:23+00:00",
+                                "atualizado_em": "2026-09-25T11:37:23+00:00"
+                            },
+                            {
+                                "id": "7c361da267e24862aa13c88301b4637d",
+                                "tipo": "file",
+                                "nome": "Dicas de produtividade",
+                                "conteudo": "# Dicas de produtividade\n\n- **Zen mode** (`Ctrl + K`, `Z`): esconde tudo menos o código. ESC duas vezes sai.\n- **Terminal integrado** (`` Ctrl + ` ``): abre e fecha o terminal sem sair do editor.\n- **Dividir o editor** (`Ctrl + \\`): dois arquivos lado a lado.\n- **Ir para a definição** (`F12`) e **voltar** (`Alt + ←`).\n- **Renomear em todo o projeto** (`F2`): troca o nome em todos os arquivos que usam o símbolo.\n\nOs atalhos do dia a dia estão na pasta [[VS Code/Atalhos/Ctrl + P|Atalhos]].\n",
+                                "favorito": true,
+                                "criado_em": "2026-09-25T11:37:23+00:00",
+                                "atualizado_em": "2026-09-25T11:37:23+00:00"
+                            }
+                        ]
+                    },
+                    {
+                        "id": "82ff5555cbc144df813873bf9ffd38ba",
+                        "tipo": "folder",
+                        "nome": "Snippets",
+                        "descricao": "",
+                        "criado_em": "2026-09-25T11:37:23+00:00",
+                        "atualizado_em": "2026-09-25T11:37:23+00:00",
+                        "filhos": [
+                            {
+                                "id": "379ea7307e234d1692f718db383a78d5",
+                                "tipo": "file",
+                                "nome": "settings.json",
+                                "conteudo": "# settings.json\n\nConfigurações do usuário. Abra com `Ctrl + Shift + P` e **Preferences: Open User Settings (JSON)**.\n\n```json\n{\n    \"editor.fontSize\": 14,\n    \"editor.formatOnSave\": true,\n    \"editor.rulers\": [88],\n    \"files.autoSave\": \"onFocusChange\",\n    \"[python]\": {\n        \"editor.defaultFormatter\": \"charliermarsh.ruff\"\n    }\n}\n```\n\nNa nota, `Y1` copia o bloco acima.\n",
+                                "criado_em": "2026-09-25T11:37:23+00:00",
+                                "atualizado_em": "2026-09-25T11:37:23+00:00"
+                            },
+                            {
+                                "id": "d9b08d85cbd24c258fb6efd26150c153",
+                                "tipo": "file",
+                                "nome": "launch.json (Python)",
+                                "conteudo": "# launch.json (Python)\n\nConfiguração de depuração para rodar o arquivo aberto com F5. Fica em `.vscode/launch.json`, na pasta do projeto.\n\n```json\n{\n    \"version\": \"0.2.0\",\n    \"configurations\": [\n        {\n            \"name\": \"Python: arquivo atual\",\n            \"type\": \"debugpy\",\n            \"request\": \"launch\",\n            \"program\": \"${file}\",\n            \"console\": \"integratedTerminal\"\n        }\n    ]\n}\n```\n\nCom `\"justMyCode\": false`, a depuração entra também no código das bibliotecas.\n",
+                                "criado_em": "2026-09-25T11:37:23+00:00",
+                                "atualizado_em": "2026-09-25T11:37:23+00:00"
+                            },
+                            {
+                                "id": "89e56b097d144d04b4c3582479bb65e1",
+                                "tipo": "file",
+                                "nome": "Snippet de usuário",
+                                "conteudo": "# Snippet de usuário\n\nUm trecho que o VS Code completa sozinho. Crie em **Snippets: Configure Snippets**, escolha `python.json` e cole:\n\n```json\n{\n    \"Main do Python\": {\n        \"prefix\": \"main\",\n        \"body\": [\n            \"def main():\",\n            \"    $0\",\n            \"\",\n            \"\",\n            \"if __name__ == \\\"__main__\\\":\",\n            \"    main()\"\n        ],\n        \"description\": \"Função main com o guarda do __name__\"\n    }\n}\n```\n\nDepois, digite `main` num arquivo `.py` e aperte TAB. O resultado:\n\n```python\ndef main():\n    pass\n\n\nif __name__ == \"__main__\":\n    main()\n```\n",
+                                "criado_em": "2026-09-25T11:37:23+00:00",
+                                "atualizado_em": "2026-09-25T11:37:23+00:00"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+}
