@@ -294,6 +294,49 @@ QT_QPA_PLATFORM=offscreen python -m unittest discover -s tests -t .
 
 Os testes rodam sem display, inclusive em CI.
 
+### Mac: abrir por atalho (Karabiner)
+
+Um script local, `abrir-keybase.sh` na raiz do projeto (fora do git, porque cada máquina tem o seu), abre o KeyBase ou alterna o que já está aberto: se ele está na frente, esconde e devolve o foco ao app de antes (como `Cmd+H`); se está atrás ou escondido, traz para a frente. O KeyBase só roda uma vez: abrir de novo (pelo script ou pelo terminal) só avisa o que está aberto.
+
+Crie o script e dê permissão de execução (`chmod +x abrir-keybase.sh`):
+
+```sh
+#!/bin/sh
+# Abre o KeyBase, ou alterna o que ja esta aberto (na frente <-> escondido).
+# Feito para o atalho global do Karabiner (Ctrl+Option+K), que roda com um
+# PATH minimo - por isso o Python vai por caminho absoluto.
+#
+# Outro Python: KEYBASE_PYTHON=/caminho/python3 ./abrir-keybase.sh
+
+SOCKET="$HOME/.keybase/instancia.sock"
+PYTHON="${KEYBASE_PYTHON:-/Library/Frameworks/Python.framework/Versions/3.13/bin/python3}"
+PASTA="$(cd "$(dirname "$0")" && pwd)"
+
+# Caminho rapido: ja aberto, so avisa. Sem esperar o Python e o Qt carregarem.
+if [ -S "$SOCKET" ] && printf 'alternar\n' | nc -U -w 1 "$SOCKET" 2>/dev/null; then
+    exit 0
+fi
+
+# Fechado (ou socket velho de um KeyBase que caiu): abre em segundo plano.
+cd "$PASTA" || exit 1
+nohup "$PYTHON" keybase.pyw >/dev/null 2>&1 &
+```
+
+No Karabiner-Elements, acrescente a regra em `~/.config/karabiner/karabiner.json`, dentro de `complex_modifications.rules` do perfil, trocando o caminho pelo da sua pasta:
+
+```json
+{
+    "description": "Ctrl+Option+K -> abre/esconde o KeyBase",
+    "manipulators": [{
+        "type": "basic",
+        "from": {"key_code": "k", "modifiers": {"mandatory": ["control", "option"]}},
+        "to": [{"shell_command": "'/caminho/para/keybase/abrir-keybase.sh'"}]
+    }]
+}
+```
+
+O script usa o Python do python.org (`/Library/Frameworks/Python.framework/Versions/3.13/bin/python3`). Para outro, defina `KEYBASE_PYTHON`.
+
 ## 📦 Arquivos e Portabilidade
 
 O KeyBase é portátil: os dados ficam **ao lado do executável**, então dá para rodar de um pen drive. Se esse diretório não for gravável (por exemplo, um `.exe` instalado em `C:\Program Files`), os dados vão para `%APPDATA%\KeyBase` em vez de se perderem.
@@ -362,7 +405,7 @@ O KeyBase **não sobrescreve** um arquivo que não conseguiu ler. Ele abre em mo
 
 Um `folder` tem `filhos`; um `file` tem `conteudo`. Uma nota cifrada troca `conteudo` por `"cifrado": true` e `"conteudo_cifrado": {"nonce", "ct"}`. Nesse caso, o arquivo ganha no topo um bloco `"cofre"` com os parâmetros do scrypt e a chave das notas, cifrada pela senha. Uma pasta cujas notas nascem cifradas tem `"nasce_cifrada": true`. Uma pasta inteira cifrada troca `descricao` e `filhos` por `"cifrada": true` e `"filhos_cifrados": {"nonce", "ct"}`. A ordem de exibição é derivada (pastas antes de notas, alfabético), não armazenada — reordenar o arquivo à mão não muda nada nem quebra referências.
 
-> **Formato anterior (v1):** versões até a 1.0.2 usavam `data.json`, com `programas` contendo listas separadas de `atalhos`, `notas` e `snippets`. Esse arquivo não é lido nem modificado pela versão atual. O script `importar_legado.py` converte esse conteúdo para o formato novo, se você quiser aproveitá-lo.
+> **Formato anterior (v1):** versões até a 1.0.2 usavam `data.json`, com `programas` contendo listas separadas de `atalhos`, `notas` e `snippets`. Esse arquivo não é lido nem modificado pela versão atual.
 
 ## 🤝 Contribuindo
 

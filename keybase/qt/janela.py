@@ -276,6 +276,30 @@ class JanelaPrincipal(QWidget):
             seta.activated.connect(lambda d=delta: app.seta(d))
             self._setas.append(seta)
 
+    # --- atalho global (Karabiner) --------------------------------------------
+
+    def alternar_visibilidade(self, so_mostrar=False):
+        """Ctrl+Option+K, pelo abrir-keybase.sh: na frente, esconde e devolve o
+        foco ao app de antes (o Cmd+H); atras ou escondida, vem para a frente.
+
+        so_mostrar: so traz para a frente (a propria abertura)."""
+        from . import macos
+        na_frente = (self.isVisible() and not self.isMinimized()
+                     and QGuiApplication.applicationState()
+                     == Qt.ApplicationState.ApplicationActive)
+        if na_frente and not so_mostrar:
+            if not macos.esconder_app():
+                self.showMinimized()
+            return
+        if self.isMinimized():
+            self.showNormal()
+        self.show()
+        self.raise_()
+        macos.ativar_app()
+        # o Qt devolve o foco a quem o tinha: no meio de uma edicao, o cursor
+        # continua no texto
+        self.activateWindow()
+
     # --- sempre por cima -----------------------------------------------------
 
     #: espessura da borda que mostra que a janela esta por cima

@@ -38,6 +38,9 @@ window_config.json
 keybase_config.toml
 keybase_estado.json
 
+# Lançador local do Mac (atalho do Karabiner): particular de cada máquina
+abrir-keybase.sh
+
 # Workflows (arquivos de configuração local do agente)
 .agent/
 

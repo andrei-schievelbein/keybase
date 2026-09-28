@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QApplication
 from . import paths, storage
 from .config import carregar_config
 from .model import ID_RAIZ
+from .qt import instancia
 from .qt.app import App
 from .qt.estilo import aplicar_tema
 from .qt.janela import JanelaPrincipal
@@ -33,6 +34,12 @@ def main():
 
     qapp = QApplication(sys.argv)
     qapp.setApplicationName("KeyBase")
+
+    # ja ha um KeyBase aberto: ele vem para a frente (ou se esconde) e este
+    # sai antes de ler qualquer dado - duas janelas gravariam uma por cima
+    # da outra
+    if instancia.avisar_instancia_aberta():
+        sys.exit(0)
     aplicar_tema(qapp, config['theme'])
 
     icone = _icone()
@@ -77,6 +84,10 @@ def main():
     janela.aplicar_geometria(config['geometry'])
     janela.show()          # antes do rerender: colunas() so e valida depois
     app.rerender()
+    # guardado na janela: coletado pelo Python, o servidor pararia de ouvir
+    janela.servidor_instancia = instancia.ouvir(
+        instancia.CAMINHO_SOCKET, janela.alternar_visibilidade, parent=janela)
+    janela.alternar_visibilidade(so_mostrar=True)   # aberto pelo atalho: na frente
 
     QTimer.singleShot(0, janela.view.focar_entrada)
     sys.exit(qapp.exec())
