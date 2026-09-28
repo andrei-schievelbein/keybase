@@ -26,7 +26,7 @@ from .model import EsquemaInvalidoError, Folder, node_from_dict, nova_raiz
 # 4 = pastas inteiramente cifradas. Mesmo motivo: uma build de schema 3 leria
 #     a pasta sem 'filhos' como vazia e gravaria o vazio por cima.
 SCHEMA_VERSION = 4
-APP_VERSION = "2.0.0"
+APP_VERSION = "2.1.0"
 
 MAX_SNAPSHOTS = 7
 _RETRIES_REPLACE = 3

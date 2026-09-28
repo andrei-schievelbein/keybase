@@ -370,7 +370,7 @@ O KeyBase **não sobrescreve** um arquivo que não conseguiu ler. Ele abre em mo
 ```json
 {
     "schema_version": 4,
-    "app_version": "2.0.0",
+    "app_version": "2.1.0",
     "atualizado_em": "2026-09-13T16:22:04+00:00",
     "raiz": {
         "id": "raiz",
